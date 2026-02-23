@@ -4,6 +4,8 @@ A benchmark for evaluating neural theorem provers on software verification tasks
 
 VeriSoftBench contains 500 theorem-proving tasks drawn from 23 real-world Lean 4 repositories spanning compiler verification, type system formalization, applied verification (zero-knowledge proofs, smart contracts), semantic frameworks, and more.
 
+[Paper](https://arxiv.org/abs/2602.18307)
+
 ## Quick Start
 
 ### 1. Install dependencies
@@ -206,4 +208,14 @@ The benchmark repositories are redistributed under their original licenses. See 
 
 ## Citation
 
-Coming soon.
+```
+@misc{xin2026verisoftbenchrepositoryscaleformalverification,
+      title={VeriSoftBench: Repository-Scale Formal Verification Benchmarks for Lean}, 
+      author={Yutong Xin and Qiaochu Chen and Greg Durrett and Işil Dillig},
+      year={2026},
+      eprint={2602.18307},
+      archivePrefix={arXiv},
+      primaryClass={cs.SE},
+      url={https://arxiv.org/abs/2602.18307}, 
+}
+```

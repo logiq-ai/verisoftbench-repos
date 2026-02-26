@@ -6,6 +6,8 @@ VeriSoftBench contains 500 theorem-proving tasks drawn from 23 real-world Lean 4
 
 [Paper](https://arxiv.org/abs/2602.18307)
 
+[Huggingface Dataset](https://huggingface.co/datasets/maxRyeery/VeriSoftBench)
+
 ## Quick Start
 
 ### 1. Install dependencies

@@ -10,6 +10,7 @@ import Mathlib.Algebra.Order.Sub.Basic
 import Mathlib.Data.Matrix.Mul
 import ToMathlib.General
 
+import Batteries.Data.Vector.Lemmas
 /-!
 # Definitions and lemmas for `Vector`
 -/
@@ -85,52 +86,25 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
-  simp_rw [Vector.foldl] -- get
-  simp only [size_toArray]
-  have hl_foldl_eq_toList_foldl := Array.foldl_toList (f:=f) (init:=init) (xs:=v.toArray)
-  have hl_foldl_eq: Array.foldl f init v.toArray 0 n = Array.foldl f init v.toArray := by
-    simp only [size_toArray]
-  conv_lhs =>
-    rw [hl_foldl_eq, hl_foldl_eq_toList_foldl.symm]
-  have hr_foldl_eq_toList_foldl_tail := Array.foldl_toList (f:=f) (init:=f init v.head)
-    (xs:=(v.tail.toArray))
-  have hr_foldl_eq: Array.foldl f (f init v.head) v.tail.toArray 0 (n - 1)
-    = Array.foldl f (f init v.head) v.tail.toArray := by
-    simp only [size_toArray] -- Array.foldl_congr
-  conv_rhs =>
-    rw [hr_foldl_eq, hr_foldl_eq_toList_foldl_tail.symm]
-  rw [Vector.head]
-  have h_v_toList_length: 0 < v.toList.length := by
-    simp only [length_toList]
-    exact Nat.pos_of_neZero n
-  rw [←Vector.getElem_toList (h:=h_v_toList_length)]
-  have h_toList_eq: v.toArray.toList = v.toList := rfl
-  rw [Vector.tail]
-  simp only [toArray_cast, toArray_extract, Array.toList_extract, List.extract_eq_drop_take,
-    List.drop_one]
-  simp_rw [h_toList_eq]
-  -- ⊢ List.foldl f init v.toList
-  -- = List.foldl f (f init v.toList[0]) (List.take (n - 1) v.toList.tail)
-  have hTakeTail: List.take (n - 1) v.toList.tail = v.toList.tail := by
-    simp only [List.take_eq_self_iff, List.length_tail, length_toList, le_refl]
-  rw [hTakeTail]
-  have h_v_eq_cons: v.toList = v.head :: (v.toList.tail) := by
-    cases h_list : v.toList with
-    | nil =>
-      have h_len : v.toList.length = 0 := by rw [h_list, List.length_nil]
-      omega
-    | cons hd tl =>
-      have h_v_head: v.head = v.toList[0] := rfl
-      simp_rw [h_v_head]
-      have h_hd: hd = v.toList[0] := by simp only [h_list, List.getElem_cons_zero]
-      simp only [List.tail_cons, List.cons.injEq, and_true]
-      simp_rw [h_hd]
-  conv_lhs => rw [h_v_eq_cons]
-  rw [List.foldl_cons]
-  rfl
+theorem toList_eq_head_cons_tail {α} {n : ℕ} [NeZero n] (v : Vector α n) : v.toList = v.head :: v.toList.tail := by
+  cases h : v.toList with
+  | nil =>
+      have hlen : 0 < v.toList.length := by
+        simpa using (Nat.pos_of_neZero n)
+      simp [h] at hlen
+  | cons a l =>
+      have hlen : 0 < v.toList.length := by
+        simpa using (Nat.pos_of_neZero n)
+      have h0 : v.toList[0] = v.head := by
+        simpa [Vector.head] using (Vector.getElem_toList (xs := v) (i := 0) (h := hlen))
+      simpa [h] using h0
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) : v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rw [Vector.foldl, Vector.foldl, ← Array.foldl_toList, ← Array.foldl_toList]
+  change List.foldl f init v.toList = List.foldl f (f init v.head) v.tail.toList
+  rw [Vector.toList_tail, toList_eq_head_cons_tail (v := v), List.foldl_cons]
+  simp only [List.tail_cons]
+
 
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by

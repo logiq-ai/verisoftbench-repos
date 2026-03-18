@@ -1,0 +1,16 @@
+.DS_Store
+
+/.lake
+/build
+/solver/*.cbf
+/solver/*.sol
+/egg-pre-dcp/*.dot 
+/egg-pre-dcp/*.svg
+*.olean
+*.code-workspace
+
+/playground
+/scripts/evaluation/data
+/plots
+
+/CvxLean/Command/Solve/Mosek/Path.lean

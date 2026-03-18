@@ -1,0 +1,203 @@
+\documentclass{scrartcl}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{MnSymbol}
+\usepackage{bussproofs}
+\usepackage[a4paper, margin=1in]{geometry}
+
+\title{\vspace{-.5in}Small Steps Semantics for tiny expressions grammar}
+\author{Paul Passeron}
+
+\newcommand{\op}{\mathbin{\mathrm{op}\hspace{0.2em}}}
+
+\date{\today}
+\begin{document}
+
+\maketitle
+
+\section{Grammar}
+We'll define the set of arithmetic and boolean expressions as the expressions that can be built from the following grammars:
+\begin{align*}
+E_A &::= n (\in \mathbb{Z}) \mid v (\in \mathbf{V})\mid E_A + E_A \mid E_A \times E_A \mid E_A - E_A \mid \text{if } E_B \text{ then } E_A \text{ else } E_A\\
+E_B &::= \text{true} \mid \text{false} \mid E_A = E_A \mid E_A < E_A \mid \text{not}(E_B) \mid E_B \land E_B \mid E_B \lor E_B
+\end{align*}
+with $\mathbf{V}$ the set of variables.
+
+\section{Small Steps Semantic}
+Let $\sigma \in \mathcal{V}[\mathbb{Z}]$ ($= \mathcal{F}(\mathbf{V}, \mathbb{Z})$) a valuation.
+
+\subsection{Arithmetic Rules}
+
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($A_1$)}
+\RightLabel{$(n_1, n_2 \in \mathbb{Z}, \op \in \{+,-,\times\}, n = n_1 \op n_2)$}
+\UnaryInfC{$\langle n_1 \op n_2, \sigma \rangle \hookrightarrow \langle n, \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($A_2$)}
+\RightLabel{$(v \in \mathbf{V})$}
+\UnaryInfC{$\langle v, \sigma \rangle \hookrightarrow \langle \sigma(v), \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{$\langle e_1, \sigma \rangle \hookrightarrow \langle e'_1, \sigma \rangle$}
+\LeftLabel{($A_3$)}
+\RightLabel{$(\op \in \{+,-,\times\})$}
+\UnaryInfC{$\langle e_1 \op e_2, \sigma \rangle \hookrightarrow \langle e'_1 \op e_2 , \sigma\rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{$\langle e_2, \sigma \rangle \hookrightarrow \langle e'_2, \sigma \rangle$}
+\LeftLabel{($A_4$)}
+\RightLabel{$(\op \in \{+,-,\times\}, n \in \mathbb{Z})$}
+\UnaryInfC{$\langle n \op e_2, \sigma \rangle \hookrightarrow \langle n \op e'_2, \sigma \rangle$}
+\end{prooftree}
+
+\subsection{Conditional Rules}
+
+\begin{prooftree}
+\AxiomC{$\langle e, \sigma \rangle \hookrightarrow \langle e', \sigma \rangle$}
+\LeftLabel{($A_5$)}
+\RightLabel{($a, b \in E_A, e \in E_B$)}
+\UnaryInfC{$\langle \text{if } e \text{ then } a \text{ else } b, \sigma \rangle \hookrightarrow \langle \text{if } e' \text{ then } a \text{ else } b, \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($A_6$)}
+\RightLabel{($a, b \in E_A$)}
+\UnaryInfC{$\langle \text{if true then } a \text{ else } b, \sigma \rangle \hookrightarrow \langle a, \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($A_7$)}
+\RightLabel{($a, b \in E_A$)}
+\UnaryInfC{$\langle \text{if false then } a \text{ else } b, \sigma \rangle \hookrightarrow \langle b, \sigma \rangle$}
+\end{prooftree}
+
+\subsection{Boolean Rules}
+
+\noindent\textbf{Negation:}
+
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($B_1$)}
+\UnaryInfC{$\langle \text{not(false)}, \sigma \rangle \hookrightarrow \langle \text{true}, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($B_2$)}
+\UnaryInfC{$\langle \text{not(true)}, \sigma \rangle \hookrightarrow \langle \text{false}, \sigma \rangle$}
+\end{prooftree}
+
+\noindent\textbf{Conjunction and Disjunction:}
+
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($B_3$)}
+\RightLabel{($e \in E_B$)}
+\UnaryInfC{$\langle \text{true} \land e, \sigma \rangle \hookrightarrow \langle e, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($B_4$)}
+\RightLabel{($e \in E_B$)}
+\UnaryInfC{$\langle \text{false} \lor e, \sigma \rangle \hookrightarrow \langle e, \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($B_5$)}
+\RightLabel{($e \in E_B$)}
+\UnaryInfC{$\langle \text{false} \land e, \sigma \rangle \hookrightarrow \langle \text{false}, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{}
+\LeftLabel{($B_6$)}
+\RightLabel{($e \in E_B$)}
+\UnaryInfC{$\langle \text{true} \lor e, \sigma \rangle \hookrightarrow \langle \text{true}, \sigma \rangle$}
+\end{prooftree}
+
+\noindent\textbf{Comparison:}
+
+\begin{prooftree}
+\AxiomC{$n_1 < n_2$}
+\LeftLabel{($B_7$)}
+\RightLabel{($n_1, n_2 \in \mathbb{Z}$)}
+\UnaryInfC{$\langle n_1 < n_2, \sigma \rangle \hookrightarrow \langle \text{true}, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$n_1 \geq n_2$}
+\LeftLabel{($B_8$)}
+\RightLabel{($n_1, n_2 \in \mathbb{Z}$)}
+\UnaryInfC{$\langle n_1 < n_2, \sigma \rangle \hookrightarrow \langle \text{false}, \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{$n_1 = n_2$}
+\LeftLabel{($B_9$)}
+\RightLabel{($n_1, n_2 \in \mathbb{Z}$)}
+\UnaryInfC{$\langle n_1 = n_2, \sigma \rangle \hookrightarrow \langle \text{true}, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$n_1 \neq n_2$}
+\LeftLabel{($B_{10}$)}
+\RightLabel{($n_1, n_2 \in \mathbb{Z}$)}
+\UnaryInfC{$\langle n_1 = n_2, \sigma \rangle \hookrightarrow \langle \text{false}, \sigma \rangle$}
+\end{prooftree}
+
+\noindent\textbf{Structural Rules for Comparisons:}
+
+\begin{prooftree}
+\AxiomC{$\langle e_1, \sigma \rangle \hookrightarrow \langle e_1', \sigma \rangle$}
+\LeftLabel{($B_{11}$)}
+\RightLabel{($e_1, e_1', e_2 \in E_A$)}
+\UnaryInfC{$\langle e_1 < e_2, \sigma \rangle \hookrightarrow \langle e_1' < e_2, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$\langle e_2, \sigma \rangle \hookrightarrow \langle e_2 ', \sigma \rangle$}
+\LeftLabel{($B_{13}$)}
+\RightLabel{($e_1, e_2, e_2' \in E_A$)}
+\UnaryInfC{$\langle e_1 < e_2, \sigma \rangle \hookrightarrow \langle e_1 < e_2', \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{$\langle e_1, \sigma \rangle \hookrightarrow \langle e_1', \sigma \rangle$}
+\LeftLabel{($B_{12}$)}
+\RightLabel{($e_1, e_1', e_2 \in E_A$)}
+\UnaryInfC{$\langle e_1 = e_2, \sigma \rangle \hookrightarrow \langle e_1' = e_2, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$\langle e_2, \sigma \rangle \hookrightarrow \langle e_2 ', \sigma \rangle$}
+\LeftLabel{($B_{14}$)}
+\RightLabel{($e_1, e_2, e_2' \in E_A$)}
+\UnaryInfC{$\langle e_1 = e_2, \sigma \rangle \hookrightarrow \langle e_1 = e_2', \sigma \rangle$}
+\end{prooftree}
+
+\noindent\textbf{Structural Rules for Boolean Operators:}
+
+\begin{prooftree}
+\AxiomC{$\langle e_1, \sigma \rangle \hookrightarrow \langle e_1', \sigma \rangle$}
+\LeftLabel{($B_{15}$)}
+\RightLabel{($e_1, e_1', e_2 \in E_B$)}
+\UnaryInfC{$\langle e_1 \land e_2, \sigma \rangle \hookrightarrow \langle e_1' \land e_2, \sigma \rangle$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$\langle e_1, \sigma \rangle \hookrightarrow \langle e_1', \sigma \rangle$}
+\LeftLabel{($B_{16}$)}
+\RightLabel{($e_1, e_1', e_2 \in E_B$)}
+\UnaryInfC{$\langle e_1 \lor e_2, \sigma \rangle \hookrightarrow \langle e_1' \lor e_2, \sigma \rangle$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{$\langle e, \sigma \rangle \hookrightarrow \langle e', \sigma \rangle$}
+\LeftLabel{($B_{17}$)}
+\RightLabel{($e, e' \in E_B$)}
+\UnaryInfC{$\langle \text{not}(e), \sigma \rangle \hookrightarrow \langle \text{not}(e'), \sigma \rangle$}
+\end{prooftree}
+
+\end{document}

@@ -1,0 +1,49 @@
+
+import SSA.Projects.InstCombine.TacticAuto
+import LeanMLIR.Dialects.LLVM.Semantics
+open BitVec
+open LLVM
+
+set_option linter.unusedTactic false
+set_option linter.unreachableTactic false
+set_option maxHeartbeats 5000000
+set_option maxRecDepth 1000000
+set_option Elab.async false
+
+section gunsignedhsubhoverflowhcheck_proof
+theorem t0_basic_thm (e e_1 : IntW 8) : icmp IntPred.ugt (sub e_1 e) e_1 ⊑ icmp IntPred.ugt e e_1 := by
+    simp_alive_undef
+    simp_alive_ops
+    simp_alive_case_bash
+    simp_alive_split
+    extract_goals
+    all_goals sorry
+
+
+theorem t2_commutative_thm (e e_1 : IntW 8) : icmp IntPred.ult e_1 (sub e_1 e) ⊑ icmp IntPred.ult e_1 e := by
+    simp_alive_undef
+    simp_alive_ops
+    simp_alive_case_bash
+    simp_alive_split
+    extract_goals
+    all_goals sorry
+
+
+theorem n7_wrong_pred2_thm (e e_1 : IntW 8) :
+  icmp IntPred.eq (sub e_1 e) e_1 ⊑ icmp IntPred.eq e (const? 8 0) := by
+    simp_alive_undef
+    simp_alive_ops
+    simp_alive_case_bash
+    simp_alive_split
+    extract_goals
+    all_goals sorry
+
+
+theorem n8_wrong_pred3_thm (e e_1 : IntW 8) :
+  icmp IntPred.ne (sub e_1 e) e_1 ⊑ icmp IntPred.ne e (const? 8 0) := by
+    simp_alive_undef
+    simp_alive_ops
+    simp_alive_case_bash
+    simp_alive_split
+    extract_goals
+    all_goals sorry

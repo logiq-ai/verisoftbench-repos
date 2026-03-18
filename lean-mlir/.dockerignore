@@ -1,0 +1,15 @@
+Dockerfile
+
+artifacts/
+*.pdf
+
+**/.venv/
+**/.lake/
+
+.devcontainer
+.dockerignore
+.envrc
+.gitattributes
+.github
+.gitignore
+.gitmodules

@@ -1,0 +1,75 @@
+name: Update mathlib version
+on:
+  schedule:
+    - cron: '44 * * * *'
+  workflow_dispatch:
+
+permissions: write-all
+
+jobs:
+  mathlibtoday:
+    name: Update Mathlib & Lean
+    permissions: write-all
+    # Exclude expensive self-hosted runner. Reserved for performance benchmarking.
+    # https://docs.github.com/en/enterprise-cloud@latest/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#choosing-github-hosted-runners
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+        with:
+          token: ${{secrets.PAT}}
+
+      - name: Install elan 🕑
+        run: |
+          set -o pipefail
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain none -y
+          ~/.elan/bin/lean --version
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Install uv
+        run: |
+           pip install uv
+
+      - name: Get Mathlib Date
+        id: mldate
+        run: |
+           echo date=`uv run -q .github/workflows/get_lean_version.py` >> $GITHUB_OUTPUT
+
+      - id: check-branch-exists
+        uses: GuillaumeFalourd/branch-exists@v1.1
+        with:
+          branch: auto-mathlib-update-${{steps.mldate.outputs.date}}
+
+      - if: steps.check-branch-exists.outputs.exists == 'true'
+        run: Skip any updates
+
+      - name: Set Mathlib Date
+        run: |
+           sed -e "s/\"nightly-testing.*\"/\"${{steps.mldate.outputs.date}}\"/" -i Blase/lakefile.toml
+           sed -e "s/\"nightly-testing.*\"/\"${{steps.mldate.outputs.date}}\"/" -i LeanMLIR/lakefile.toml
+           echo "## Blase/lakefile.toml"
+           cat Blase/lakefile.toml
+           echo "## LeanMLIR/lakefile.toml"
+           cat LeanMLIR/lakefile.toml
+           echo "## lean-toolchain"
+           cat lean-toolchain
+           (cd Blase; MATHLIB_NO_CACHE_ON_UPDATE=1 lake update --no-cache; rm -rf Blase/.lake)
+           (cd LeanMLIR; MATHLIB_NO_CACHE_ON_UPDATE=1 lake update --no-cache; rm -rf LeanMLIR/.lake)
+           MATHLIB_NO_CACHE_ON_UPDATE=1 lake update --no-cache
+        env:
+          LAKE_NO_CACHE: true
+          MATHLIB_NO_CACHE_ON_UPDATE: true
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: "${{steps.mldate.outputs.date}} lean nightly update"
+          branch: "auto-mathlib-update-${{steps.mldate.outputs.date}}"
+          body: "automatic update of mathlib + lean via GitHub action."
+          token: ${{secrets.PAT}}
+
+      - name: Enable Pull Request Automerge
+        run: gh pr merge --squash --auto ${{steps.create-pr.outputs.pull-request-number}}
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}

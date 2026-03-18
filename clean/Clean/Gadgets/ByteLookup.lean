@@ -1,0 +1,31 @@
+import Clean.Circuit.Basic
+import Clean.Utils.Field
+
+namespace Gadgets
+variable {p : ℕ} [Fact (p ≠ 0)] [Fact p.Prime]
+variable [p_large_enough: Fact (p > 512)]
+
+def fromByte (x : Fin 256) : F p :=
+  FieldUtils.natToField x.val (by linarith [x.is_lt, p_large_enough.elim])
+
+def ByteTable : Table (F p) field := .fromStatic {
+  name := "Bytes"
+  length := 256
+
+  row i := fromByte i
+  index x := x.val
+
+  Spec x := x.val < 256
+
+  contains_iff := by
+    intro x
+    constructor
+    · intro ⟨ i, h ⟩
+      have h'' : x.val = i.val := FieldUtils.natToField_eq x h
+      rw [h'']
+      exact i.is_lt
+    · intro h
+      use ⟨ x.val, h ⟩
+      simp [fromByte, FieldUtils.natToField_of_val_eq_iff]
+}
+end Gadgets

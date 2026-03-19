@@ -401,31 +401,30 @@ theorem compile_aexp_correct (C : List instr) (s : store) (a : aexp) (pc : Int) 
   - leave the stack unchanged
   - leave the store unchanged.
 -/
-theorem compile_bexp_correct (C : List instr) (s : store) (b : bexp) (d1 d0 : Int) (pc : Int) (stk : stack) (h : code_at C pc (compile_bexp b d1 d0))  :
-   transitions C
-       (pc, stk, s)
-       (pc + codelen (compile_bexp b d1 d0) + (if beval s b then d1 else d0), stk, s) := by
-    induction b generalizing d1 d0 pc
-    next =>
-      simp [compile_bexp, beval]
-      by_cases d1 = 0
-      case pos is_zero =>
-        simp [is_zero, codelen]
-        apply star.star_refl
-      case neg is_not_zero =>
+theorem compile_bexp_correct (C : List instr) (s : store) (b : bexp) (d1 d0 : Int) (pc : Int) (stk : stack) (h : code_at C pc (compile_bexp b d1 d0)) :
+  transitions C
+    (pc, stk, s)
+    (pc + codelen (compile_bexp b d1 d0) + (if beval s b then d1 else d0), stk, s) := by
+  induction b generalizing d1 d0 pc stk with
+  | TRUE =>
+      unfold transitions
+      by_cases h1 : d1 = 0
+      · simp [compile_bexp, beval, h1, codelen]
+        exact star.star_refl _
+      · simp [compile_bexp, beval, h1, codelen]
         apply star_one
+        have := @transition.trans_branch C
         grind
-    next =>
-      simp [compile_bexp, beval]
-      by_cases d0 = 0
-      case pos is_zero =>
-        simp [is_zero, codelen]
-        apply star.star_refl
-      case neg is_not_zero =>
+  | FALSE =>
+      unfold transitions
+      by_cases h0 : d0 = 0
+      · simp [compile_bexp, beval, h0, codelen]
+        exact star.star_refl _
+      · simp [compile_bexp, beval, h0, codelen]
         apply star_one
-        simp [is_not_zero, codelen]
+        have := @transition.trans_branch C
         grind
-    next a1 a2 =>
+  | EQUAL a1 a2 =>
       simp [compile_bexp, beval]
       apply star_trans
       · apply compile_aexp_correct (a := a1)
@@ -434,8 +433,9 @@ theorem compile_bexp_correct (C : List instr) (s : store) (b : bexp) (d1 d0 : In
         · apply compile_aexp_correct (a := a2)
           grind
         · apply star_one
-          · apply transition.trans_beq (d1 := d1) (d0 := d0) <;> grind
-    next a1 a2 =>
+          have := @transition.trans_beq C
+          grind
+  | LESSEQUAL a1 a2 =>
       simp [compile_bexp, beval]
       apply star_trans
       · apply compile_aexp_correct (a := a1)
@@ -444,31 +444,34 @@ theorem compile_bexp_correct (C : List instr) (s : store) (b : bexp) (d1 d0 : In
         · apply compile_aexp_correct (a := a2)
           grind
         · apply star_one
-          · apply transition.trans_ble (d1 := d1) (d0 := d0) <;> grind
-    next b1 ih =>
-      grind
-    next b1 b2 b1_ih b2_ih =>
-      generalize heq1 : compile_bexp b2 d1 d0 = code2
-      generalize heq2 : compile_bexp b1 0 (codelen code2 + d0) = code1
-      unfold compile_bexp
-      simp [heq1, heq2]
-      apply star_trans
-      · apply b1_ih (d1 := 0) (d0 := codelen code2 + d0)
-        grind
-      · by_cases beval s b1 = true
-        case pos isTrue =>
-          simp [isTrue]
-          rw [heq2]
-          simp [beval, isTrue]
-          specialize b2_ih d1 d0 (pc + codelen code1)
-          rw [heq1] at b2_ih
-          simp [compile_bexp, heq1, heq2] at h
-          specialize b2_ih (by grind)
-          simp [codelen_app]
-          simp [Int.add_assoc] at *
-          exact b2_ih
-        case neg isFalse =>
+          have := @transition.trans_ble C
           grind
+  | NOT b1 ih =>
+      by_cases hb : beval s b1 = true
+      · simpa [compile_bexp, beval, hb] using (ih (d1 := d0) (d0 := d1) (pc := pc) (stk := stk) h)
+      · simpa [compile_bexp, beval, hb] using (ih (d1 := d0) (d0 := d1) (pc := pc) (stk := stk) h)
+  | AND b1 b2 ih1 ih2 =>
+      generalize heq2 : compile_bexp b2 d1 d0 = code2
+      generalize heq1 : compile_bexp b1 0 (codelen code2 + d0) = code1
+      simp [compile_bexp, heq1, heq2] at h ⊢
+      have hfirst :
+          transitions C (pc, stk, s)
+            (pc + codelen code1 + (if beval s b1 then 0 else codelen code2 + d0), stk, s) := by
+        simpa [heq1] using (ih1 (d1 := 0) (d0 := codelen code2 + d0) (pc := pc) (stk := stk) (by grind))
+      by_cases hb1 : beval s b1 = true
+      · apply star_trans
+        · simpa [hb1] using hfirst
+        · have hcode2 : code_at C (pc + codelen code1) code2 := by
+            grind
+          have hcode2' : code_at C (pc + codelen code1) (compile_bexp b2 d1 d0) := by
+            simpa [heq2] using hcode2
+          have hsecond :
+              transitions C (pc + codelen code1, stk, s)
+                (pc + codelen code1 + codelen code2 + (if beval s b2 then d1 else d0), stk, s) := by
+            simpa [heq2] using (ih2 (d1 := d1) (d0 := d0) (pc := pc + codelen code1) (stk := stk) hcode2')
+          simpa [hb1, beval, codelen_app, Int.add_assoc] using hsecond
+      · simpa [hb1, beval, codelen_app, Int.add_assoc] using hfirst
+
 /-
   4.2 Correctness of generated code for commands, terminating case.
 -/

@@ -1314,95 +1314,6 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
       _      < 2^n                         := by exact h_lt
   exact ⟨i_of_m, h_i_lt⟩
 
-lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
-    ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
-  -- We prove this by induction on `n`.
-  induction n with
-  | zero =>
-    intro k;
-    simp only [Nat.pow_zero, Fin.val_eq_zero, not_lt_zero', ↓reduceDIte]
-    exact getBit_zero_eq_zero
-  | succ n ih =>
-    -- Inductive step: Assume the property holds for `n`, prove it for `n+1`.
-    have h_lt: 2^n - 1 < 2^n := by
-      refine sub_one_lt ?_
-      exact Ne.symm (NeZero.ne' (2 ^ n))
-    intro k
-    dsimp [binaryFinMapToNat]
-    -- ⊢ (↑k).getBit (∑ j, 2 ^ ↑j * m j) = m k
-    rw [Fin.sum_univ_castSucc] -- split the msb
-    set prevSum := ∑ i: Fin n, (2 ^ i.castSucc.val) * (m i.castSucc)
-    let mPrev := fun i: Fin n => m i.castSucc
-    have h_getBit_prevSum := ih (m:=mPrev) (h_binary:=by exact fun j ↦ h_binary j.castSucc)
-    have h_prevSum_eq: prevSum = binaryFinMapToNat mPrev
-      (by exact fun j ↦ h_binary j.castSucc) := by rfl
-    set msbTerm := 2 ^ ((Fin.last n).val) * m (Fin.last n)
-    -- ⊢ (↑k).getBit (prevSum + msbTerm) = m k
-    have h_m_at_last: m ⟨n, by omega⟩ ≤ 1 := by exact h_binary (Fin.last n)
-    have h_sum_eq_xor: prevSum + msbTerm = prevSum ^^^ msbTerm := by
-      rw [sum_of_and_eq_zero_is_xor]
-      unfold msbTerm
-      interval_cases h_m_last_val: m ⟨n, by omega⟩
-      · simp only [Fin.last, h_m_last_val, mul_zero, Nat.and_zero]
-      · simp only [Fin.last, h_m_last_val, mul_one]
-        apply and_two_pow_eq_zero_of_getBit_0
-        have h_getBit_prevSum_at_n := getBit_of_lt_two_pow (k:=n) (n:=n) (a:=⟨prevSum, by omega⟩)
-        simp only [lt_self_iff_false, ↓reduceIte] at h_getBit_prevSum_at_n
-        rw [h_getBit_prevSum_at_n]
-    rw [h_sum_eq_xor, getBit_of_xor]
-    if h_k_eq: k = n then
-      rw [h_k_eq]
-      simp only [lt_add_iff_pos_right, zero_lt_one, ↓reduceDIte]
-      rw [h_prevSum_eq]
-      rw [getBit_of_lt_two_pow]
-      simp only [lt_self_iff_false, ↓reduceIte, zero_xor]
-      unfold msbTerm
-      -- ⊢ n.getBit (2 ^ ↑(Fin.last n) * m (Fin.last n)) = m ⟨n, ⋯⟩
-      interval_cases h_m_last_val: m ⟨n, by omega⟩
-      · -- ⊢ n.getBit (2 ^ ↑(Fin.last n) * m (Fin.last n)) = 0
-        rw [Fin.val_last, Fin.last]
-        rw [h_m_last_val, mul_zero]
-        exact getBit_zero_eq_zero
-      · -- ⊢ n.getBit (2 ^ ↑(Fin.last n) * m (Fin.last n)) = 1
-        simp only [Fin.last]
-        rw [h_m_last_val, mul_one]
-        rw [Nat.getBit_two_pow]
-        simp only [BEq.rfl, ↓reduceIte]
-    else
-      have hBitLhs := h_getBit_prevSum (k:=k)
-      simp only at hBitLhs
-      rw [h_prevSum_eq.symm] at hBitLhs
-      rw [hBitLhs]
-      if h_k_lt_n: k < n then
-        have h_k_lt_n_add_1: k < n + 1 := by omega
-        simp only [h_k_lt_n_add_1, ↓reduceDIte]
-        push_neg at h_k_eq
-        simp only [h_k_lt_n, ↓reduceDIte]
-        unfold msbTerm
-        interval_cases h_m_last_val: m ⟨n, by omega⟩
-        · simp only [Fin.last, h_m_last_val, mul_zero]
-          rw [Nat.getBit_zero_eq_zero, Nat.xor_zero]
-          rfl
-        · simp only [Fin.last, h_m_last_val, mul_one]
-          rw [Nat.getBit_two_pow]
-          simp only [beq_iff_eq]
-          simp only [h_k_eq.symm, ↓reduceIte, xor_zero]
-          rfl
-      else
-        have h_k_not_lt_n_add_1: ¬(k < n + 1) := by omega
-        have h_k_not_lt_n: ¬(k < n) := by omega
-        simp only [h_k_not_lt_n_add_1, h_k_not_lt_n, ↓reduceDIte, Nat.zero_xor]
-        unfold msbTerm
-        interval_cases h_m_last_val: m ⟨n, by omega⟩
-        · simp only [Fin.last, h_m_last_val, mul_zero]
-          exact getBit_zero_eq_zero
-        · simp only [Fin.last, h_m_last_val, mul_one]
-          rw [Nat.getBit_two_pow]
-          simp only [beq_iff_eq]
-          simp only [ite_eq_right_iff, one_ne_zero, imp_false, ne_eq]
-          omega
-
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=
   getLowBits (numLowBits:=len) (n:=n >>> offset)
@@ -1464,6 +1375,59 @@ lemma getBit_joinBits {n m k : ℕ} (low : Fin (2 ^ n)) (high : Fin (2 ^ m)) :
   split_ifs with h_k
   · simp only [zero_or]
   · simp only [Nat.or_zero]
+
+theorem getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j : Fin n, m j ≤ 1) : ∀ k : ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val = if h_k : k < n then m ⟨k, by omega⟩ else 0 := by
+  induction n with
+  | zero =>
+      intro k
+      simp only [binaryFinMapToNat, Nat.pow_zero, Fin.val_eq_zero, Nat.getBit_zero_eq_zero,
+        not_lt_zero', ↓reduceDIte]
+  | succ n ih =>
+      intro k
+      let mPrev : Fin n → ℕ := fun i => m i.castSucc
+      have hPrev : ∀ j : Fin n, mPrev j ≤ 1 := by
+        intro j
+        exact h_binary j.castSucc
+      let prev : Fin (2 ^ n) := binaryFinMapToNat mPrev hPrev
+      let top : Fin (2 ^ 1) := ⟨m (Fin.last n), by
+        have h := h_binary (Fin.last n)
+        omega⟩
+      have h_and_zero : (top.val <<< n) &&& prev.val = 0 := by
+        exact Nat.and_shl_eq_zero_of_lt_two_pow (a := top.val) (n := n) (b := prev.val) prev.isLt
+      have h_val : (binaryFinMapToNat m h_binary).val = (joinBits prev top).val := by
+        unfold joinBits
+        dsimp
+        rw [←Nat.sum_of_and_eq_zero_is_or h_and_zero]
+        change (∑ j : Fin (n + 1), 2 ^ j.val * m j) = top.val <<< n + prev.val
+        rw [Fin.sum_univ_castSucc]
+        simp [prev, top, mPrev, binaryFinMapToNat, Nat.shiftLeft_eq, mul_comm, add_comm,
+          add_left_comm, add_assoc]
+      rw [h_val]
+      rw [Nat.getBit_joinBits]
+      by_cases hk : k < n
+      · rw [if_pos hk]
+        have h_prev_bit : Nat.getBit k prev.val = m ⟨k, by omega⟩ := by
+          simpa [prev, mPrev, hk] using ih mPrev hPrev k
+        rw [h_prev_bit]
+        have hk1 : k < n + 1 := by omega
+        simp [hk1]
+      · rw [if_neg hk]
+        by_cases hk1 : k < n + 1
+        · have hk_eq : k = n := by omega
+          subst k
+          have htop_lt : top.val < 2 := by
+            simpa [top] using top.isLt
+          rw [Nat.sub_self, Nat.getBit_zero_eq_self htop_lt]
+          have hlast : (Fin.last n : Fin (n + 1)) = ⟨n, by omega⟩ := by
+            apply Fin.ext
+            rfl
+          simpa [top] using congrArg m hlast
+        · have h_top_bit : Nat.getBit (k - n) top.val = 0 := by
+            rw [Nat.getBit_of_lt_two_pow (a := top) (k := k - n)]
+            have hkn : ¬ k - n < 1 := by omega
+            simp [hkn]
+          rw [h_top_bit]
+          simp [hk1]
 
 /-- Low n bits of joinBits are exactly low. -/
 lemma getLowBits_joinBits {n m : ℕ} (low : Fin (2 ^ n)) (high : Fin (2 ^ m)) :

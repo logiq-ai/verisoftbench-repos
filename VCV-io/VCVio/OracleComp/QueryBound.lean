@@ -42,41 +42,69 @@ lemma isQueryBound_mono {oa : OracleComp spec α} (qb : ι → ℕ) {qb' : ι �
     (h' : IsQueryBound oa qb) (h : qb ≤ qb') : IsQueryBound oa qb' :=
   λ qc hqc ↦ le_trans (h' qc hqc) h
 
-lemma isQueryBound_iff_probEvent [spec.FiniteRange] {oa : OracleComp spec α} {qb : ι → ℕ} :
-    IsQueryBound oa qb ↔
-      [(· ≤ qb) | snd <$> (simulateQ countingOracle oa).run <|> return 0] = 1 := by
+theorem queryBound_of_support_orElse_return_zero [spec.FiniteRange] {oa : OracleComp spec α} {qb : ι → ℕ} :
+    (∀ qc ∈ (snd <$> (simulateQ countingOracle oa).run <|> return 0).support, qc ≤ qb) → IsQueryBound oa qb := by
+  simp [isQueryBound_def]
+  intro h qc x hx
+  split at h
+  · simp_all only [Set.mem_image, Prod.exists, exists_eq_right, forall_exists_index]
+    apply h
+    · exact hx
+  · simp_all only [Set.mem_insert_iff, Set.mem_image,
+      Prod.exists, exists_eq_right, forall_eq_or_imp, zero_le,
+      forall_exists_index, true_and]
+    apply h
+    · exact hx
+
+theorem queryBound_support_orElse_return_zero [spec.FiniteRange] {oa : OracleComp spec α} {qb : ι → ℕ} :
+    IsQueryBound oa qb → ∀ qc ∈ (snd <$> (simulateQ countingOracle oa).run <|> return 0).support, qc ≤ qb := by
+  simp [isQueryBound_def]
+  intro h qc hx
+  split at hx
+  · simp_all only [Set.mem_image, Prod.exists, exists_eq_right]
+    obtain ⟨w, hw⟩ := hx
+    apply h
+    · exact hw
+  · simp_all only [Set.mem_insert_iff, Set.mem_image, Prod.exists, exists_eq_right]
+    cases hx with
+    | inl h0 =>
+        subst h0
+        simp_all only [zero_le]
+    | inr himg =>
+        obtain ⟨w, hw⟩ := himg
+        apply h
+        · exact hw
+
+theorem isQueryBound_iff_probEvent [spec.FiniteRange] {oa : OracleComp spec α} {qb : ι → ℕ} :
+    IsQueryBound oa qb ↔ [(· ≤ qb) | snd <$> (simulateQ countingOracle oa).run <|> return 0] = 1 := by
   simp [probEvent_eq_one_iff, isQueryBound_def]
   apply Iff.intro
-  · intro a x a_1
-    split at a_1
-    next h =>
-      simp_all only [Set.mem_image, Prod.exists, exists_eq_right]
-      obtain ⟨w, h_1⟩ := a_1
-      apply a
-      · exact h_1
-    next h =>
-      simp_all only [Set.mem_insert_iff, Set.mem_image, Prod.exists, exists_eq_right]
-      cases a_1 with
-      | inl h_1 =>
-        subst h_1
-        simp_all only [zero_le]
-      | inr h_2 =>
-        obtain ⟨w, h_1⟩ := h_2
-        apply a
-        · exact h_1
-  · intro a qc x h
-    split at a
-    next h_1 =>
-      simp_all only [Set.mem_image, Prod.exists, exists_eq_right, forall_exists_index]
-      apply a
-      · exact h
-    next
-      h_1 =>
-      simp_all only [Set.mem_insert_iff, Set.mem_image,
-                    Prod.exists, exists_eq_right, forall_eq_or_imp, zero_le,
+  · intro h qc hx
+    split at hx
+    · simp_all only [Set.mem_image, Prod.exists, exists_eq_right]
+      obtain ⟨w, hw⟩ := hx
+      apply h
+      · exact hw
+    · simp_all only [Set.mem_insert_iff, Set.mem_image, Prod.exists, exists_eq_right]
+      cases hx with
+      | inl h0 =>
+          subst h0
+          simp_all only [zero_le]
+      | inr himg =>
+          obtain ⟨w, hw⟩ := himg
+          apply h
+          · exact hw
+  · intro h qc x hx
+    split at h
+    · simp_all only [Set.mem_image, Prod.exists, exists_eq_right, forall_exists_index]
+      apply h
+      · exact hx
+    · simp_all only [Set.mem_insert_iff, Set.mem_image,
+        Prod.exists, exists_eq_right, forall_eq_or_imp, zero_le,
         forall_exists_index, true_and]
-      apply a
-      · exact h
+      apply h
+      · exact hx
+
 
 @[simp]
 lemma isQueryBound_pure (a : α) (qb : ι → ℕ) : IsQueryBound (pure a : OracleComp spec α) qb := by

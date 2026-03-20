@@ -136,74 +136,59 @@ lemma Eval.Indexed.toEval {n env e v} (h : env ⊢ e ↦(n) v) : env ⊢ e ↦ v
   case recur =>
     apply Eval.recur; assumption
 
-lemma Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by
-  induction h
-  case var =>
-    exists 0; apply Eval.Indexed.var; assumption
-  case var_rec ih =>
-    obtain ⟨n, ih⟩ := ih
-    exists n
-    apply Eval.Indexed.var_rec <;> assumption
-  case unit =>
-    exists 0; apply Eval.Indexed.unit
-  case const =>
-    exists 0; apply Eval.Indexed.const
-  case constr =>
-    exists 0; apply Eval.Indexed.constr
-  case app env env' f body arg val val' _ _ _ ih1 ih2 ih3 =>
-    obtain ⟨n₁, ih₁⟩ := ih1
-    obtain ⟨n₂, ih₂⟩ := ih2
-    obtain ⟨n₃, ih₃⟩ := ih3
-    have ih₁' : env ⊢ f ↦(n₁ + n₂) Value.closure env' body := by
-      apply Eval.Indexed.monotone ih₁; linarith
-    have ih₂' : env ⊢ arg ↦(n₁ + n₂ + 1) val := by
-      apply Eval.Indexed.monotone ih₂; linarith
-    exists (n₁ + n₂ + n₃ + 1)
-    apply Eval.Indexed.app
-    · rfl
-    · exact ih₁'
-    · exact ih₂'
-    · exact ih₃
-  case constr_app ih₁ ih₂ =>
-    obtain ⟨n₁, ih₁⟩ := ih₁
-    obtain ⟨n₂, ih₂⟩ := ih₂
-    exists (n₁ + n₂ + 1)
-    apply Eval.Indexed.constr_app (n' := n₁ + n₂)
-    · linarith
-    · apply Eval.Indexed.monotone ih₁; linarith
-    · apply Eval.Indexed.monotone ih₂; linarith
-  case binop ih₁ ih₂ =>
-    obtain ⟨n₁, ih₁⟩ := ih₁
-    obtain ⟨n₂, ih₂⟩ := ih₂
-    exists (n₁ + n₂)
-    apply Eval.Indexed.binop (n := n₁ + n₂)
-    · apply Eval.Indexed.monotone ih₁; linarith
-    · apply Eval.Indexed.monotone ih₂; linarith
-  case lambda =>
-    exists 0; apply Eval.Indexed.lambda
-  case save ih₁ ih₂ =>
-    obtain ⟨n₁, ih₁⟩ := ih₁
-    obtain ⟨n₂, ih₂⟩ := ih₂
-    exists (n₁ + n₂)
-    apply Eval.Indexed.save (n := n₁ + n₂)
-    · rfl
-    · apply Eval.Indexed.monotone ih₁; linarith
-    · apply Eval.Indexed.monotone ih₂; linarith
-  case branch_matches ih =>
-    obtain ⟨n, ih⟩ := ih
-    exists (n + 1)
-    apply Eval.Indexed.branch_matches (n' := n)
-    · linarith
-    · assumption
-  case branch_fails ih =>
-    obtain ⟨n, ih⟩ := ih
-    exists n
-    apply Eval.Indexed.branch_fails <;> assumption
-  case recur ih =>
-    obtain ⟨n, ih⟩ := ih
-    exists n.succ
-    apply Eval.Indexed.recur (n' := n)
-    · linarith
-    · assumption
+theorem Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by
+  induction h with
+  | var hlookup =>
+      exact ⟨0, Eval.Indexed.var hlookup⟩
+  | var_rec hlookup _ ih =>
+      obtain ⟨n, ihn⟩ := ih
+      exact ⟨n, Eval.Indexed.var_rec hlookup ihn⟩
+  | unit =>
+      exact ⟨0, Eval.Indexed.unit⟩
+  | const =>
+      exact ⟨0, Eval.Indexed.const⟩
+  | constr =>
+      exact ⟨0, Eval.Indexed.constr⟩
+  | app _ _ _ ihf iha ihb =>
+      obtain ⟨nf, hf⟩ := ihf
+      obtain ⟨na, ha⟩ := iha
+      obtain ⟨nb, hb⟩ := ihb
+      refine ⟨nf + na + nb + 1, ?_⟩
+      apply Eval.Indexed.app (n₁ := nf + na) (n₂ := nb)
+      · exact le_rfl
+      · exact Eval.Indexed.monotone hf (Nat.le_add_right nf na)
+      · exact Eval.Indexed.monotone ha (le_trans (Nat.le_add_left na nf) (Nat.le_succ _))
+      · exact hb
+  | constr_app _ _ ihctr iharg =>
+      obtain ⟨nctr, hctr⟩ := ihctr
+      obtain ⟨narg, harg⟩ := iharg
+      refine ⟨nctr + narg + 1, ?_⟩
+      apply Eval.Indexed.constr_app (n' := nctr + narg)
+      · exact Nat.lt_succ_self (nctr + narg)
+      · exact Eval.Indexed.monotone hctr (le_trans (Nat.le_add_right nctr narg) (Nat.le_succ _))
+      · exact Eval.Indexed.monotone harg (Nat.le_add_left narg nctr)
+  | binop _ _ ih₁ ih₂ =>
+      obtain ⟨n₁, h₁⟩ := ih₁
+      obtain ⟨n₂, h₂⟩ := ih₂
+      refine ⟨n₁ + n₂, ?_⟩
+      apply Eval.Indexed.binop
+      · exact Eval.Indexed.monotone h₁ (Nat.le_add_right n₁ n₂)
+      · exact Eval.Indexed.monotone h₂ (Nat.le_add_left n₂ n₁)
+  | lambda =>
+      exact ⟨0, Eval.Indexed.lambda⟩
+  | save _ _ ihvalue ihbody =>
+      obtain ⟨n₁, h₁⟩ := ihvalue
+      obtain ⟨n₂, h₂⟩ := ihbody
+      exact ⟨n₁ + n₂, Eval.Indexed.save le_rfl h₁ h₂⟩
+  | branch_matches _ ih =>
+      obtain ⟨n, ihn⟩ := ih
+      exact ⟨n.succ, Eval.Indexed.branch_matches (n' := n) (Nat.lt_succ_self n) ihn⟩
+  | branch_fails hne _ ih =>
+      obtain ⟨n, ihn⟩ := ih
+      exact ⟨n, Eval.Indexed.branch_fails hne ihn⟩
+  | recur _ ih =>
+      obtain ⟨n, ihn⟩ := ih
+      exact ⟨n.succ, Eval.Indexed.recur (n' := n) (Nat.lt_succ_self n) ihn⟩
+
 
 end Juvix.Core.Main

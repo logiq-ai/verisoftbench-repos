@@ -21,6 +21,7 @@ import Mathlib.Data.ENat.Basic
 import Mathlib.Data.ENNReal.Inv
 import Mathlib.Data.Nat.GCD.Basic
 
+import Mathlib.Order.Interval.Finset.Nat
 /-!
 # Bit operations on natural numbers
 
@@ -949,158 +950,6 @@ lemma getBit_eq_pred_getBit_of_div_two {n k : ℕ} (h_k: k > 0) :
   conv_lhs => rw [←Nat.sub_add_cancel (n:=k) (m:=1) (h:=by omega)]
   exact Eq.symm (getBit_of_shiftRight (k - 1))
 
--- TODO: uniqueness of this representation?
-theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
-  induction ℓ with
-  | zero =>
-    -- Base case : ℓ = 0
-    intro j h_j
-    have h_j_zero : j = 0 := by exact Nat.lt_one_iff.mp h_j
-    subst h_j_zero
-    simp only [zero_tsub, Finset.Icc_self, Finset.sum_singleton, pow_zero, mul_one]
-    unfold getBit
-    rw [Nat.shiftRight_zero, Nat.and_one_is_mod]
-  | succ ℓ₁ ih =>
-    by_cases h_ℓ₁ : ℓ₁ = 0
-    · simp only [h_ℓ₁, zero_add, pow_one, tsub_self, Finset.Icc_self, Finset.sum_singleton,
-      pow_zero, mul_one];
-      intro j hj
-      interval_cases j
-      · simp only [getBit, Nat.shiftRight_zero, Nat.and_one_is_mod, Nat.zero_mod]
-      · simp only [getBit, Nat.shiftRight_zero, Nat.and_one_is_mod]
-    · push_neg at h_ℓ₁
-      set ℓ := ℓ₁ + 1
-      have h_ℓ_eq : ℓ = ℓ₁ + 1 := by rfl
-      intro j h_j
-      -- Inductive step : assume theorem holds for ℓ₁ = ℓ - 1
-      -- => show j = ∑ k ∈ Finset.range (ℓ + 1), (getBit k j) * 2^k
-      -- Split j into lowBits (b) and higher getLowBits (m) &
-      -- reason inductively from the predicate of (m, ℓ₁)
-      set b := getBit 0 j -- Least significant getBit : j % 2
-      set m := j >>> 1 -- Higher getLowBits : j / 2
-      have h_b_eq : b = getBit 0 j := by rfl
-      have h_m_eq : m = j >>> 1 := by rfl
-      have h_getBit_shift : ∀ k, getBit (k+1) j = getBit k m := by
-        intro k
-        rw [h_m_eq]
-        exact (getBit_of_shiftRight (n := j) (p := 1) k).symm
-      have h_j_eq : j = b + 2 * m := by
-        calc
-          _ = 2 * m + b := by
-            have h_m_eq : m = j/2 := by rfl
-            have h_b_eq : b = j%2 := by
-              rw [h_b_eq]; unfold getBit; rw [Nat.shiftRight_zero]; rw [Nat.and_one_is_mod];
-            rw [h_m_eq, h_b_eq];
-            rw [Nat.div_add_mod (m := j) (n := 2)]; -- n * (m / n) + m % n = m := by
-          _ = b + 2 * m := by omega;
-      have h_m : m < 2^ℓ₁ := by
-        by_contra h_m_ge_2_pow_ℓ
-        push_neg at h_m_ge_2_pow_ℓ
-        have h_j_ge : j ≥ 2^ℓ := by
-          calc _ = 2 * m + b := by rw [h_j_eq]; omega
-            _ ≥ 2 * (2^ℓ₁) + b := by omega
-            _ = 2^ℓ + b := by rw [h_ℓ_eq]; omega;
-            _ ≥ 2^ℓ := by omega;
-        exact Nat.not_lt_of_ge h_j_ge h_j -- contradiction
-      have h_m_repr := ih (j := m) h_m
-      have getBit_shift : ∀ k, getBit (k + 1) j = getBit k m := by
-        intro k
-        rw [h_m_eq]
-        exact (getBit_of_shiftRight (n := j) (p := 1) k).symm
-      -- ⊢ j = ∑ k ∈ Finset.range ℓ, getBit k j * 2 ^ k
-      have h_sum : ∑ k ∈ Finset.Icc 0 (ℓ-1), getBit k j * 2 ^ k
-        = (∑ k ∈ Finset.Icc 0 0, getBit k j * 2 ^ k)
-        + (∑ k ∈ Finset.Icc 1 (ℓ-1), getBit k j * 2 ^ k) := by
-        apply sum_Icc_split
-        omega
-        omega
-      rw [h_sum]
-      rw [h_j_eq]
-      rw [Finset.Icc_self, Finset.sum_singleton, pow_zero, mul_one]
-
-      have h_sum_2 : ∑ k ∈ Finset.Icc 1 (ℓ-1), getBit k (b + 2 * m) * 2 ^ k
-        = ∑ k ∈ Finset.Icc 0 (ℓ₁-1), getBit k (m) * 2 ^ (k+1) := by
-        apply Finset.sum_bij' (fun i _ => i - 1) (fun i _ => i + 1)
-        · -- left inverse
-          intro i hi
-          simp only [Finset.mem_Icc] at hi ⊢
-          exact Nat.sub_add_cancel hi.1
-        · -- right inverse
-          intro i hi
-          norm_num
-        · -- function value match
-          intro i hi
-          rw [←h_j_eq]
-          rw [getBit_of_shiftRight]
-          have ⟨left_bound, right_bound⟩ := Finset.mem_Icc.mp hi
-          rw [Nat.sub_add_cancel left_bound]
-        · -- left membership preservation
-          intro i hi -- hi : i ∈ Finset.Icc 1 (ℓ - 1)
-          rw [Finset.mem_Icc]
-          have ⟨left_bound, right_bound⟩ := Finset.mem_Icc.mp hi
-          -- ⊢ 0 ≤ i - 1 ∧ i - 1 ≤ ℓ₁ - 1
-          apply And.intro
-          · exact Nat.pred_le_pred left_bound
-          · exact Nat.pred_le_pred right_bound
-        · -- right membership preservation
-          intro j hj
-          rw [Finset.mem_Icc]
-          have ⟨left_bound, right_bound⟩ := Finset.mem_Icc.mp hj -- (0 ≤ j ∧ j ≤ ℓ₁ - 1)
-          -- ⊢ 1 ≤ j + 1 ∧ j + 1 ≤ ℓ - 1
-          apply And.intro
-          · exact Nat.le_add_of_sub_le left_bound
-          · rw [h_ℓ_eq]; rw [Nat.add_sub_cancel]; -- ⊢ j + 1 ≤ ℓ₁
-            have h_j_add_1_le_ℓ₁ : j + 1 ≤ ℓ₁ := by
-              calc j + 1 ≤ (ℓ₁ - 1) + 1 := by apply Nat.add_le_add_right; exact right_bound;
-              _ = ℓ₁ := by rw [Nat.sub_add_cancel]; omega;
-            exact h_j_add_1_le_ℓ₁
-      rw [h_sum_2]
-
-      have h_sum_3 : ∑ k ∈ Finset.Icc 0 (ℓ₁-1), getBit k (m) * 2 ^ (k+1)
-        = 2 * ∑ k ∈ Finset.Icc 0 (ℓ₁-1), getBit k (m) * 2 ^ k := by
-        calc
-          _ = ∑ k ∈ Finset.Icc 0 (ℓ₁-1), ((getBit k (m) * 2^k) * 2) := by
-            apply Finset.sum_congr rfl (fun k hk => by
-              rw [Finset.mem_Icc] at hk -- hk : 0 ≤ k ∧ k ≤ ℓ₁ - 1
-              have h_res : getBit k (m) * 2 ^ (k+1) = getBit k (m) * 2 ^ k * 2 := by
-                rw [Nat.pow_succ, ←mul_assoc]
-              exact h_res
-            )
-        _ = (∑ k ∈ Finset.Icc 0 (ℓ₁-1), getBit k (m) * 2 ^ k) * 2 := by rw [Finset.sum_mul]
-        _ = 2 * ∑ k ∈ Finset.Icc 0 (ℓ₁-1), getBit k (m) * 2 ^ k := by rw [mul_comm]
-      rw [h_sum_3]
-      rw [←h_m_repr]
-      conv =>
-        rhs
-        rw [←h_j_eq]
-
-theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by
-  intro j h_j
-  have h_repr_Icc := getBit_repr (ℓ:=ℓ) (j:=j) (by omega)
-  rw [h_repr_Icc]
-  if h_ℓ_eq_0: ℓ = 0 then
-    subst h_ℓ_eq_0
-    have h_j_eq_0: j = 0 := by omega
-    subst h_j_eq_0
-    rfl
-  else
-    apply Finset.sum_bij' (s:=Finset.Icc 0 (ℓ-1)) (t:=Finset.univ (α:=Fin ℓ))
-      (i:=fun a ha => by exact ⟨a, by
-        simp only [Finset.mem_Icc, _root_.zero_le, true_and] at ha; omega
-      ⟩) (j := fun a ha => by exact a.val)
-    · intro a ha; rfl
-    · intro a ha; rfl
-    · intro a ha
-      rw [←h_repr_Icc]
-    · intro a ha
-      simp only [Finset.mem_univ]
-    · intro a ha
-      simp only [Finset.mem_Icc, _root_.zero_le, true_and]
-      have h_a_lt_ℓ: a < ℓ := by exact a.isLt
-      omega
-
 lemma getLowBits_succ {n: ℕ} (numLowBits: ℕ) :
     getLowBits (numLowBits + 1) n = getLowBits numLowBits n
     + (getBit numLowBits n) <<< numLowBits := by
@@ -1166,6 +1015,59 @@ lemma getLowBits_succ {n: ℕ} (numLowBits: ℕ) :
       have k_ne_lt_add_1: ¬(k < numLowBits + 1) := by omega
       simp only [k_ne_lt_add_1, ↓reduceIte, k_ne_lt, beq_iff_eq, Nat.zero_or, right_eq_ite_iff,
         zero_ne_one, imp_false, ne_eq]
+      omega
+
+
+-- TODO: uniqueness of this representation?
+theorem getBit_repr_range {ℓ : Nat} : ∀ j, j < 2^ℓ → j = ∑ k ∈ Finset.range ℓ, (getBit k j) * 2^k := by
+  have h : ∀ ℓ j, Nat.getLowBits ℓ j = ∑ k ∈ Finset.range ℓ, (Nat.getBit k j) * 2^k := by
+    intro ℓ
+    induction ℓ with
+    | zero =>
+        intro j
+        simp [Nat.getLowBits_zero_eq_zero]
+    | succ ℓ ih =>
+        intro j
+        rw [Nat.getLowBits_succ, Finset.sum_range_succ]
+        simpa [Nat.shiftLeft_eq] using congrArg (fun x => x + Nat.getBit ℓ j * 2^ℓ) (ih j)
+  intro j hj
+  simpa [Nat.getLowBits_eq_mod_two_pow, Nat.mod_eq_of_lt hj]
+    using h ℓ j
+
+theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ → j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
+  intro j hj
+  by_cases hℓ : ℓ = 0
+  · subst hℓ
+    have hj0 : j = 0 := by omega
+    subst hj0
+    simp [Nat.getBit_zero_eq_zero]
+  · simpa [Nat.range_eq_Icc_zero_sub_one, hℓ] using (getBit_repr_range j hj)
+
+
+theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
+  j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by
+  intro j h_j
+  have h_repr_Icc := getBit_repr (ℓ:=ℓ) (j:=j) (by omega)
+  rw [h_repr_Icc]
+  if h_ℓ_eq_0: ℓ = 0 then
+    subst h_ℓ_eq_0
+    have h_j_eq_0: j = 0 := by omega
+    subst h_j_eq_0
+    rfl
+  else
+    apply Finset.sum_bij' (s:=Finset.Icc 0 (ℓ-1)) (t:=Finset.univ (α:=Fin ℓ))
+      (i:=fun a ha => by exact ⟨a, by
+        simp only [Finset.mem_Icc, _root_.zero_le, true_and] at ha; omega
+      ⟩) (j := fun a ha => by exact a.val)
+    · intro a ha; rfl
+    · intro a ha; rfl
+    · intro a ha
+      rw [←h_repr_Icc]
+    · intro a ha
+      simp only [Finset.mem_univ]
+    · intro a ha
+      simp only [Finset.mem_Icc, _root_.zero_le, true_and]
+      have h_a_lt_ℓ: a < ℓ := by exact a.isLt
       omega
 
 /-- This takes a argument for the number of lowBitss to remove from the number -/

@@ -622,71 +622,48 @@ mutual
       exact Env.Approx.Indexed'.refl' h
 end
 
-@[refl]
-lemma Value.Approx.Indexed.refl {n} v : v ≲ᵥ(n) v := by
-  revert n
-  suffices ∀ n, ∀ k ≤ n, v ≲ᵥ(k) v by
-    intro k
-    exact this k k k.le_refl
-  intro n
+theorem Value.Approx.Indexed.refl {n : Nat} (v : Value) : v ≲ᵥ(n) v := by
   induction n generalizing v with
   | zero =>
-    intros k hk
-    cases v
-    case unit =>
-      exact Value.Approx.Indexed.unit
-    case const c =>
-      exact Value.Approx.Indexed.const
-    case constr_app ctr_name args_rev =>
-      apply Value.Approx.Indexed.constr_app
-      · intros
-        have : k = 0 := by linarith
-        subst k
-        contradiction
-    case closure env body =>
-      apply Value.Approx.Indexed.closure
-      · intros
-        have : k = 0 := by linarith
-        subst k
-        contradiction
+      cases v with
+      | unit =>
+          exact Value.Approx.Indexed.unit
+      | const c =>
+          exact Value.Approx.Indexed.const
+      | constr_app ctr_name args_rev =>
+          apply Value.Approx.Indexed.constr_app
+          intro k hk
+          have : k = 0 := by linarith
+          subst k
+          contradiction
+      | closure env body =>
+          apply Value.Approx.Indexed.closure
+          intro n₁ n₂ hn a₁ a₂ r₁ happrox heval
+          linarith
   | succ n ih =>
-    intros k hk
-    cases v
-    case unit =>
-      exact Value.Approx.Indexed.unit
-    case const c =>
-      exact Value.Approx.Indexed.const
-    case constr_app ctr_name args_rev =>
-      apply Value.Approx.Indexed.constr_app
-      · intros k' hk'
-        have : k' ≤ n := by linarith
-        rw [List.forall₂_same]
-        intros
-        apply ih
-        · assumption
-    case closure env body =>
-      apply Value.Approx.Indexed.closure
-      · intros n₁ n₂ hn a₁ a₂ r₁ happrox heval
-        have henv : a₁ ∷ env ≲ₑ'(n₁ + n₂) a₂ ∷ env := by
-          simp [Env.Approx.Indexed']
-          constructor
-          · constructor; exact happrox
-          · intro x _
-            cases x
-            case value v₁ v₂ =>
-              apply Object.Approx.Indexed'.value
-              · apply ih
-                · linarith
-            case delayed =>
-              apply Object.Approx.Indexed'.refl'
-              intro v
-              apply ih
-              linarith
-        apply Value.Approx.Indexed.preserved (n := n₁) (m := n₂)
-        · have : n₁ + n₂ = n₂ + n₁ := by linarith
-          rw [<- this]
-          exact henv
-        · assumption
+      cases v with
+      | unit =>
+          exact Value.Approx.Indexed.unit
+      | const c =>
+          exact Value.Approx.Indexed.const
+      | constr_app ctr_name args_rev =>
+          apply Value.Approx.Indexed.constr_app
+          intro k hk
+          rw [List.forall₂_same]
+          intro a ha
+          exact Value.Approx.Indexed.anti_monotone (ih a) (by linarith)
+      | closure env body =>
+          apply Value.Approx.Indexed.closure
+          intro n₁ n₂ hn a₁ a₂ r₁ happrox heval
+          have htail : env ≲ₑ'(n₁ + n₂) env :=
+            Env.Approx.Indexed'.refl' (fun v => Value.Approx.Indexed.anti_monotone (ih v) (by linarith))
+          have henv : a₁ ∷ env ≲ₑ'(n₁ + n₂) a₂ ∷ env :=
+            Env.Approx.Indexed'.cons (Object.Approx.Indexed'.value happrox) htail
+          have hcomm : n₁ + n₂ = n₂ + n₁ := by linarith
+          have henv' : a₁ ∷ env ≲ₑ'(n₂ + n₁) a₂ ∷ env := by
+            rwa [hcomm] at henv
+          exact Value.Approx.Indexed.preserved (m := n₂) (n := n₁) (env := a₁ ∷ env) (env' := a₂ ∷ env) (e := body) (v := r₁) henv' heval
+
 
 @[refl]
 lemma Env.Approx.Indexed'.refl {n env} : env ≲ₑ'(n) env :=

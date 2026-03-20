@@ -214,29 +214,40 @@ variable {α : Type}
   · simp [hs, uniformSelectFinset_def]
   · simp [hs, uniformSelectFinset_def]
 
-@[simp] lemma evalDist_uniformSelectFinset [DecidableEq α] (s : Finset α) :
-    evalDist ($ s) = if hs : s.Nonempty then
-      OptionT.lift (PMF.uniformOfFinset s hs) else failure := by
-  refine PMF.ext λ x ↦ ?_
+theorem evalDist_uniformSelectFinset [DecidableEq α] (s : Finset α) :
+    evalDist ($ s) =
+      if hs : s.Nonempty then OptionT.lift (PMF.uniformOfFinset s hs) else failure := by
+  refine PMF.ext (fun x => ?_)
   by_cases hs : s.Nonempty
   · cases x with
     | none =>
-        refine (probFailure_uniformSelectFinset _).trans ?_
-        simp [hs, OptionT.lift, OptionT.mk]
-    | some x =>
+        refine (probFailure_uniformSelectFinset s).trans ?_
         simp only [hs, ↓reduceDIte]
-        refine (probOutput_uniformSelectFinset _ _).trans ?_
+        change (0 : ℝ≥0∞) = (OptionT.run (OptionT.lift (PMF.uniformOfFinset s hs))) none
+        simp only [OptionT.run_lift, PMF.monad_bind_eq_bind, PMF.monad_pure_eq_pure,
+          PMF.bind_apply, PMF.pure_apply]
+        symm
+        simp only [ENNReal.tsum_eq_zero, mul_eq_zero, ENNReal.inv_eq_zero,
+          ENNReal.natCast_ne_top, false_or]
+        intro y
+        right
+        simp
+    | some a =>
+        simp only [hs, ↓reduceDIte]
+        refine (probOutput_uniformSelectFinset s a).trans ?_
         simp only [OptionT.lift, OptionT.mk, PMF.monad_pure_eq_pure, PMF.monad_bind_eq_bind,
-          PMF.bind_apply, PMF.uniformOfFinset_apply, PMF.pure_apply, Option.some.injEq, mul_ite,
-          mul_one, mul_zero]
-        refine symm <| (tsum_eq_single x ?_).trans ?_
-        · simp only [ne_eq, @eq_comm _ x, ite_eq_right_iff, ENNReal.inv_eq_zero,
-            natCast_ne_top, imp_false]
-          intros
-          tauto
+          PMF.bind_apply, PMF.uniformOfFinset_apply, PMF.pure_apply, Option.some.injEq,
+          mul_ite, mul_one, mul_zero]
+        refine symm <| (tsum_eq_single a ?_).trans ?_
+        · intro y hy
+          simp only [hy, ne_eq, @eq_comm _ a, ite_eq_right_iff, ENNReal.inv_eq_zero,
+            ENNReal.natCast_ne_top, imp_false]
+          intro h
+          exact False.elim h
         · simp only [↓reduceIte, ite_eq_ite]
   · simp only [Finset.not_nonempty_iff_eq_empty] at hs
     simp [hs, uniformSelectFinset_def]
+
 
 end uniformSelectFinset
 

@@ -132,15 +132,15 @@ lemma probOutput_seq_map_eq_tsum_ite [spec.FiniteRange] [DecidableEq γ]
 -- by simp_rw [seq_map_eq_bind_bind, prob_event_bind_eq_sum, finset.mul_sum,
 --   prob_event_return, mul_ite, mul_one, mul_zero]
 
-lemma probEvent_seq_map_eq_probEvent_comp_uncurry [spec.FiniteRange]
-    (p : γ → Prop) : [p | f <$> oa <*> ob] =
-      [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] := by
-  rw [probEvent_comp]
-  refine probEvent_congr' ?_ (congr_arg evalDist ?_)
-  · simp only [support_seq_map_eq_image2, Set.mem_image2, support_map, Set.image2_mk_eq_prod,
-      Set.image_uncurry_prod, implies_true]
-  · simp only [map_seq, Function.comp, Functor.map_map, Function.uncurry_apply_pair]
-    rfl
+theorem seq_map_uncurry_eq: f <$> oa <*> ob = f.uncurry <$> (Prod.mk <$> oa <*> ob) := by
+  rw [map_seq, Functor.map_map]
+  change f <$> oa <*> ob = (fun a => fun b => f a b) <$> oa <*> ob
+  rfl
+
+theorem probEvent_seq_map_eq_probEvent_comp_uncurry [spec.FiniteRange] (p : γ → Prop) :
+    [p | f <$> oa <*> ob] = [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] := by
+  rw [probEvent_comp, seq_map_uncurry_eq]
+
 
 
 lemma probEvent_seq_map_eq_probEvent [spec.FiniteRange] (p : γ → Prop) :

@@ -220,32 +220,42 @@ lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     intro h1 h2
     refine h1 ((h x h2.1 y h2.2).2 ⟨rfl, rfl⟩)
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and `p` is an event such that outputs of `f` are in `p` iff the individual components
-lie in some other events `q1` and `q2`, then the probability of the event `p` is the
-product of the probabilites holding individually.
-NOTE: universe levels of `α`, `β`, `γ` -/
-lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
-    {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange]
-    (oa : OracleComp spec α) (ob : OracleComp spec β)
-    (p : γ → Prop) (q1 : α → Prop) (q2 : β → Prop)
-    (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) :
-    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
-  have : DecidablePred q1 := Classical.decPred q1
-  have : DecidablePred q2 := Classical.decPred q2
-  rw [probEvent_seq_map_eq_probEvent]
-  calc [λ z : α × β ↦ p (f z.1 z.2) | Prod.mk <$> oa <*> ob] =
-      [λ z ↦ q1 z.1 ∧ q2 z.2 | Prod.mk <$> oa <*> ob] :=
-        probEvent_ext <| by simpa using λ x y hx hy ↦ h x hx y hy
-    _ = ∑' (x : α) (y : β), if q1 x ∧ q2 y then [= (x, y) | Prod.mk <$> oa <*> ob] else 0 := by
-      rw [probEvent_eq_tsum_ite, ENNReal.tsum_prod']
+theorem probEvent_seq_pair_and_eq_mul {ι : Type u} {spec : OracleSpec ι} {α β : Type v} [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (q1 : α → Prop) (q2 : β → Prop) : [fun z : α × β => q1 z.1 ∧ q2 z.2 | Prod.mk <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  classical
+  haveI : DecidablePred q1 := Classical.decPred q1
+  haveI : DecidablePred q2 := Classical.decPred q2
+  calc
+    [fun z : α × β => q1 z.1 ∧ q2 z.2 | Prod.mk <$> oa <*> ob]
+        = ∑' (x : α) (y : β), if q1 x ∧ q2 y then [= (x, y) | Prod.mk <$> oa <*> ob] else 0 := by
+            rw [probEvent_eq_tsum_ite, ENNReal.tsum_prod']
     _ = ∑' (x : α) (y : β), if q1 x ∧ q2 y then [= x | oa] * [= y | ob] else 0 := by
-      simp_rw [probOutput_seq_map_eq_mul_of_injective2 oa ob Prod.mk Prod.mk.injective2]
-    _ = ∑' x : α, if q1 x then [= x | oa] * (∑' y : β, if q2 y then [= y | ob] else 0) else 0 :=
-      tsum_congr (λ x ↦ by by_cases hx : q1 x <;> simp [hx, ← ENNReal.tsum_mul_left])
-    _ = ∑' x : α, if q1 x then [= x | oa] * [q2 | ob] else 0 := by rw [probEvent_eq_tsum_ite]
+            simp_rw [probOutput_seq_map_eq_mul_of_injective2 (oa := oa) (ob := ob) (f := Prod.mk)
+              Prod.mk.injective2]
+    _ = ∑' x : α, if q1 x then [= x | oa] * (∑' y : β, if q2 y then [= y | ob] else 0) else 0 := by
+            refine tsum_congr (λ x ↦ ?_)
+            by_cases hx : q1 x
+            · simp [hx, ← ENNReal.tsum_mul_left]
+            · simp [hx]
+    _ = ∑' x : α, if q1 x then [= x | oa] * [q2 | ob] else 0 := by
+            rw [probEvent_eq_tsum_ite]
     _ = [q1 | oa] * [q2 | ob] := by
-      simp only [probEvent_eq_tsum_ite oa, ← ENNReal.tsum_mul_right, ite_mul, zero_mul]
+            simp only [probEvent_eq_tsum_ite oa, ← ENNReal.tsum_mul_right, ite_mul, zero_mul]
+
+theorem probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι} {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (p : γ → Prop) (q1 : α → Prop) (q2 : β → Prop) (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) : [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  classical
+  rw [probEvent_seq_map_eq_probEvent]
+  calc
+    [fun z : α × β => p (f z.1 z.2) | Prod.mk <$> oa <*> ob]
+        = [fun z => q1 z.1 ∧ q2 z.2 | Prod.mk <$> oa <*> ob] := by
+            refine probEvent_ext ?_
+            intro z hz
+            have hz' : z.1 ∈ oa.support ∧ z.2 ∈ ob.support := by
+              simpa using
+                (mem_support_seq_map_iff_of_injective2 (oa := oa) (ob := ob) (f := Prod.mk)
+                  Prod.mk.injective2 z.1 z.2).1 hz
+            exact h z.1 hz'.1 z.2 hz'.2
+    _ = [q1 | oa] * [q2 | ob] := probEvent_seq_pair_and_eq_mul oa ob q1 q2
+
 
 end seq_map
 

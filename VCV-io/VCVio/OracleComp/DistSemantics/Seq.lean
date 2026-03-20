@@ -204,23 +204,6 @@ lemma probOutput_seq_map_eq_mul_of_injective2 [spec.FiniteRange]
 end injective2
 
 /-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and there exists unique `x` and `y` such that `f x y = z` (given as explicit arguments),
-then the probability of getting `z` as an output of `f <$> oa <*> ob`
-is the product of probabilities of getting `x` and `y` from `oa` and `ob` respectively. -/
-lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
-    (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
-    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by
-  have : DecidableEq γ := Classical.decEq γ
-  rw [probOutput_seq_map_eq_tsum_ite, ← ENNReal.tsum_prod]
-  refine (tsum_eq_single (x, y) (λ (x', y') ↦ ?_)).trans ?_
-  · simp only [ne_eq, Prod.mk.injEq, ite_eq_right_iff, mul_eq_zero,
-      probOutput_eq_zero_iff, ← not_and_or]
-    exact λ h1 h2 h3 ↦ h1 ((h x' h3.1 y' h3.2).1 h2)
-  · simp only [ite_eq_left_iff, zero_eq_mul, probOutput_eq_zero_iff, ← not_and_or]
-    intro h1 h2
-    refine h1 ((h x h2.1 y h2.2).2 ⟨rfl, rfl⟩)
-
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
 and `p` is an event such that outputs of `f` are in `p` iff the individual components
 lie in some other events `q1` and `q2`, then the probability of the event `p` is the
 product of the probabilites holding individually.
@@ -246,6 +229,17 @@ lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
     _ = ∑' x : α, if q1 x then [= x | oa] * [q2 | ob] else 0 := by rw [probEvent_eq_tsum_ite]
     _ = [q1 | oa] * [q2 | ob] := by
       simp only [probEvent_eq_tsum_ite oa, ← ENNReal.tsum_mul_right, ite_mul, zero_mul]
+
+theorem probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
+    (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
+    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by
+  classical
+  simpa using
+    (probEvent_seq_map_eq_mul (f := f) (oa := oa) (ob := ob)
+      (p := fun z' => z = z') (q1 := fun x' => x' = x) (q2 := fun y' => y' = y)
+      (h := by
+        intro x' hx y' hy
+        exact h x' hx y' hy))
 
 end seq_map
 

@@ -1059,11 +1059,9 @@ lemma probOutput_uniformFin (x : Fin (n + 1)) : [= x | $[0..n]] = ((n : ℝ≥0�
 @[simp]
 lemma probFailure_uniformFin : [⊥ | $[0..n]] = 0 := probFailure_query _ _
 
-@[simp]
-lemma probEvent_uniformFin (p : Fin (n + 1) → Prop) [DecidablePred p] :
-    [p | $[0..n]] = (Finset.univ.filter p).card * (n + 1 : ℝ≥0∞)⁻¹ := by
-  simp only [probEvent_eq_sum_filter_finSupport, finSupport_uniformFin, probOutput_uniformFin,
-    Finset.sum_const, nsmul_eq_mul]
+theorem probEvent_uniformFin (p : Fin (n + 1) → Prop) [DecidablePred p] : [p | $[0..n]] = (Finset.univ.filter p).card * (n + 1 : ℝ≥0∞)⁻¹ := by
+  simpa only [probEvent_eq_sum_filter_finSupport, finSupport_uniformFin, probOutput_uniformFin, Finset.sum_const, nsmul_eq_mul]
+
 
 end uniformFin
 

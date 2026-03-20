@@ -101,13 +101,12 @@ instance : Coe (PureEquiv m n) (PureHom m n) where
 lemma map_pure (f : PureEquiv m n) {α : Type u} (x : α) :
     f.toFun (pure x) = (pure x : n α) := f.map_pure' x
 
-@[simp]
-lemma map_pure_inv (f : PureEquiv m n) {α : Type u} (x : α) :
-    f.invFun (pure x) = (pure x : m α) := by
-  have h1 : f.toFun (f.invFun (pure x)) = pure x := f.right_inv (pure x)
-  have h2 : f.toFun (pure x) = pure x := f.map_pure' x
-  have h3 : f.toFun (f.invFun (pure x)) = f.toFun (pure x) := by rw [h1, h2]
-  exact Function.LeftInverse.injective f.left_inv h3
+theorem map_pure_inv (f : PureEquiv m n) {α : Type u} (x : α) : f.invFun (pure x) = (pure x : m α) := by
+  apply Function.LeftInverse.injective f.left_inv
+  calc
+    f.toFun (f.invFun (pure x : n α)) = (pure x : n α) := f.right_inv (pure x : n α)
+    _ = f.toFun (pure x : m α) := (f.map_pure' x).symm
+
 
 instance : Coe (PureEquiv m n) (PureHom n m) where
   coe f := ⟨f.toNatEquiv, f.map_pure_inv⟩

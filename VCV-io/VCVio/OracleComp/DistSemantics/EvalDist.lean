@@ -532,28 +532,19 @@ lemma probOutput_congr {x y : α} {oa : OracleComp spec α} {oa' : OracleComp sp
     (h1 : x = y) (h2 : evalDist oa = evalDist oa') : [= x | oa] = [= y | oa'] := by
   simp_rw [probOutput, h1, h2]
 
-lemma probEvent_congr' {p q : α → Prop} {oa : OracleComp spec α} {oa' : OracleComp spec' α}
+theorem probEvent_congr' {p q : α → Prop} {oa : OracleComp spec α} {oa' : OracleComp spec' α}
     (h1 : ∀ x, x ∈ oa.support → x ∈ oa'.support → (p x ↔ q x))
     (h2 : evalDist oa = evalDist oa') : [p | oa] = [q | oa'] := by
-  have h : ∀ x, x ∈ oa.support ↔ x ∈ oa'.support := mem_support_iff_of_evalDist_eq h2
-  have h' : ∀ x, [= x | oa] = [= x | oa'] := λ x ↦ probOutput_congr rfl h2
-  rw [probEvent_eq_tsum_indicator, probEvent_eq_tsum_indicator]
-  refine tsum_congr λ x ↦ ?_
-  simp [Set.indicator, h']
-  by_cases hp : p x
-  · by_cases hq : q x
-    · simp [hp, hq]
-    · simp [hp, hq, h]
-      refine λ hoa ↦ hq ?_
-      refine (h1 _ ?_ hoa).1 hp
-      refine (h _).2 hoa
-  · by_cases hq : q x
-    · simp [hp, hq]
-      simp [h] at h1
-      intro hoa
-      specialize h1 _ hoa
-      tauto
-    · rw [if_neg hp, if_neg hq]
+  classical
+  have hs := mem_support_iff_of_evalDist_eq h2
+  calc
+    [p | oa] = [q | oa] := by
+      refine probEvent_ext ?_
+      intro x hx
+      exact h1 x hx ((hs x).1 hx)
+    _ = [q | oa'] := by
+      exact probEvent_congr (p := q) (q := q) (oa := oa) (oa' := oa') (fun _ => Iff.rfl) h2
+
 
 
 @[simp] lemma probEvent_const (oa : OracleComp spec α) (p : Prop) [Decidable p] :

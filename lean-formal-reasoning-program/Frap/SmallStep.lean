@@ -476,9 +476,17 @@ theorem multistep_congr_1 t₁ t₁' t₂
 /-
 exercise (2-star)
 -/
-theorem multistep_congr_2 v₁ t₂ t₂'
+theorem multistep_congr_2 v₁ t₂ t₂' (hv₁ : Value v₁)
     : (t₂ ~~>* t₂') → (p v₁ t₂ ~~>* p v₁ t₂') := by
-  sorry
+  intro h
+  induction h with
+  | multi_refl => apply multi_refl
+  | multi_step t₂ t₂' t₂'' h2 _ ih =>
+    apply multi_step
+    . apply st_plus2
+      . exact hv₁
+      . exact h2
+    . apply ih
 
 /-
 With these lemmas in hand, the main proof is a straightforward induction.
@@ -518,7 +526,7 @@ theorem step_normalizing : normalizing Step := by
               · exact multi_trans Tm Step (p t₁ t₂) (p (c n₁) t₂) (c (n₁ + n₂))
                   (multistep_congr_1 t₁ (c n₁) t₂ h1multi)
                   (multi_trans Tm Step (p (c n₁) t₂) (p (c n₁) (c n₂)) (c (n₁ + n₂))
-                    (multistep_congr_2 (c n₁) t₂ (c n₂) h2multi)
+                    (multistep_congr_2 (c n₁) t₂ (c n₂) (v_const n₁) h2multi)
                     (multi_R Tm Step (p (c n₁) (c n₂)) (c (n₁ + n₂)) (st_plusConstConst n₁ n₂)))
               · exact (nf_same_as_value (c (n₁ + n₂))).2 (v_const (n₁ + n₂))
 

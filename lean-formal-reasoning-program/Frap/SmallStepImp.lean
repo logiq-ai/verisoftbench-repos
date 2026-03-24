@@ -416,7 +416,18 @@ theorem par_loop_finish_from_any_state (st : State) : Multi CStep (par_loop, st)
             apply cs_parDone
 
 theorem par_loop_any_x (n : Nat) : ∃ st', Multi CStep (par_loop, empty) (c_skip, st') ∧ st' x = n := by
-  sorry
+  have h0 : empty x = 0 ∧ empty y = 0 := by
+    simp [empty]
+  obtain ⟨st, hbody, hx, _⟩ := par_body_n n empty h0
+  refine ⟨y !-> 1; st, ?_, ?_⟩
+  · apply multi_trans
+    · exact hbody
+    · exact par_loop_finish_from_any_state st
+  · calc
+      (y !-> 1; st) x = st x := by
+        apply lookup_update_neq
+        decide
+      _ = n := hx
 
 
 end CImp

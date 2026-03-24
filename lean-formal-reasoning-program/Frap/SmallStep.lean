@@ -504,28 +504,24 @@ theorem step_normalizing : normalizing Step := by
   intro t
   induction t with
   | c n =>
-    exists c n
-    constructor
-    . apply multi_refl
-    . rw [nf_same_as_value]; apply v_const
+      refine ⟨c n, ?_, ?_⟩
+      · apply multi_refl
+      · exact (nf_same_as_value (c n)).2 (v_const n)
   | p t₁ t₂ ih₁ ih₂ =>
-    obtain ⟨t₁', ⟨hs₁, hn₁⟩⟩ := ih₁
-    obtain ⟨t₂', ⟨hs₂, hn₂⟩⟩ := ih₂
-    rw [nf_same_as_value] at hn₁
-    rw [nf_same_as_value] at hn₂
-    cases hn₁; cases hn₂
-    rename_i n₁ n₂
-    exists c (n₁ + n₂)
-    constructor
-    . apply multi_trans
-      . apply multistep_congr_1
-        apply hs₁
-      . apply multi_trans
-        . apply multistep_congr_2
-          apply hs₂
-        . apply multi_R
-          apply st_plusConstConst
-    . rw [nf_same_as_value]; apply v_const
+      rcases ih₁ with ⟨t₁', h1multi, h1nf⟩
+      rcases ih₂ with ⟨t₂', h2multi, h2nf⟩
+      cases (nf_same_as_value t₁').1 h1nf with
+      | v_const n₁ =>
+          cases (nf_same_as_value t₂').1 h2nf with
+          | v_const n₂ =>
+              refine ⟨c (n₁ + n₂), ?_, ?_⟩
+              · exact multi_trans Tm Step (p t₁ t₂) (p (c n₁) t₂) (c (n₁ + n₂))
+                  (multistep_congr_1 t₁ (c n₁) t₂ h1multi)
+                  (multi_trans Tm Step (p (c n₁) t₂) (p (c n₁) (c n₂)) (c (n₁ + n₂))
+                    (multistep_congr_2 (c n₁) t₂ (c n₂) h2multi)
+                    (multi_R Tm Step (p (c n₁) (c n₂)) (c (n₁ + n₂)) (st_plusConstConst n₁ n₂)))
+              · exact (nf_same_as_value (c (n₁ + n₂))).2 (v_const (n₁ + n₂))
+
 
 /-
 ### Equivalence of big-step and small-step

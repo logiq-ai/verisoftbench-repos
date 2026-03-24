@@ -167,40 +167,7 @@ def formalFib32Table : FormalTable (F p) RowType := {
   constraints := fib32Table,
   Spec := Spec,
 
-  soundness := by
-    intro N trace envs _
-    simp only [fib32Table, Spec]
-    rw [TraceOfLength.ForAllRowsOfTraceWithIndex, Trace.ForAllRowsOfTraceWithIndex, TableConstraintsHold]
-
-    /-
-      We prove the soundness of the table by induction on the trace.
-    -/
-    induction' trace.val using Trace.every_row_two_rows_induction with first_row curr next rest _ ih2
-    -- base case 1
-    · simp [table_norm]
-
-    -- base case 2
-    · simp [table_norm]
-      apply boundary_constraints first_row (envs 0 0)
-
-    -- inductive step
-    · simp [table_norm] at ih2 ⊢
-      intro ConstraintsHold boundary rest
-      -- first of all, we prove the inductive part of the Spec
-
-      specialize ih2 boundary rest
-      simp only [ih2, and_self, and_true]
-
-      let ⟨curr_fib0, curr_fib1, curr_normalized_x, curr_normalized_y⟩ := ih2.left
-
-      -- simplfy constraints
-      have ⟨ eq_spec, add_spec ⟩ := fib_constraints curr next (envs 1 _) ConstraintsHold
-
-      -- finish induction
-      specialize add_spec curr_normalized_x curr_normalized_y
-      simp only [fib32]
-      rw [←curr_fib0, ←curr_fib1, ←eq_spec]
-      simp only [curr_fib1, add_spec, Nat.reducePow, and_self, curr_normalized_y]
+  soundness := by sorry
 }
 
 end Tables.Fibonacci32

@@ -7,9 +7,9 @@ package «frap» where
   ]
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "v4.10.0"
+  "https://github.com/leanprover-community/mathlib4.git" @ "v4.14.0"
 
-require aesop from git "https://github.com/leanprover-community/aesop" @ "v4.10.0"
+require aesop from git "https://github.com/leanprover-community/aesop" @ "v4.14.0"
 
 @[default_target]
 lean_lib «Frap» where

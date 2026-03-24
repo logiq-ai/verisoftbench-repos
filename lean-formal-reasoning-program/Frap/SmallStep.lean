@@ -514,11 +514,32 @@ theorem step_normalizing: normalizing Step := by
   intro t
   induction t with
   | c n =>
-      sorry
+      exists (c n)
+      constructor
+      · apply multi_refl
+      · apply (nf_same_as_value (c n)).2
+        apply v_const
   | p t₁ t₂ ih₁ ih₂ =>
       guard_hyp ih₁ : ∃ t', Multi Step t₁ t' ∧ normal_form Step t'
       guard_hyp ih₂ : ∃ t', Multi Step t₂ t' ∧ normal_form Step t'
-      sorry
+      obtain ⟨t₁', hs₁, hn₁⟩ := ih₁
+      obtain ⟨t₂', hs₂, hn₂⟩ := ih₂
+      have hv₁ : Value t₁' := (nf_same_as_value t₁').1 hn₁
+      have hv₂ : Value t₂' := (nf_same_as_value t₂').1 hn₂
+      cases hv₁ with
+      | v_const n₁ =>
+        cases hv₂ with
+        | v_const n₂ =>
+          exists c (n₁ + n₂)
+          constructor
+          · apply multi_trans Tm Step (p t₁ t₂) (p (c n₁) (c n₂)) (c (n₁ + n₂))
+            · apply multi_trans Tm Step (p t₁ t₂) (p (c n₁) t₂) (p (c n₁) (c n₂))
+              · exact multistep_congr_1 t₁ (c n₁) t₂ hs₁
+              · exact multistep_congr_2_value (c n₁) t₂ (c n₂) (v_const n₁) hs₂
+            · apply multi_R
+              apply st_plusConstConst
+          · apply (nf_same_as_value (c (n₁ + n₂))).2
+            apply v_const
 
 
 /-

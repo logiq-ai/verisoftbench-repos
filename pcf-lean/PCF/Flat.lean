@@ -67,22 +67,23 @@ theorem Flat.chain_some {c : Chain (Flat _)} {a b : α}
 
 theorem Flat.sup_some {c : Chain _} {a : α} : (∃ k, c.act k = .some a) ↔ (flat_sup c = .some a) := by
   constructor
-  case mp =>
-    intro h;
-    have p : ∃ a n, c.act n = .some a := ⟨a, h⟩
-    rw [Flat.chain_some h p.choose_spec]
-    exact dif_pos p
-  case mpr =>
-    intro h;
-    if p : ∃ a n, c.act n = .some a
-    then
-      have q : flat_sup c = .some _ := dif_pos p
-      rw [← h, q]
-      exact p.choose_spec
-    else
-      have q : flat_sup c = .none := dif_neg p
-      rw [q] at h
-      exact Flat.noConfusion h
+  · intro h
+    unfold flat_sup
+    let p : ∃ b n, c.act n = .some b := ⟨a, h⟩
+    rw [dif_pos p]
+    rw [Flat.chain_some p.choose_spec h]
+  · intro h
+    unfold flat_sup at h
+    by_cases p : ∃ b n, c.act n = .some b
+    · rw [dif_pos p] at h
+      have hp : p.choose = a := by
+        injection h
+      rcases p.choose_spec with ⟨n, hn⟩
+      refine ⟨n, ?_⟩
+      rwa [hp] at hn
+    · rw [dif_neg p] at h
+      cases h
+
 
 noncomputable instance : Domain (Flat α) where
   bot := .none

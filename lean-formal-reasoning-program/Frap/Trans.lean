@@ -604,39 +604,51 @@ Finally, here's the proof for commands:
 -/
 
 theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by
-  intro c; induction c with simp [fold_constants_com]
-  | c_asgn =>
-    apply c_asgn_congruence
-    apply fold_constants_aexp_sound
-  | c_seq =>
-    apply c_seq_congruence <;> assumption
-  | c_if b c₁ c₂ ih1 ih2 =>
-    split
-    . apply trans_cequiv _ c₁
-      . apply if_true
-        rename_i heq; rw [← heq]
+  intro c
+  induction c with
+  | c_skip =>
+      apply refl_cequiv
+  | c_asgn x a =>
+      simp [fold_constants_com]
+      apply c_asgn_congruence
+      apply fold_constants_aexp_sound
+  | c_seq c₁ c₂ ih₁ ih₂ =>
+      simp [fold_constants_com]
+      apply c_seq_congruence <;> assumption
+  | c_if b c₁ c₂ ih₁ ih₂ =>
+      simp [fold_constants_com]
+      split
+      · rename_i heq
+        apply trans_cequiv
+        · apply if_true
+          rw [← heq]
+          apply fold_constants_bexp_sound
+        · exact ih₁
+      · rename_i heq
+        apply trans_cequiv
+        · apply if_false
+          rw [← heq]
+          apply fold_constants_bexp_sound
+        · exact ih₂
+      · apply c_if_congruence
+        · apply fold_constants_bexp_sound
+        · exact ih₁
+        · exact ih₂
+  | c_while b c ih =>
+      simp [fold_constants_com]
+      split
+      · rename_i heq
+        apply while_true
+        rw [← heq]
         apply fold_constants_bexp_sound
-      . assumption
-    . apply trans_cequiv _ c₂
-      . apply if_false
-        rename_i heq; rw [← heq]
+      · rename_i heq
+        apply while_false
+        rw [← heq]
         apply fold_constants_bexp_sound
-      . assumption
-    . apply c_if_congruence
-      . apply fold_constants_bexp_sound
-      . assumption
-      . assumption
-  | c_while b c' ih =>
-    split
-    . apply while_true
-      rename_i heq; rw [← heq]
-      apply fold_constants_bexp_sound
-    . apply while_false
-      rename_i heq; rw [← heq]
-      apply fold_constants_bexp_sound
-    . apply c_while_congruence
-      . apply fold_constants_bexp_sound
-      . assumption
+      · apply c_while_congruence
+        · apply fold_constants_bexp_sound
+        · exact ih
+
 
 /-
 ## references

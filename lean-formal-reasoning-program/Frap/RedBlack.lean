@@ -248,70 +248,103 @@ To recursively destruct an inductively defined object, we can use the `rcases` t
 We can give names to parameters in each case, so that we can refer to them later.
 -/
 
+theorem forallTree_imp_mono {α : Type _} {p q : Nat → α → Prop} (t : Tree α) : (∀ x v, p x v → q x v) → ForallTree p t → ForallTree q t := by
+  intro hpq h
+  induction h with
+  | empty =>
+      exact ForallTree.empty
+  | tree c l k v r hroot hl hr ihl ihr =>
+      exact ForallTree.tree c l k v r (hpq _ _ hroot) ihl ihr
+
+theorem forallTree_gt_mono {α : Type _} (x y : Nat) (t : Tree α) : x > y → ForallTree (fun z _ => z > x) t → ForallTree (fun z _ => z > y) t := by
+  intro hxy ht
+  apply forallTree_imp_mono t
+  · intro z v hz
+    exact Nat.lt_trans hxy hz
+  · exact ht
+
+theorem balance_BST_left_left {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun t _ => t < z) (tree red (tree red a x vx b) y vy c) → ForallTree (fun t _ => t > z) d → BST (tree red (tree red a x vx b) y vy c) → BST d → BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr
+  rcases hbl with ⟨⟩ | ⟨_, _, _, _, _, hxy, hyc, hbx, hbc⟩
+  rcases hlk with ⟨⟩ | ⟨_, _, _, _, _, hyz, hxz, hzc⟩
+  rcases hbx with ⟨⟩ | ⟨_, _, _, _, _, hax, hxb, hba, hbb⟩
+  rcases hxy with ⟨⟩ | ⟨_, _, _, _, _, hxy, hay, hby⟩
+  rcases hxz with ⟨⟩ | ⟨_, _, _, _, _, haz, hxz, hbz⟩
+  repeat' constructor <;> try assumption
+  apply forallTree_gt_mono
+  · exact hyz
+  · exact hkr
+
+theorem forallTree_lt_mono {α : Type _} (x y : Nat) (t : Tree α) : x < y → ForallTree (fun z _ => z < x) t → ForallTree (fun z _ => z < y) t := by
+  intro hxy h
+  exact forallTree_imp_mono t (fun z v hz => Nat.lt_trans hz hxy) h
+
+theorem balance_BST_left_right {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun t _ => t < z) (tree red a x vx (tree red b y vy c)) → ForallTree (fun t _ => t > z) d → BST (tree red a x vx (tree red b y vy c)) → BST d → BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr
+  rcases hbl with ⟨⟩ | ⟨_, _, _, _, _, hax, hxy, hba, hby⟩
+  rcases hlk with ⟨⟩ | ⟨_, _, _, _, _, hxz, haz, hyz⟩
+  rcases hby with ⟨⟩ | ⟨_, _, _, _, _, hby, hyc, hbb, hbc⟩
+  rcases hxy with ⟨⟩ | ⟨_, _, _, _, _, hxy, hxb, hxc⟩
+  rcases hyz with ⟨⟩ | ⟨_, _, _, _, _, hyz, hbz, hcz⟩
+  repeat' constructor <;> try assumption
+  · apply forallTree_lt_mono
+    · exact hxy
+    · exact hax
+  · apply forallTree_gt_mono
+    · exact hyz
+    · exact hkr
+
+theorem balance_BST_right_left {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun t _ => t < x) a → ForallTree (fun t _ => t > x) (tree red (tree red b y vy c) z vz d) → BST a → BST (tree red (tree red b y vy c) z vz d) → BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr
+  rcases hbr with ⟨⟩ | ⟨_, _, _, _, _, hyz, hzd, hby, hbd⟩
+  rcases hkr with ⟨⟩ | ⟨_, _, _, _, _, hxz, hxy, hxd⟩
+  rcases hby with ⟨⟩ | ⟨_, _, _, _, _, hby, hyc, hbb, hbc⟩
+  rcases hxy with ⟨⟩ | ⟨_, _, _, _, _, hxy, hxb, hxc⟩
+  rcases hyz with ⟨⟩ | ⟨_, _, _, _, _, hyz, hbz, hcz⟩
+  repeat' constructor <;> try assumption
+  · apply forallTree_lt_mono
+    · exact hxy
+    · exact hlk
+  · apply forallTree_gt_mono
+    · exact hyz
+    · exact hzd
+
+theorem balance_BST_right_right {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun t _ => t < x) a → ForallTree (fun t _ => t > x) (tree red b y vy (tree red c z vz d)) → BST a → BST (tree red b y vy (tree red c z vz d)) → BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr
+  rcases hbr with ⟨⟩ | ⟨_, _, _, _, _, hby, hyz, hbb, hbz⟩
+  rcases hkr with ⟨⟩ | ⟨_, _, _, _, _, hxy, hxb, hxz⟩
+  rcases hbz with ⟨⟩ | ⟨_, _, _, _, _, hcz, hzd, hbc, hbd⟩
+  rcases hxz with ⟨⟩ | ⟨_, _, _, _, _, hxz, hxc, hxd⟩
+  rcases hyz with ⟨⟩ | ⟨_, _, _, _, _, hyz, hyc, hyd⟩
+  repeat' constructor
+  · exact hxy
+  · apply forallTree_lt_mono
+    · exact hxy
+    · exact hlk
+  · exact hby
+  · exact hyz
+  · exact hyc
+  · exact hyd
+  · exact hlk
+  · exact hxb
+  · exact hbl
+  · exact hbb
+  · exact hcz
+  · exact hzd
+  · exact hbc
+  · exact hbd
+
 theorem balance_BST {α : Type u} c (l : Tree α) k vk (r : Tree α)
     : ForallTree (fun x _ => x < k) l
       -> ForallTree (fun x _ => x > k) r
       -> BST l
       -> BST r
       -> BST (balance c l k vk r) := by
-  intro hlk hkr hbl hbr; simp
-  split
-  . constructor <;> assumption
-  . split
-    . -- we are in the case where `x` is left child of `y`
-      cases l <;> repeat simp [*] at *
-      rcases hbl with ⟨⟩ | ⟨_, _, _, _, _, hxy, hyc, hbx, hbc⟩
-      rcases hlk with ⟨⟩ | ⟨_, _, _, _, _, hyz, hxz, hzc⟩
-      rcases hbx with ⟨⟩ | ⟨_, _, _, _, _, hax, hxb, hba, hbb⟩
-      rcases hxy with ⟨⟩ | ⟨_, _, _, _, _, hxy, hay, hby⟩
-      rcases hxz with ⟨⟩ | ⟨_, _, _, _, _, haz, hxz, hbz⟩
-      /-
-      Here, we have destructed all the assumptions to the atomic level.
-      The goal remains to show that the resulting tree is a BST.
-      We apply the constructor tactic repeatedly.
-      Most of the resulting subgoals are trivial by assumption.
-      -/
-      (repeat' constructor) <;> try assumption
-      /-
-      The only interesting subgoal is to show that each node in the right subtree of the original root is greater than the left child of the original root.
-      This should follow from assumptions, although not trivially.
-      To facilitate reasoning at this point, we prove lemmas `forallTree_imp`, `forallTree_lt`, and `forallTree_gt` above.
-      -/
-      apply forallTree_gt <;> assumption
-    . -- we are in the case where `y` is right child of `x`
-      cases l <;> repeat simp [*] at *
-      rcases hbl with ⟨⟩ | ⟨_, _, _, _, _, hax, hxy, hba, hby⟩
-      rcases hlk with ⟨⟩ | ⟨_, _, _, _, _, hxz, haz, hyz⟩
-      rcases hby with ⟨⟩ | ⟨_, _, _, _, _, hby, hyc, hbb, hbc⟩
-      rcases hxy with ⟨⟩ | ⟨_, _, _, _, _, hxy, hxb, hxc⟩
-      rcases hyz with ⟨⟩ | ⟨_, _, _, _, _, hyz, hbz, hcz⟩
-      (repeat' constructor) <;> try assumption
-      . apply forallTree_lt
-        . exact hax
-        . assumption
-      . apply forallTree_gt <;> assumption
-    . -- we are in the case where `y` is left child of `z`
-      cases r <;> repeat simp [*] at *
-      rcases hbr with ⟨⟩ | ⟨_, _, _, _, _, hyz, hzd, hby, hbd⟩
-      rcases hkr with ⟨⟩ | ⟨_, _, _, _, _, hxz, hxy, hxd⟩
-      rcases hby with ⟨⟩ | ⟨_, _, _, _, _, hby, hyc, hbb, hbc⟩
-      rcases hxy with ⟨⟩ | ⟨_, _, _, _, _, hxy, hxb, hxc⟩
-      rcases hyz with ⟨⟩ | ⟨_, _, _, _, _, hyz, hbz, hcz⟩
-      (repeat' constructor) <;> try assumption
-      . apply forallTree_lt <;> assumption
-      . apply forallTree_gt
-        . exact hzd
-        . assumption
-    . -- we are in the case where `z` is right child of `y`
-      cases r <;> repeat simp [*] at *
-      rcases hbr with ⟨⟩ | ⟨_, _, _, _, _, hby, hyz, hbb, hbz⟩
-      rcases hkr with ⟨⟩ | ⟨_, _, _, _, _, hxy, hxb, hxz⟩
-      rcases hbz with ⟨⟩ | ⟨_, _, _, _, _, hcz, hzd, hbc, hbd⟩
-      rcases hxz with ⟨⟩ | ⟨_, _, _, _, _, hxz, hxc, hxd⟩
-      rcases hyz with ⟨⟩ | ⟨_, _, _, _, _, hyz, hyc, hyd⟩
-      (repeat' constructor) <;> try assumption
-      apply forallTree_lt <;> assumption
-    . constructor <;> assumption
+  intro hlk hkr hbl hbr
+  cases c <;> simp [balance] at *
+  · constructor <;> assumption
+  · split <;> all_goals sorry
+
 
 /-
 exercise (2-star)

@@ -517,6 +517,7 @@ theorem hoare_while P b c :
       . assumption
     . assumption
 
+
 /-
 We call `P` a _loop invariant_ of `while b do c` if
   `{P ∧ b} c {P}`

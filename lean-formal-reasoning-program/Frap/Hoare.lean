@@ -496,26 +496,25 @@ Note how it combines aspects of skip and conditionals:
 * Like a conditional, we can assume guard `b` holds on entry to the subcommand.
 -/
 
-theorem hoare_while P b c :
-    {* fun st => P st ∧ beval st b *} c {* P *}
-    → {* P *} c_while b c {* fun st => P st ∧ ¬(beval st b) *} := by
+theorem hoare_while (P : Assertion) (b : BExp) (c : Com) : {* fun st => P st ∧ beval st b *} c {* P *} → {* P *} c_while b c {* fun st => P st ∧ ¬(beval st b) *} := by
   intro hHoare st st' hPre hEval
-  -- we proceed by induction on `hEval`
   generalize hloop : c_while b c = cmd at *
   induction hEval with simp at *
   | e_whileFalse =>
-    constructor
-    . exact hPre
-    . simp [*]
+      constructor
+      · exact hPre
+      · simp [*]
   | e_whileTrue =>
-    simp [*] at *
-    rename_i ih
-    apply ih
-    apply hHoare
-    . constructor
-      . apply hPre
-      . assumption
-    . assumption
+      simp [*] at *
+      rename_i ih
+      apply ih
+      apply hHoare
+      · constructor
+        · exact hPre
+        · assumption
+      · assumption
+
+
 
 /-
 We call `P` a _loop invariant_ of `while b do c` if

@@ -341,9 +341,8 @@ theorem Circuit.subcircuit_computableWitnesses (circuit : FormalCircuit F β α)
   Environment.OnlyAccessedBelow n (eval · input) ∧ circuit.ComputableWitnesses →
     (subcircuit circuit input).ComputableWitnesses n := by
   intro h env env'
-  simp only [circuit_norm, FormalCircuit.toSubcircuit, Operations.ComputableWitnesses,
-    Operations.forAllFlat, Operations.forAll_toFlat_iff]
-  exact circuit.compose_computableWitnesses input n h env env'
+  simpa only [circuit_norm, FormalCircuit.toSubcircuit, Operations.ComputableWitnesses, Operations.forAllFlat, Operations.forAll_toFlat_iff] using circuit.compose_computableWitnesses input n h env env'
+
 
 -- to reduce offsets, `circuit_norm` will use these theorems to unfold subcircuits
 attribute [circuit_norm] Circuit.subcircuit_localLength_eq Circuit.assertion_localLength_eq

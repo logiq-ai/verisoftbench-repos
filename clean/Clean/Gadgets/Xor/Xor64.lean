@@ -103,9 +103,10 @@ theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
   simp only [h_input, circuit_norm, main, ByteXorTable,
     varFromOffset, Vector.mapRange] at h_holds
 
-  apply soundness_to_u64 x_norm y_norm
+  apply soundness_to_u64 (by simp [circuit_norm, x_norm]) (by simp [circuit_norm, y_norm])
   simp only [circuit_norm, explicit_provable_type]
   simp [h_holds]
+
 
 lemma xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) :
     (x.val ^^^ y.val : F p).val = x.val ^^^ y.val := by

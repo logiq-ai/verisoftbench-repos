@@ -111,32 +111,29 @@ theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
   exact two_and
 
 theorem completeness : Completeness (F p) elaborated Assumptions := by
-  intro i env ⟨ x_var, y_var ⟩ h_env ⟨ x, y ⟩ h_input h_assumptions
+  intro i env ⟨x_var, y_var⟩ h_env ⟨x, y⟩ h_input h_assumptions
   simp_all only [circuit_norm, main, Assumptions, ByteXorTable, Inputs.mk.injEq]
-  obtain ⟨ hx_byte, hy_byte ⟩ := h_assumptions
-  set w : F p := ZMod.val x &&& ZMod.val y
-  have hw : w = ZMod.val x &&& ZMod.val y := rfl
-  let z := x + y + -(2*w)
-
-  -- now it's pretty much the soundness proof in reverse
-  have and_byte : x.val &&& y.val < 256 := Nat.and_lt_two_pow (n:=8) x.val hy_byte
-  have p_large := p_large_enough.elim
-  have and_lt : x.val &&& y.val < p := by linarith
-  rw [natToField_eq_natCast and_lt] at hw
-  have h_and : w.val = x.val &&& y.val := natToField_eq w hw
-
-  have two_and_val : (2*w).val = 2*(x.val &&& y.val) := by
-    rw [ZMod.val_mul_of_lt, val_two, h_and]
-    rw [val_two]
+  obtain ⟨hx_byte, hy_byte⟩ := h_assumptions
+  have and_byte : x.val &&& y.val < 256 := Nat.and_lt_two_pow (n := 8) x.val hy_byte
+  have p_large : p > 512 := p_large_enough.elim
+  have and_lt : x.val &&& y.val < p := by
     linarith
-
-  have x_y_val : (x + y).val = x.val + y.val := by field_to_nat
-  have two_and_lt : (2*w).val ≤ (x + y).val := by
+  have h_and : ((↑(x.val &&& y.val) : F p)).val = x.val &&& y.val := by
+    exact FieldUtils.val_lt_p _ and_lt
+  have h_mul_lt : (2 : F p).val * ((↑(x.val &&& y.val) : F p)).val < p := by
+    rw [val_two, h_and]
+    linarith
+  have two_and_val : (2 * (↑(x.val &&& y.val) : F p)).val = 2 * (x.val &&& y.val) := by
+    rw [ZMod.val_mul_of_lt h_mul_lt, val_two, h_and]
+  have x_y_val : (x + y).val = x.val + y.val := by
+    field_to_nat
+  have two_and_lt : (2 * (↑(x.val &&& y.val) : F p)).val ≤ (x + y).val := by
     rw [two_and_val, x_y_val]
     exact two_and_le_add hx_byte hy_byte
+  rw [← sub_eq_add_neg]
+  rw [ZMod.val_sub two_and_lt, x_y_val, two_and_val,
+    ← and_times_two_add_xor hx_byte hy_byte, add_comm, Nat.add_sub_cancel]
 
-  rw [←sub_eq_add_neg, ZMod.val_sub two_and_lt, x_y_val, two_and_val,
-    ←and_times_two_add_xor hx_byte hy_byte, add_comm, Nat.add_sub_cancel]
 
 def circuit : FormalCircuit (F p) Inputs field :=
   { Assumptions, Spec, soundness, completeness }

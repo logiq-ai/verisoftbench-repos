@@ -29,28 +29,45 @@ theorem not_lt (n : ℕ) {x : ℕ} (hx : x < n) : n - 1 - (x : ℤ) < n := by
   rw [←not_zify n hx, Int.ofNat_lt]
   exact Nat.sub_one_sub_lt_of_lt hx
 
-theorem not_bytewise_value_spec {x : U64 (F p)} (x_lt : x.Normalized) :
-    (not64_bytewise_value x).value = not64 x.value
-    ∧ (not64_bytewise_value x).Normalized := by
+theorem not_byte_val_int {x : F p} (hx : x.val < 256) : ((255 - x).val : ℤ) = 255 - ↑x.val := by
+  have val_255 : (255 : F p).val = 255 := by
+    exact FieldUtils.val_lt_p 255 (by linarith [p_large_enough.elim])
+  have hx' : x.val ≤ (255 : F p).val := by
+    rw [val_255]
+    linarith
+  rw [ZMod.val_sub hx', val_255]
+  exact not_zify 256 hx
 
+theorem not64_bytewise_value_normalized {x : U64 (F p)} (x_lt : x.Normalized) : (not64_bytewise_value x).Normalized := by
+  rw [not64_bytewise_value, U64.map, U64.Normalized]
+  rcases x_lt with ⟨hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7⟩
+  have h (y : F p) (hy : y.val < 256) : (255 - y).val < 256 := by
+    have h255 : ((255 : F p)).val = 255 := FieldUtils.val_lt_p 255 (by linarith [p_large_enough.elim])
+    have hsub : (255 - y : F p).val = 255 - y.val := by
+      rw [ZMod.val_sub]
+      · rw [h255]
+      · rw [h255]
+        omega
+    apply Int.ofNat_lt.mp
+    rw [hsub, not_zify 256 hy]
+    exact not_lt 256 hy
+  exact ⟨h x.x0 hx0, h x.x1 hx1, h x.x2 hx2, h x.x3 hx3, h x.x4 hx4, h x.x5 hx5, h x.x6 hx6, h x.x7 hx7⟩
+
+theorem not64_bytewise_value_value_eq_not64 {x : U64 (F p)} (x_lt : x.Normalized) : (not64_bytewise_value x).value = not64 x.value := by
   rw [not64_eq_sub (U64.value_lt_of_normalized x_lt)]
-
-  have h_not_val : ∀ {x : F p}, x.val < 256 → ((255 - x).val : ℤ) = 255 - ↑x.val := by
-    intro x hx
-    have val_255 : (255 : F p).val = 255 := FieldUtils.val_lt_p 255 (by linarith [p_large_enough.elim])
-    have hx' : x.val ≤ (255 : F p).val := by linarith
-    rw [ZMod.val_sub hx', val_255]
-    exact not_zify 256 hx
-
-  rw [U64.value, U64.Normalized, not64_bytewise_value, U64.map]
+  rw [U64.value, not64_bytewise_value, U64.map]
   zify
   rw [not_zify (2^64) (U64.value_lt_of_normalized x_lt), U64.value]
   zify
-  have ⟨ hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7 ⟩ := x_lt
-  repeat rw [h_not_val (by assumption)]
-  constructor; ring
-  exact ⟨ not_lt 256 hx0, not_lt 256 hx1, not_lt 256 hx2, not_lt 256 hx3,
-      not_lt 256 hx4, not_lt 256 hx5, not_lt 256 hx6, not_lt 256 hx7 ⟩
+  rcases x_lt with ⟨hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7⟩
+  repeat rw [not_byte_val_int (by assumption)]
+  ring
+
+theorem not_bytewise_value_spec {x : U64 (F p)} (x_lt : x.Normalized) :
+    (not64_bytewise_value x).value = not64 x.value
+    ∧ (not64_bytewise_value x).Normalized := by
+  exact ⟨not64_bytewise_value_value_eq_not64 x_lt, not64_bytewise_value_normalized x_lt⟩
+
 
 def circuit : FormalCircuit (F p) U64 U64 where
   main x := pure (not64_bytewise x)

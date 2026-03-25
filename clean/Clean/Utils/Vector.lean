@@ -315,32 +315,9 @@ theorem toChunks_flatten {α : Type} (m : ℕ+) (v : Vector α (n*m)) :
 
 theorem flatten_toChunks {α : Type} (m : ℕ+) (v : Vector (Vector α m) n) :
     v.flatten.toChunks m = v := by
-  simp only [toChunks]
-  rw [←Vector.toArray_inj,←Array.toList_inj]
-  simp only
-  let v_list_list := v.toList.map (Array.toList ∘ toArray)
-  have h_flatten : v.flatten.toList = v_list_list.flatten := by
-    rw [Vector.flatten_mk, Vector.toList_mk, Array.toList_flatten, Array.toList_map, List.map_map]
-    congr
-  have h_length : v.flatten.toList.length = n * ↑m := by rw [length_toList]
-  have h_flatten_length : v_list_list.flatten.length = n * ↑m := by rw [←h_flatten, h_length]
-  have h' : (v.flatten.toList.splitWrtComposition (Composition.ofProductLength m h_length)) = v_list_list := by
-    rw [← v_list_list.splitWrtComposition_flatten (Composition.ofProductLength m h_flatten_length)]
-    congr 1
-    · rw [h_length, h_flatten_length]
-    congr
-    · simp [h_flatten]
-    simp only [List.map_map, Composition.ofProductLength, v_list_list]
-    clear *-
-    induction v using Vector.induct
-    case nil => rfl
-    case cons xs x hi => rw [List.replicate_succ, Vector.toList_cons, List.map_cons, hi,
-      Function.comp_apply, Function.comp_apply, Array.length_toList, size_toArray]
-  simp_all only [List.length_flatten, List.map_map, List.map_attachWith, v_list_list]
-  rw [List.map_attach_eq_pmap, List.pmap_map]
-  simp only [Function.comp_apply, Array.toArray_toList, mk_toArray, List.pmap_eq_map,
-    List.map_id_fun', id_eq]
-  congr
+  rw [Vector.eq_iff_flatten_eq]
+  simpa using (Vector.toChunks_flatten m v.flatten)
+
 
 -- using the above, it's quite easy to prove theorems about `toChunks` from similar theorems about `flatten`!
 theorem toChunks_push (m : ℕ+) {α : Type} (vs : Vector α (n*m)) (v : Vector α m) :

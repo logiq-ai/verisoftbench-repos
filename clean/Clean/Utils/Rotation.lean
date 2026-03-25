@@ -3,6 +3,7 @@ import Clean.Utils.Vector
 import Mathlib.Data.Nat.Bitwise
 import Clean.Utils.Bits
 
+
 namespace Utils.Rotation
 open Bits (toBits toBits_injective)
 
@@ -52,7 +53,7 @@ def rotRight64_eq_bv_rotate (x : ℕ) (h : x < 2^64) (offset : ℕ) :
     let offset_bv := (offset % 64).toUInt64
     have h_sat : offset_bv < 64 → offset_bv > 0 →
         (x_bv % 1<<<offset_bv) <<< (64 - offset_bv) = x_bv <<< (64 - offset_bv) := by
-      bv_decide
+      bv_decide (timeout := 120)
 
     have offset_bv_lt : offset_bv < 64 := by
       simp only [offset_bv]
@@ -295,7 +296,7 @@ def rotRight32_eq_bv_rotate (x : ℕ) (h : x < 2^32) (offset : ℕ) :
     let offset_bv := (offset % 32).toUInt32
     have h_sat : offset_bv < 32 → offset_bv > 0 →
         (x_bv % 1<<<offset_bv) <<< (32 - offset_bv) = x_bv <<< (32 - offset_bv) := by
-      bv_decide
+      bv_decide (timeout := 120)
 
     have offset_bv_lt : offset_bv < 32 := by
       simp only [offset_bv]

@@ -182,24 +182,26 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
   rw [FieldUtils.val_lt_p x]
   repeat linarith [x.is_lt, p_large_enough.elim]
 
-omit p_large_enough in
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
     x.value = y.value → x = y := by
   intro h_eq
-  -- Use horner form of value
-  have hx_value := U32.value_horner x
-  have hy_value := U32.value_horner y
-
   simp only [U32.Normalized] at hx hy
+  rw [U32.value_horner x, U32.value_horner y] at h_eq
+  have h0 : x.x0 = y.x0 := by
+    apply ZMod.val_injective
+    omega
+  have h1 : x.x1 = y.x1 := by
+    apply ZMod.val_injective
+    omega
+  have h2 : x.x2 = y.x2 := by
+    apply ZMod.val_injective
+    omega
+  have h3 : x.x3 = y.x3 := by
+    apply ZMod.val_injective
+    omega
+  exact U32.ext h0 h1 h2 h3
 
-  have : x.x0 = y.x0 := by apply ZMod.val_injective; omega
-  have : x.x1 = y.x1 := by apply ZMod.val_injective; omega
-  have : x.x2 = y.x2 := by apply ZMod.val_injective; omega
-  have : x.x3 = y.x3 := by apply ZMod.val_injective; omega
-
-  cases x; cases y
-  simp_all
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]
@@ -242,7 +244,6 @@ lemma value_zero :
     (0 : U32 (F p)) = U32.mk 0 0 0 0 := by
   aesop
 
-omit p_large_enough in
 @[circuit_norm]
 lemma value_zero_iff_zero {x : U32 (F p)} (hx : x.Normalized) :
     x.value = 0 ↔ x = U32.mk 0 0 0 0 := by

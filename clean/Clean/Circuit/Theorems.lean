@@ -496,40 +496,99 @@ lemma getElem?_dynamicWitnesses_cons_right {op : FlatOperation F} {ops : List (F
     List.getElem_append_right (by linarith)]
   simp only [add_tsub_cancel_left]
 
-/--
-Flat version of the final theorem in this section, `Circuit.proverEnvironment_usesLocalWitnesses`.
--/
+theorem fromList_dynamicWitnesses_agreesBelow {ops : List (FlatOperation F)} {init : List F} : Environment.AgreesBelow init.length (Environment.fromList (dynamicWitnesses ops init)) (Environment.fromList init) := by
+  intro i hi
+  simp only [Environment.AgreesBelow, Environment.fromList]
+  rw [getElem?_dynamicWitnesses_of_lt hi]
+  simp [hi]
+
+theorem dynamicWitnesses_cons_extends_head {ops : List (FlatOperation F)} {init : List F} {m : ℕ} {compute : Environment F → Vector F m} : (∀ env env', Environment.AgreesBelow init.length env env' → compute env = compute env') → (Environment.fromList (dynamicWitnesses (.witness m compute :: ops) init)).ExtendsVector (compute (Environment.fromList (dynamicWitnesses (.witness m compute :: ops) init))) init.length := by
+  intro h_compute
+  intro i
+  have h_agree : Environment.AgreesBelow init.length
+      (Environment.fromList (dynamicWitnesses (.witness m compute :: ops) init))
+      (Environment.fromList init) := by
+    exact fromList_dynamicWitnesses_agreesBelow
+  have h_eq :
+      compute (Environment.fromList (dynamicWitnesses (.witness m compute :: ops) init)) =
+      compute (Environment.fromList init) :=
+    h_compute _ _ h_agree
+  change (dynamicWitnesses (.witness m compute :: ops) init)[init.length + i.val]?.getD 0 =
+      (compute (Environment.fromList (dynamicWitnesses (.witness m compute :: ops) init)))[i.val]
+  rw [getElem?_dynamicWitnesses_cons_right (op := .witness m compute) (ops := ops) (init := init) i.is_lt]
+  simp only [dynamicWitness, Vector.getElem_toList]
+  simpa only [Vector.getElem_toList] using (congrArg (fun v => v[i]) h_eq).symm
+
 theorem proverEnvironment_usesLocalWitnesses {ops : List (FlatOperation F)} (init : List F) :
   (∀ (env env' : Environment F),
     forAll init.length { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops) →
     (proverEnvironment ops init).UsesLocalWitnessesFlat init.length ops := by
-  simp only [proverEnvironment, Environment.UsesLocalWitnessesFlat, Environment.ExtendsVector]
+  simp only [proverEnvironment, Environment.UsesLocalWitnessesFlat]
   intro h_computable
   induction ops generalizing init with
-  | nil => trivial
+  | nil =>
+      simp only [FlatOperation.forAll_empty, FlatOperation.dynamicWitnesses, List.foldl_nil]
   | cons op ops ih =>
-    simp only [forAll_cons] at h_computable ⊢
-    cases op with
-    | assert | lookup  =>
-      simp_all [dynamicWitnesses_cons, Condition.applyFlat, singleLocalLength, dynamicWitness]
-    | witness m compute =>
-      simp_all only [Condition.applyFlat, singleLocalLength, Environment.AgreesBelow]
-      -- get rid of ih first
-      constructor; case right =>
-        specialize ih (init ++ (compute (.fromList init)).toList)
-        simp only [List.length_append, Vector.length_toList] at ih
-        ring_nf at *
-        exact ih fun _ _ => (h_computable ..).right
-      clear ih
-      replace h_computable := fun env env' => (h_computable env env').left
-      intro i
-      simp only [Environment.fromList]
-      rw [getElem?_dynamicWitnesses_cons_right i.is_lt]
-      simp only [dynamicWitness, Vector.getElem_toList]
-      congr 1
-      apply h_computable
-      intro j hj
-      simp [Environment.fromList, hj, getElem?_dynamicWitnesses_of_lt]
+      cases op with
+      | assert e =>
+          constructor
+          · trivial
+          · have h_tail : ∀ env env',
+                forAll init.length
+                  { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+              intro env env'
+              have hpair : True ∧
+                  forAll (0 + init.length)
+                    { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+                simpa only [FlatOperation.forAll_cons, Condition.applyFlat,
+                  FlatOperation.singleLocalLength] using h_computable env env'
+              simpa only [zero_add] using hpair.right
+            simpa only [FlatOperation.dynamicWitnesses_cons, FlatOperation.dynamicWitness,
+              List.append_nil, zero_add] using ih init h_tail
+      | lookup l =>
+          constructor
+          · trivial
+          · have h_tail : ∀ env env',
+                forAll init.length
+                  { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+              intro env env'
+              have hpair : True ∧
+                  forAll (0 + init.length)
+                    { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+                simpa only [FlatOperation.forAll_cons, Condition.applyFlat,
+                  FlatOperation.singleLocalLength] using h_computable env env'
+              simpa only [zero_add] using hpair.right
+            simpa only [FlatOperation.dynamicWitnesses_cons, FlatOperation.dynamicWitness,
+              List.append_nil, zero_add] using ih init h_tail
+      | witness m compute =>
+          have h_head : ∀ env env', env.AgreesBelow init.length env' → compute env = compute env' := by
+            intro env env' h_agree
+            have hpair :
+                (env.AgreesBelow init.length env' → compute env = compute env') ∧
+                forAll (m + init.length)
+                  { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+              simpa only [FlatOperation.forAll_cons, Condition.applyFlat,
+                FlatOperation.singleLocalLength] using h_computable env env'
+            exact hpair.left h_agree
+          constructor
+          · exact dynamicWitnesses_cons_extends_head h_head
+          · let init' := init ++ (compute (.fromList init)).toList
+            have h_tail : ∀ env env',
+                forAll init'.length
+                  { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+              intro env env'
+              have hpair :
+                  (env.AgreesBelow init.length env' → compute env = compute env') ∧
+                  forAll (m + init.length)
+                    { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+                simpa only [FlatOperation.forAll_cons, Condition.applyFlat,
+                  FlatOperation.singleLocalLength] using h_computable env env'
+              simpa only [init', List.length_append, Vector.length_toList,
+                add_assoc, add_left_comm, add_comm] using hpair.right
+            simpa only [init', FlatOperation.dynamicWitnesses_cons, FlatOperation.dynamicWitness,
+              List.length_append, Vector.length_toList,
+              add_assoc, add_left_comm, add_comm] using ih init' h_tail
+
 end FlatOperation
 
 /--

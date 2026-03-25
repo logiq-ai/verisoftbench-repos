@@ -59,7 +59,7 @@ theorem soundness (offset : Fin 8) (x low high : F p)
       base < 256 → low_b < base → high_b < 256 → x_b < 256 →
       x_b = low_b + high_b * base →
       low_b = x_b % base ∧ high_b = x_b / base := by
-    bv_decide
+    bv_decide (timeout := 120)
 
   -- now it is left to prove that the bv variant is equivalent
   -- to the field variant of the theorem

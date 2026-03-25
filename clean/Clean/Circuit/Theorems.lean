@@ -207,18 +207,20 @@ lemma localLength_toFlat {ops : Operations F} :
     | case3 ops _ ih' | case4 ops _ ih' =>
       simp_all only [localLength_append, forall_eq', localLength]
 
-/--
-The witnesses created from flat and nested operations are the same
--/
 lemma localWitnesses_toFlat {ops : Operations F} {env} :
   (localWitnesses env ops.toFlat).toArray = (ops.localWitnesses env).toArray := by
   induction ops using Operations.induct with
-  | empty => trivial
-  | witness _ _ _ ih | assert _ _ ih | lookup _ _ ih | subcircuit _ _ ih =>
-    simp only [Operations.toFlat, Operations.localLength, Operations.localWitnesses, Vector.toArray_append]
-    rw [←ih]
-    try rw [localWitnesses_append]
-    try simp only [localLength, localWitnesses, Vector.toArray_append, Subcircuit.witnesses, Vector.toArray_cast]
+  | empty =>
+      rfl
+  | witness _ _ _ ih | assert _ _ ih | lookup _ _ ih =>
+      simp only [Operations.toFlat, Operations.localLength, Operations.localWitnesses, localWitnesses, Vector.toArray_append]
+      rw [← ih]
+  | subcircuit s ops ih =>
+      simp only [Operations.toFlat, Operations.localLength, Operations.localWitnesses]
+      rw [localWitnesses_append]
+      simp only [localLength, localWitnesses, Vector.toArray_append, Subcircuit.witnesses, Vector.toArray_cast]
+      rw [← ih]
+
 end FlatOperation
 
 namespace Environment

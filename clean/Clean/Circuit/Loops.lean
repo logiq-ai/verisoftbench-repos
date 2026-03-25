@@ -325,6 +325,10 @@ theorem operations_eq_const [NeZero m] (constant : ConstantLength (prod circuit)
   simp only [Fin.succ_mk]
   rw [foldlAcc_const_succ constant h_const_out]
 
+theorem succ_localLength_eq_default (constant : ConstantLength (prod circuit)) (i : ℕ) (hi : i + 1 < m) :
+  (circuit init (xs[i + 1]'hi)).localLength = (circuit default default).localLength := by
+  simpa using (ConstantLength.length_eq_default constant (init, xs[i + 1]'hi) 0)
+
 theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
     (h_const_out : ConstantOutput (prod circuit)) :
   (xs.foldlM circuit init).forAll n prop ↔
@@ -332,31 +336,28 @@ theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
   ∀ (i : ℕ) (hi : i + 1 < m),
     let acc := (circuit default xs[i]).output (n + i*(circuit default default).localLength);
     (circuit acc xs[i + 1]).forAll (n + (i + 1)*(circuit default default).localLength) prop := by
-  rw [forAll_iff (constant:=constant)]
-  set k := (circuit default default).localLength
-  simp only
+  rw [forAll_iff (constant := constant)]
   constructor
   · intro h
-    constructor
+    refine ⟨?_, ?_⟩
     · specialize h 0
-      simp only [Fin.val_zero] at h
-      rw [foldlAcc_zero, zero_mul, add_zero] at h
-      exact h
+      simpa only [Fin.val_zero, foldlAcc_zero, zero_mul, add_zero] using h
     · intro i hi
-      specialize h ⟨ i + 1, hi ⟩
-      rw [foldlAcc_const_succ constant h_const_out] at h
+      specialize h ⟨i + 1, hi⟩
+      dsimp
       convert h using 3
-      rw [ConstantLength.length_eq_default constant (init, _)]
-      rfl
-  intro h i
-  rcases i with ⟨ _ | i, hi ⟩
-  · simp only [Fin.mk_zero']
-    rw [foldlAcc_zero, zero_mul, add_zero]
-    exact h.left
-  · rw [foldlAcc_const_succ constant h_const_out]
-    convert (h.right i hi) using 3
-    rw [ConstantLength.length_eq_default constant (init, _)]
-    rfl
+      · rw [foldlAcc_const_succ constant h_const_out]
+      · rw [ConstantLength.length_eq_default constant (init, xs[i + 1])]
+        rfl
+  · intro h i
+    rcases i with ⟨_ | i, hi⟩
+    · simpa only [Fin.mk_zero', foldlAcc_zero, zero_mul, add_zero] using h.1
+    · have hi' : i + 1 < m := hi
+      rw [foldlAcc_const_succ constant h_const_out]
+      convert (h.2 i hi') using 3
+      · rw [ConstantLength.length_eq_default constant (init, xs[i + 1])]
+        rfl
+
 
 end FoldlM
 

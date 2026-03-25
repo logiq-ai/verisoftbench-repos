@@ -90,12 +90,12 @@ theorem ext_iff {f g : Circuit F α} :
   · exact (h n).left
   · exact (h n).right
 
-@[ext]
-theorem ext {f g : Circuit F α}
+@[ext] theorem ext {f g : Circuit F α}
   (h_output : ∀ n, f.output n = g.output n)
   (h_operations : ∀ n, f.operations n = g.operations n) :
-    f = g :=
-  ext_iff.mpr fun n => ⟨ h_output n, h_operations n ⟩
+    f = g := by
+  exact ext_iff.mpr (fun n => ⟨h_output n, h_operations n⟩)
+
 
 -- lawful monad
 

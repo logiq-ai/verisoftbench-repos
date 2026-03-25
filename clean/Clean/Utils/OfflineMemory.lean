@@ -478,34 +478,10 @@ theorem MemoryAccessList.isConsistentSingleAddress_cons_forall (head : MemoryAcc
     : (∀ addr : ℕ, (filterAddress (head :: tail) addr).isConsistentSingleAddress (MemoryAccessList.filterAddress_sorted (head :: tail) h_sorted addr)) →
     (∀ addr : ℕ, isConsistentSingleAddress (filterAddress tail addr) (MemoryAccessList.filterAddress_sorted tail (by simp_all only [isTimestampSorted,
       List.sorted_cons]) addr)) := by
-  intro h addr'
-  obtain ⟨t_head, a_head, r_head, w_head⟩ := head
-  simp_all [MemoryAccessList.filterAddress_cons]
-  specialize h addr'
-  by_cases h_addr : a_head = addr'
-  · simp_all only [↓reduceIte]
-    rw [h_addr] at h_sorted
-    have tail_sorted : tail.isTimestampSorted := by
-      unfold isTimestampSorted at h_sorted
-      exact List.Sorted.of_cons h_sorted
-    have filtered_tail_sorted : (MemoryAccessList.filterAddress tail addr').isTimestampSorted := by
-      simp only [filterAddress]
-      apply List.Sorted.filter
-      exact tail_sorted
+  intro h addr
+  simpa using
+    MemoryAccessList.isConsistentSingleAddress_filterAddress_of_cons head tail addr h_sorted (h addr)
 
-    have filter_eq_head : MemoryAccessList.filterAddress (⟨t_head, addr', r_head, w_head⟩ :: tail) addr' =
-      (⟨t_head, addr', r_head, w_head⟩ :: (MemoryAccessList.filterAddress tail addr')) := by
-      simp only [filterAddress, decide_true, List.filter_cons_of_pos]
-
-    have h_filtered_sorted : MemoryAccessList.isTimestampSorted (⟨t_head, addr', r_head, w_head⟩ :: (MemoryAccessList.filterAddress tail addr')) := by
-      rw [←filter_eq_head]
-      apply MemoryAccessList.filterAddress_sorted
-      assumption
-
-    have h' := MemoryAccessList.isConsistentSingleAddress_cons ⟨t_head, addr', r_head, w_head⟩ (tail.filterAddress addr') h_filtered_sorted filtered_tail_sorted
-    specialize h' h
-    simp_all only
-  · simp_all only [↓reduceIte]
 
 /--
   A memory access list is consistent if and only if, for each possible address, considering

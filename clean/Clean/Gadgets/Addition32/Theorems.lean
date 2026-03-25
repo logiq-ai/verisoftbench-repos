@@ -26,6 +26,43 @@ lemma zify_bool {b : (F p)} (b_bool : IsBool b) : (↑(b.val) : ℤ) = 0 ∨ (�
   · rw [b_one, ZMod.val_one]
     simp only [Nat.cast_one, one_ne_zero, or_true]
 
+theorem add32_mod_div_from_eq (z c sum : ℤ)
+    (hz_lo : 0 ≤ z)
+    (hz_hi : z < 2 ^ 32)
+    (hsum : z + c * 2 ^ 32 = sum) :
+    z = sum % 2 ^ 32 ∧ c = sum / 2 ^ 32 := by
+  have hpow : (0 : ℤ) < 2 ^ 32 := by
+    norm_num
+  have hpair : sum / 2 ^ 32 = c ∧ sum % 2 ^ 32 = z := by
+    apply (Int.ediv_emod_unique (a := sum) (b := 2 ^ 32) (r := z) (q := c) hpow).2
+    constructor
+    · simpa [mul_comm] using hsum
+    · exact ⟨hz_lo, hz_hi⟩
+  exact ⟨hpair.2.symm, hpair.1.symm⟩
+
+def pack32_int (a0 a1 a2 a3 : ℤ) : ℤ := a0 + a1 * 256 + a2 * 256 ^ 2 + a3 * 256 ^ 3
+
+theorem add32_pack_eq (x0 x1 x2 x3 y0 y1 y2 y3 carry_in c0 c1 c2 c3 z0 z1 z2 z3 : ℤ)
+    (h0 : x0 + y0 + carry_in = c0 * 256 + z0)
+    (h1 : x1 + y1 + c0 = c1 * 256 + z1)
+    (h2 : x2 + y2 + c1 = c2 * 256 + z2)
+    (h3 : x3 + y3 + c2 = c3 * 256 + z3) :
+    pack32_int z0 z1 z2 z3 + c3 * 2 ^ 32 =
+      pack32_int x0 x1 x2 x3 + pack32_int y0 y1 y2 y3 + carry_in := by
+  unfold pack32_int
+  nlinarith [h0, h1, h2, h3]
+
+theorem add32_pack_range (z0 z1 z2 z3 : ℤ)
+    (hz0_lo : 0 ≤ z0) (hz0_hi : z0 < 256)
+    (hz1_lo : 0 ≤ z1) (hz1_hi : z1 < 256)
+    (hz2_lo : 0 ≤ z2) (hz2_hi : z2 < 256)
+    (hz3_lo : 0 ≤ z3) (hz3_hi : z3 < 256) :
+    0 ≤ pack32_int z0 z1 z2 z3 ∧ pack32_int z0 z1 z2 z3 < 2 ^ 32 := by
+  unfold pack32_int
+  constructor
+  · nlinarith [show (0 : ℤ) ≤ 256 ^ 2 by norm_num, show (0 : ℤ) ≤ 256 ^ 3 by norm_num]
+  · nlinarith [show (256 : ℤ) ^ 2 = 65536 by norm_num, show (256 : ℤ) ^ 3 = 16777216 by norm_num, show (2 : ℤ) ^ 32 = 4294967296 by norm_num]
+
 theorem add32_soundness {x0 x1 x2 x3 y0 y1 y2 y3 carry_in c0 c1 c2 c3 z0 z1 z2 z3 : F p}
     (x0_byte : x0.val < 256) (x1_byte : x1.val < 256) (x2_byte : x2.val < 256) (x3_byte : x3.val < 256)
     (y0_byte : y0.val < 256) (y1_byte : y1.val < 256) (y2_byte : y2.val < 256) (y3_byte : y3.val < 256)
@@ -45,94 +82,49 @@ theorem add32_soundness {x0 x1 x2 x3 y0 y1 y2 y3 carry_in c0 c1 c2 c3 z0 z1 z2 z
       (ZMod.val x0 + ZMod.val x1 * 256 + ZMod.val x2 * 256 ^ 2 + ZMod.val x3 * 256 ^ 3 +
             (ZMod.val y0 + ZMod.val y1 * 256 + ZMod.val y2 * 256 ^ 2 + ZMod.val y3 * 256 ^ 3) +
           ZMod.val carry_in) /
-        2 ^ 32
-  := by
-
-  apply_fun ZMod.val at h0 h1 h2 h3
-  rw [lift_val1 x0_byte y0_byte carry_in_bool, lift_val2 z0_byte c0_bool] at h0
-  rw [lift_val1 x1_byte y1_byte c0_bool, lift_val2 z1_byte c1_bool] at h1
-  rw [lift_val1 x2_byte y2_byte c1_bool, lift_val2 z2_byte c2_bool] at h2
-  rw [lift_val1 x3_byte y3_byte c2_bool, lift_val2 z3_byte c3_bool] at h3
-
-  have c0_bool := zify_bool c0_bool
-  have c1_bool := zify_bool c1_bool
-  have c2_bool := zify_bool c2_bool
-  have c3_bool := zify_bool c3_bool
-  have carry_in_bool := zify_bool carry_in_bool
-
-  have x0_pos : 0 ≤ x0.val := by exact Nat.zero_le _
-  have y0_pos : 0 ≤ y0.val := by exact Nat.zero_le _
-  have x1_pos : 0 ≤ x1.val := by exact Nat.zero_le _
-  have y1_pos : 0 ≤ y1.val := by exact Nat.zero_le _
-  have x2_pos : 0 ≤ x2.val := by exact Nat.zero_le _
-  have y2_pos : 0 ≤ y2.val := by exact Nat.zero_le _
-  have x3_pos : 0 ≤ x3.val := by exact Nat.zero_le _
-  have y3_pos : 0 ≤ y3.val := by exact Nat.zero_le _
-  have z0_pos : 0 ≤ z0.val := by exact Nat.zero_le _
-  have z1_pos : 0 ≤ z1.val := by exact Nat.zero_le _
-  have z2_pos : 0 ≤ z2.val := by exact Nat.zero_le _
-  have z3_pos : 0 ≤ z3.val := by exact Nat.zero_le _
-
+        2 ^ 32 := by
+  have h0' := congrArg ZMod.val h0
+  have h1' := congrArg ZMod.val h1
+  have h2' := congrArg ZMod.val h2
+  have h3' := congrArg ZMod.val h3
+  rw [lift_val1 x0_byte y0_byte carry_in_bool, lift_val2 z0_byte c0_bool] at h0'
+  rw [lift_val1 x1_byte y1_byte c0_bool, lift_val2 z1_byte c1_bool] at h1'
+  rw [lift_val1 x2_byte y2_byte c1_bool, lift_val2 z2_byte c2_bool] at h2'
+  rw [lift_val1 x3_byte y3_byte c2_bool, lift_val2 z3_byte c3_bool] at h3'
+  have hx0_nonneg : 0 ≤ ZMod.val x0 := Nat.zero_le _
+  have hx1_nonneg : 0 ≤ ZMod.val x1 := Nat.zero_le _
+  have hx2_nonneg : 0 ≤ ZMod.val x2 := Nat.zero_le _
+  have hx3_nonneg : 0 ≤ ZMod.val x3 := Nat.zero_le _
+  have hy0_nonneg : 0 ≤ ZMod.val y0 := Nat.zero_le _
+  have hy1_nonneg : 0 ≤ ZMod.val y1 := Nat.zero_le _
+  have hy2_nonneg : 0 ≤ ZMod.val y2 := Nat.zero_le _
+  have hy3_nonneg : 0 ≤ ZMod.val y3 := Nat.zero_le _
+  have hz0_nonneg : 0 ≤ ZMod.val z0 := Nat.zero_le _
+  have hz1_nonneg : 0 ≤ ZMod.val z1 := Nat.zero_le _
+  have hz2_nonneg : 0 ≤ ZMod.val z2 := Nat.zero_le _
+  have hz3_nonneg : 0 ≤ ZMod.val z3 := Nat.zero_le _
+  have hcarry_nonneg : 0 ≤ ZMod.val carry_in := Nat.zero_le _
+  have hc0_nonneg : 0 ≤ ZMod.val c0 := Nat.zero_le _
+  have hc1_nonneg : 0 ≤ ZMod.val c1 := Nat.zero_le _
+  have hc2_nonneg : 0 ≤ ZMod.val c2 := Nat.zero_le _
+  have hc3_nonneg : 0 ≤ ZMod.val c3 := Nat.zero_le _
   zify at *
+  set x : ℤ := pack32_int (↑(ZMod.val x0)) (↑(ZMod.val x1)) (↑(ZMod.val x2)) (↑(ZMod.val x3))
+  set y : ℤ := pack32_int (↑(ZMod.val y0)) (↑(ZMod.val y1)) (↑(ZMod.val y2)) (↑(ZMod.val y3))
+  set z : ℤ := pack32_int (↑(ZMod.val z0)) (↑(ZMod.val z1)) (↑(ZMod.val z2)) (↑(ZMod.val z3))
+  set carryi : ℤ := ↑(ZMod.val carry_in)
+  set c3i : ℤ := ↑(ZMod.val c3)
+  have hpack : z + c3i * 2 ^ 32 = x + y + carryi := by
+    simpa [x, y, z, carryi, c3i, pack32_int] using
+      (add32_pack_eq (↑(ZMod.val x0)) (↑(ZMod.val x1)) (↑(ZMod.val x2)) (↑(ZMod.val x3))
+        (↑(ZMod.val y0)) (↑(ZMod.val y1)) (↑(ZMod.val y2)) (↑(ZMod.val y3))
+        (↑(ZMod.val carry_in)) (↑(ZMod.val c0)) (↑(ZMod.val c1)) (↑(ZMod.val c2)) (↑(ZMod.val c3))
+        (↑(ZMod.val z0)) (↑(ZMod.val z1)) (↑(ZMod.val z2)) (↑(ZMod.val z3))
+        h0' h1' h2' h3')
+  have hzrange : 0 ≤ z ∧ z < 2 ^ 32 := by
+    simpa [z, pack32_int] using
+      (add32_pack_range (↑(ZMod.val z0)) (↑(ZMod.val z1)) (↑(ZMod.val z2)) (↑(ZMod.val z3))
+        hz0_nonneg z0_byte hz1_nonneg z1_byte hz2_nonneg z2_byte hz3_nonneg z3_byte)
+  have hmoddiv := add32_mod_div_from_eq z c3i (x + y + carryi) hzrange.1 hzrange.2 hpack
+  simpa [x, y, z, carryi, c3i, pack32_int] using hmoddiv
 
-  set x0 : ℤ := ↑(ZMod.val x0)
-  set x1 : ℤ := ↑(ZMod.val x1)
-  set x2 : ℤ := ↑(ZMod.val x2)
-  set x3 : ℤ := ↑(ZMod.val x3)
-  set y0 : ℤ := ↑(ZMod.val y0)
-  set y1 : ℤ := ↑(ZMod.val y1)
-  set y2 : ℤ := ↑(ZMod.val y2)
-  set y3 : ℤ := ↑(ZMod.val y3)
-  set z0 : ℤ := ↑(ZMod.val z0)
-  set z1 : ℤ := ↑(ZMod.val z1)
-  set z2 : ℤ := ↑(ZMod.val z2)
-  set z3 : ℤ := ↑(ZMod.val z3)
-  set c0 : ℤ := ↑(ZMod.val c0)
-  set c1 : ℤ := ↑(ZMod.val c1)
-  set c2 : ℤ := ↑(ZMod.val c2)
-  set c3 : ℤ := ↑(ZMod.val c3)
-  set carry_in : ℤ := ↑(ZMod.val carry_in)
-
-  -- now everything, assumptions and goal, is over Z
-
-  -- add up all the equations
-  set z := z0 + z1*256 + z2*256^2 + z3*256^3
-  set x := x0 + x1*256 + x2*256^2 + x3*256^3
-  set y := y0 + y1*256 + y2*256^2 + y3*256^3
-  let lhs := z + c3*2^32
-  let rhs₀ := x0 + y0 + carry_in + -1 * z0 + -1 * (c0 * 256) -- h0 expression
-  let rhs₁ := x1 + y1 + c0 + -1 * z1 + -1 * (c1 * 256) -- h1 expression
-  let rhs₂ := x2 + y2 + c1 + -1 * z2 + -1 * (c2 * 256) -- h2 expression
-  let rhs₃ := x3 + y3 + c2 + -1 * z3 + -1 * (c3 * 256) -- h3 expression
-
-  have h_add := calc z + c3*2^32
-    -- substitute equations
-    _ = lhs + 0 + 256*0 + 256^2*0 + 256^3*0 := by ring
-    _ = lhs + rhs₀ + 256*rhs₁ + 256^2*rhs₂ + 256^3*rhs₃ := by
-      simp only [rhs₀, rhs₁, rhs₂, rhs₃]
-      simp only [h0, h1, h2, h3]
-      ring
-    -- simplify
-    _ = x + y + carry_in := by ring
-
-  have z_lt_2_32 : z < 2^32 := by dsimp only [z]; linarith
-  have z_pos : 0 ≤ z := by dsimp [z]; linarith
-
-  rcases c3_bool with c3_zero | c3_one
-  · rw [c3_zero] at h_add
-    simp only [Int.reducePow, zero_mul, add_zero] at h_add
-    have sum_pos : 0 ≤ x + y + carry_in := by
-      rcases carry_in_bool with c_zero | c_one
-      · rw [c_zero]; linarith
-      · rw [c_one]; linarith
-    rw [Int.emod_eq_of_lt sum_pos (by linarith)]
-    rw [Int.ediv_eq_zero_of_lt sum_pos (by linarith)]
-    simp only [h_add, c3_zero, and_self]
-  · simp only [c3_one, one_mul] at h_add
-    rw [←h_add, Int.add_emod_right, Int.emod_eq_of_lt z_pos (by linarith)]
-    rw [
-      show z + 2^32 = z + 2^32 * 1 from rfl,
-      Int.add_mul_ediv_left _ _ (by linarith),
-      Int.ediv_eq_zero_of_lt z_pos z_lt_2_32
-    ]
-    simp only [c3_one, zero_add, and_self]

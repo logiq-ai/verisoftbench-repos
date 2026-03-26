@@ -191,22 +191,40 @@ theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
       (f b)
       (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
   triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by
-  apply le_trans'; apply wp_cons; rotate_left 2; apply le_trans; rotate_left 1
-  apply triple_forIn_range_step1 (inv := fun i b => ⌜ measure b + i <= measure init ⌝ ⊓ inv b) <;>
-    try solve | aesop
-  { simp; intro i b
-    by_cases h : measure b + i ≤ measure init <;> simp [h, triple]
-    apply le_trans; apply hstep; omega
-    apply wp_cons; rintro (b'|b') <;> simp
-    by_cases h: measure b' = 0 <;> simp [h]
-    by_cases h': measure b' < measure b <;> simp [h']
-    have : measure b' + (i + 1) ≤ measure init := by omega
-    simp [this] }
-  { simp; intro b
-    by_cases h : measure b + measure init ≤ measure init <;> simp [h]
-    by_cases h' : measure b = 0 <;> simp [h']
-    omega }
-  simp
+  let I : ℕ → β → l := fun i b => ⌜measure b + i ≤ measure init⌝ ⊓ inv b
+  apply triple_cons (x := forIn [0:measure init] init (fun _ => f))
+    (pre := I 0 init) (post := I (measure init))
+  · simp [I]
+  · intro b
+    dsimp [I]
+    by_cases h : measure b + measure init ≤ measure init
+    · have hz : measure b = 0 := by omega
+      simp [h, hz, inf_comm, inf_left_comm, inf_assoc]
+    · simp [h]
+  · refine triple_forIn_range_step1 (xs := [0:measure init]) (init := init) (f := fun _ => f) (inv := I) ?_ ?_ ?_
+    · intro i b
+      dsimp [I]
+      by_cases h : measure b + i ≤ measure init
+      · apply triple_cons (x := f b)
+          (pre := inv b)
+          (post := fun
+            | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝
+            | .done b' => ⌜measure b' = 0⌝ ⊓ inv b')
+        · simp [h]
+        · rintro (b' | b')
+          · by_cases hz : measure b' = 0
+            · simp [hz]
+            · simp [hz]
+          · by_cases hlt : measure b' < measure b
+            · have h' : measure b' + (i + 1) ≤ measure init := by omega
+              simp [hlt, h', inf_comm, inf_left_comm, inf_assoc]
+            · simp [hlt]
+        · have hb : measure b ≤ measure init := by omega
+          exact hstep b hb
+      · simp [h, triple]
+    · simp
+    · exact Nat.zero_le _
+
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

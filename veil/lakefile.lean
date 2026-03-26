@@ -11,10 +11,15 @@ lean_lib «Veil» {
   globs := #[`Veil, .submodules `Veil]
 }
 
-@[default_target, test_driver]
+@[test_driver]
 lean_lib Test {
   globs := #[Glob.submodules `Test]
 }
+
+-- Only build the Examples modules needed for benchmark tasks
+@[default_target]
+lean_lib SCPTheory where
+  roots := #[`Examples.StellarConsensus.SCPTheory]
 
 lean_lib Examples {
   globs := #[.submodules `Examples]

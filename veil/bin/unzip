@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Drop-in replacement for unzip, used when system unzip is not available."""
+import sys, zipfile, os
+
+args = sys.argv[1:]
+exdir = "."
+files = []
+i = 0
+while i < len(args):
+    if args[i] == "-d" and i + 1 < len(args):
+        exdir = args[i + 1]
+        i += 2
+    elif args[i] == "-o":
+        i += 1  # overwrite without prompting (default for us)
+    elif not args[i].startswith("-"):
+        files.append(args[i])
+        i += 1
+    else:
+        i += 1
+
+if not files:
+    print("Usage: unzip [-d exdir] file.zip", file=sys.stderr)
+    sys.exit(1)
+
+for f in files:
+    with zipfile.ZipFile(f) as zf:
+        zf.extractall(exdir)
+        for name in zf.namelist():
+            extracted = os.path.join(exdir, name)
+            if not name.endswith('/'):
+                print(f"  inflating: {extracted}")

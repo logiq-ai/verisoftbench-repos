@@ -376,12 +376,12 @@
     "nesting_depth": 17,
     "transitive_dep_count": 142,
     "gt_proof_length": 787,
-    "env": null,
-    "request_id": null,
-    "status": "not_submitted",
-    "pr_url": null,
-    "api_url": null,
-    "failure_reason": "broken_module (Fibonacci32)"
+    "env": "dev",
+    "request_id": "11525756-39b2-45a2-bbd2-389230e0340f",
+    "status": "completed",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/105",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/11525756-39b2-45a2-bbd2-389230e0340f",
+    "failure_reason": null
   },
   {
     "task_id": 141,

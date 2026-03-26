@@ -116,33 +116,35 @@ lemma fib_vars (curr next : Row (F p) RowType) (aux_env : Environment (F p)) :
     Fin.isValue, List.getElem_toArray, List.getElem_cons_zero, List.getElem_cons_succ]
   and_intros <;> rfl
 
-/--
-  Main lemma that shows that if the constraints hold over the two-row window,
-  then the Spec of add32 and equality are satisfied
--/
 lemma fib_constraints (curr next : Row (F p) RowType) (aux_env : Environment (F p))
   : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env →
   curr.y = next.x ∧
   (curr.x.Normalized → curr.y.Normalized → next.y.value = (curr.x.value + curr.y.value) % 2^32 ∧ next.y.Normalized)
    := by
   simp only [table_norm]
-  obtain ⟨ hcurr_x, hcurr_y, hnext_x, hnext_y ⟩ := fib_vars curr next aux_env
-  set env := recursiveRelation.windowEnv  ⟨<+> +> curr +> next, rfl⟩ aux_env
-  simp only [table_norm, circuit_norm, recursiveRelation,
-    assignU32, Gadgets.Addition32.circuit]
-  rintro ⟨ h_add, h_eq ⟩
+  set env := recursiveRelation.windowEnv ⟨<+> +> curr +> next, rfl⟩ aux_env
+  obtain ⟨hcurr_x, hcurr_y, hnext_x, hnext_y⟩ :
+      eval env (varFromOffset U32 0) = curr.x ∧
+      eval env (varFromOffset U32 4) = curr.y ∧
+      eval env (varFromOffset U32 8) = next.x ∧
+      eval env (U32.mk (var ⟨16⟩) (var ⟨18⟩) (var ⟨20⟩) (var ⟨22⟩)) = next.y := by
+    simpa [env] using (fib_vars (p := p) curr next aux_env)
+  change Circuit.ConstraintsHold.Soundness env recursiveRelation.operations → _
+  simp only [table_norm, circuit_norm, recursiveRelation, assignU32, Gadgets.Addition32.circuit]
+  rintro ⟨h_add, h_eq⟩
   simp only [table_norm, circuit_norm, Nat.reduceAdd, zero_add] at h_add
   simp only [circuit_norm] at hnext_y
+  simp only [Nat.reduceAdd] at h_eq
   rw [hcurr_x, hcurr_y, hnext_y] at h_add
   rw [hcurr_y, hnext_x] at h_eq
-  clear hcurr_x hcurr_y hnext_x hnext_y
   constructor
   · exact h_eq
-  rw [Gadgets.Addition32.Assumptions, Gadgets.Addition32.Spec] at h_add
-  intro h_norm_x h_norm_y
-  specialize h_add ⟨ h_norm_x, h_norm_y ⟩
-  obtain ⟨ h_add_mod, h_norm_next_y ⟩ := h_add
-  exact ⟨h_add_mod, h_norm_next_y⟩
+  · rw [Gadgets.Addition32.Assumptions, Gadgets.Addition32.Spec] at h_add
+    intro h_norm_x h_norm_y
+    specialize h_add ⟨h_norm_x, h_norm_y⟩
+    rcases h_add with ⟨h_add_mod, h_norm_next_y⟩
+    exact ⟨h_add_mod, h_norm_next_y⟩
+
 
 lemma boundary_constraints (first_row : Row (F p) RowType) (aux_env : Environment (F p)) :
   Circuit.ConstraintsHold.Soundness (windowEnv boundary ⟨<+> +> first_row, rfl⟩ aux_env) boundary.operations →

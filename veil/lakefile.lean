@@ -16,7 +16,6 @@ lean_lib Test {
   globs := #[Glob.submodules `Test]
 }
 
--- Only build the Examples modules needed for benchmark tasks
 @[default_target]
 lean_lib SCPTheory where
   roots := #[`Examples.StellarConsensus.SCPTheory]

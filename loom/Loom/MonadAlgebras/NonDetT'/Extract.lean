@@ -67,20 +67,17 @@ lemma findNat_some_p (p : Nat -> Prop) [DecidablePred p] (i : Nat) :
 
 lemma p_findNat_some (p : Nat -> Prop) [DecidablePred p] (i : Nat) :
   p i -> ∃ j, p j ∧ j <= i ∧ findNat p = some j := by
-  intro pi;
-  have : (findNat p).isSome := by
-    false_or_by_contra; rename_i h
-    simp only [Bool.not_eq_true, Option.isSome_eq_false_iff] at h
-    have h := findNat_none _ h
-    aesop
-  revert this; simp [Option.isSome_iff_exists]
-  intro x h
-  have := findNat_aux_some_le p 0 h
-  exists x; repeat' constructor
-  { solve_by_elim [findNat_some_p] }
-  { have h := fun h₁ h₂ => this _ h₁ h₂ pi
-    simp at h; exact h }
-  solve_by_elim
+  intro pi
+  have hsome : (findNat p).isSome := (exists_findNat p).mp ⟨i, pi⟩
+  rcases Option.isSome_iff_exists.mp hsome with ⟨j, hj⟩
+  have hpj : p j := findNat_some_p p j hj
+  have hmin := findNat_aux_some_le p 0 hj
+  have hle : j <= i := by
+    by_contra h
+    have hij : i < j := lt_of_not_ge h
+    exact (hmin i (Nat.zero_le i) hij) pi
+  exact ⟨j, hpj, hle, hj⟩
+
 
 def find [Encodable α] (p : α -> Prop) [DecidablePred p] : Option α :=
   findNat (fun x => (Encodable.decode x).any (p ·)) |>.bind Encodable.decode

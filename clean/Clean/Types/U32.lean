@@ -351,7 +351,6 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
-omit [Fact (Nat.Prime p)] p_large_enough in
 lemma bitwise_componentwise (f : Bool → Bool → Bool)
     {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     f false false = false →
@@ -359,31 +358,33 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
           (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
-  intro _
+  intro hff
   simp only [value]
-
-  have ⟨_, _, _, _⟩ := x_norm
-  have ⟨_, _, _, _⟩ := y_norm
+  have ⟨hx0, hx1, hx2, hx3⟩ := x_norm
+  have ⟨hy0, hy1, hy2, hy3⟩ := y_norm
   apply Nat.eq_of_testBit_eq
   intro i
   simp only [reorganize_value, reorganize_value']
-  rw [Nat.testBit_bitwise] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x0)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x0)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x0) (ZMod.val y.x0))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
+  rw [Nat.testBit_bitwise hff]
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := x.x0.val)] <;> try assumption
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := y.x0.val)] <;> try assumption
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := Nat.bitwise f x.x0.val y.x0.val)]
+    <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
   split
   · simp_all only [Nat.testBit_bitwise]
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x1)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x1)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x1) (ZMod.val y.x1))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := x.x1.val)] <;> try assumption
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := y.x1.val)] <;> try assumption
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := Nat.bitwise f x.x1.val y.x1.val)]
+    <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
   split
   · simp_all only [not_lt, Nat.testBit_bitwise]
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x2)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x2)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x2) (ZMod.val y.x2))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := x.x2.val)] <;> try assumption
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := y.x2.val)] <;> try assumption
+  rw [Nat.testBit_two_pow_mul_add (i := 8) (b := Nat.bitwise f x.x2.val y.x2.val)]
+    <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
   aesop
 
-omit [Fact (Nat.Prime p)] p_large_enough in
+
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     x.value ||| y.value =
     (x.x0.val ||| y.x0.val) + 256 *

@@ -186,10 +186,10 @@
     "gt_proof_length": 1169,
     "env": "dev",
     "request_id": "c519d00e-fdd9-47d9-8bd0-a1956c9afb5e",
-    "status": "completed",
+    "status": "failed",
     "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/82",
     "api_url": "https://prover-dev.logicalintelligence.com/requests/c519d00e-fdd9-47d9-8bd0-a1956c9afb5e",
-    "failure_reason": null
+    "failure_reason": "partial_proof (prover produced incomplete proof)"
   },
   {
     "task_id": 128,
@@ -602,10 +602,10 @@
     "gt_proof_length": 1182,
     "env": "dev",
     "request_id": "cb0d81ca-5926-416a-8165-cb26ed8eb860",
-    "status": "completed",
+    "status": "failed",
     "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/93",
     "api_url": "https://prover-dev.logicalintelligence.com/requests/cb0d81ca-5926-416a-8165-cb26ed8eb860",
-    "failure_reason": null
+    "failure_reason": "partial_proof (prover produced incomplete proof)"
   },
   {
     "task_id": 156,

@@ -386,8 +386,20 @@ theorem exists_over_PUnit (p : PUnit → Prop) : (∃ (u : PUnit), p u) = p () :
 
 theorem TwoState_sound'_ret_unit [LawfulAction act] (req : SProp σ) (ens : RProp σ PUnit) :
   act.triple req ens → act.toTwoState.triple req (ens () ·) := by
-  have heq : (ens () ·) = (∃ r, ens r ·) := by ext ; rw [exists_over_PUnit]
-  rw [heq] ; apply TwoState_sound'
+  intro h
+  have hEq : (ens () ·) = (fun st => ∃ r, ens r st) := by
+    funext st
+    apply propext
+    constructor
+    · intro hs
+      exact ⟨(), hs⟩
+    · intro hs
+      rcases hs with ⟨r, hr⟩
+      cases r
+      simpa using hr
+  rw [hEq]
+  exact TwoState_sound' req ens h
+
 
 /-- This is used by `#recover_invariants_in_tr` in `Rabia.lean`. -/
 theorem TwoState_sound'_ret_unit' [LawfulAction act] {st : σ} (ens : RProp σ PUnit) :

@@ -351,39 +351,92 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
-omit [Fact (Nat.Prime p)] p_large_enough in
-lemma bitwise_componentwise (f : Bool → Bool → Bool)
-    {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
-    f false false = false →
-    Nat.bitwise f x.value y.value =
-      Nat.bitwise f x.x0.val y.x0.val + 256 *
-        (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
-  intro _
-  simp only [value]
-
-  have ⟨_, _, _, _⟩ := x_norm
-  have ⟨_, _, _, _⟩ := y_norm
+theorem bitwise_componentwise (f : Bool → Bool → Bool) {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) : f false false = false → Nat.bitwise f x.value y.value = Nat.bitwise f x.x0.val y.x0.val + 256 * (Nat.bitwise f x.x1.val y.x1.val + 256 * (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  have ⟨hx0, hx1, hx2, hx3⟩ := x_norm
+  have ⟨hy0, hy1, hy2, hy3⟩ := y_norm
+  have hxv :
+      x.value = 2 ^ 8 * (x.x1.val + 256 * (x.x2.val + 256 * x.x3.val)) + x.x0.val := by
+    simp only [value]
+    ring
+  have hyv :
+      y.value = 2 ^ 8 * (y.x1.val + 256 * (y.x2.val + 256 * y.x3.val)) + y.x0.val := by
+    simp only [value]
+    ring
+  have hzv :
+      Nat.bitwise f x.x0.val y.x0.val +
+          256 *
+            (Nat.bitwise f x.x1.val y.x1.val +
+              256 * (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) =
+        2 ^ 8 *
+            (Nat.bitwise f x.x1.val y.x1.val +
+              256 * (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) +
+          Nat.bitwise f x.x0.val y.x0.val := by
+    ring
+  have hx1r :
+      x.x1.val + 256 * (x.x2.val + 256 * x.x3.val) =
+        2 ^ 8 * (x.x2.val + 256 * x.x3.val) + x.x1.val := by
+    ring
+  have hy1r :
+      y.x1.val + 256 * (y.x2.val + 256 * y.x3.val) =
+        2 ^ 8 * (y.x2.val + 256 * y.x3.val) + y.x1.val := by
+    ring
+  have hz1r :
+      Nat.bitwise f x.x1.val y.x1.val +
+          256 * (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val) =
+        2 ^ 8 * (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val) +
+          Nat.bitwise f x.x1.val y.x1.val := by
+    ring
+  have hx2r : x.x2.val + 256 * x.x3.val = 2 ^ 8 * x.x3.val + x.x2.val := by
+    ring
+  have hy2r : y.x2.val + 256 * y.x3.val = 2 ^ 8 * y.x3.val + y.x2.val := by
+    ring
+  have hz2r :
+      Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val =
+        2 ^ 8 * Nat.bitwise f x.x3.val y.x3.val + Nat.bitwise f x.x2.val y.x2.val := by
+    ring
+  have hx0' : x.x0.val < 2 ^ 8 := by omega
+  have hx1' : x.x1.val < 2 ^ 8 := by omega
+  have hx2' : x.x2.val < 2 ^ 8 := by omega
+  have hy0' : y.x0.val < 2 ^ 8 := by omega
+  have hy1' : y.x1.val < 2 ^ 8 := by omega
+  have hy2' : y.x2.val < 2 ^ 8 := by omega
+  have hbw0 : Nat.bitwise f x.x0.val y.x0.val < 2 ^ 8 := Nat.bitwise_lt_two_pow hx0' hy0'
+  have hbw1 : Nat.bitwise f x.x1.val y.x1.val < 2 ^ 8 := Nat.bitwise_lt_two_pow hx1' hy1'
+  have hbw2 : Nat.bitwise f x.x2.val y.x2.val < 2 ^ 8 := Nat.bitwise_lt_two_pow hx2' hy2'
   apply Nat.eq_of_testBit_eq
   intro i
-  simp only [reorganize_value, reorganize_value']
-  rw [Nat.testBit_bitwise] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x0)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x0)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x0) (ZMod.val y.x0))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
-  split
-  · simp_all only [Nat.testBit_bitwise]
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x1)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x1)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x1) (ZMod.val y.x1))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
-  split
-  · simp_all only [not_lt, Nat.testBit_bitwise]
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x2)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x2)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x2) (ZMod.val y.x2))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
-  aesop
+  rw [hxv, hyv, hzv, Nat.testBit_bitwise hff]
+  rw [Nat.testBit_two_pow_mul_add (a := x.x1.val + 256 * (x.x2.val + 256 * x.x3.val)) (i := 8) (b := x.x0.val) hx0' i]
+  rw [Nat.testBit_two_pow_mul_add (a := y.x1.val + 256 * (y.x2.val + 256 * y.x3.val)) (i := 8) (b := y.x0.val) hy0' i]
+  rw [Nat.testBit_two_pow_mul_add
+      (a := Nat.bitwise f x.x1.val y.x1.val +
+        256 * (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val))
+      (i := 8) (b := Nat.bitwise f x.x0.val y.x0.val) hbw0 i]
+  by_cases hi0 : i < 8
+  · simpa [hi0] using (Nat.testBit_bitwise hff x.x0.val y.x0.val i).symm
+  · simp only [hi0, if_false]
+    rw [hx1r, hy1r, hz1r]
+    rw [Nat.testBit_two_pow_mul_add (a := x.x2.val + 256 * x.x3.val) (i := 8) (b := x.x1.val) hx1' (i - 8)]
+    rw [Nat.testBit_two_pow_mul_add (a := y.x2.val + 256 * y.x3.val) (i := 8) (b := y.x1.val) hy1' (i - 8)]
+    rw [Nat.testBit_two_pow_mul_add
+        (a := Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)
+        (i := 8) (b := Nat.bitwise f x.x1.val y.x1.val) hbw1 (i - 8)]
+    by_cases hi1 : i - 8 < 8
+    · simpa [hi1] using (Nat.testBit_bitwise hff x.x1.val y.x1.val (i - 8)).symm
+    · simp only [hi1, if_false]
+      rw [hx2r, hy2r, hz2r]
+      rw [Nat.testBit_two_pow_mul_add (a := x.x3.val) (i := 8) (b := x.x2.val) hx2' ((i - 8) - 8)]
+      rw [Nat.testBit_two_pow_mul_add (a := y.x3.val) (i := 8) (b := y.x2.val) hy2' ((i - 8) - 8)]
+      rw [Nat.testBit_two_pow_mul_add
+          (a := Nat.bitwise f x.x3.val y.x3.val)
+          (i := 8) (b := Nat.bitwise f x.x2.val y.x2.val) hbw2 ((i - 8) - 8)]
+      by_cases hi2 : (i - 8) - 8 < 8
+      · simpa [hi2] using (Nat.testBit_bitwise hff x.x2.val y.x2.val ((i - 8) - 8)).symm
+      · simpa [hi2] using
+          (Nat.testBit_bitwise hff x.x3.val y.x3.val (((i - 8) - 8) - 8)).symm
 
-omit [Fact (Nat.Prime p)] p_large_enough in
+
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     x.value ||| y.value =
     (x.x0.val ||| y.x0.val) + 256 *

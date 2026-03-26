@@ -867,9 +867,6 @@ lemma cycle_from_suffix_contains (R : Run S) (suffix : List S) (current y : S)
     rw [h_count_same]
     exact h_contains_suffix t
 
-omit [Fintype S] in
-/-- If a run contains an acyclic path and has an edge from the end back into the path,
-    then the run has a cycle. -/
 lemma path_with_back_edge_creates_cycle (R : Run S) (path : List S) (current y : S)
     (h_acyclic : R.isAcyclic)
     (h_end : path.getLast? = some current)
@@ -877,31 +874,42 @@ lemma path_with_back_edge_creates_cycle (R : Run S) (path : List S) (current y :
     (h_y_in_path : y ∈ path)
     (h_edge : R (current, y) > 0) :
     R.hasCycle := by
-  -- Find y's position in path
   rw [List.mem_iff_getElem] at h_y_in_path
   obtain ⟨i, h_i_lt, h_y_eq⟩ := h_y_in_path
   let suffix := path.drop i
-  have h_suffix_nonempty : suffix ≠ [] := drop_of_lt_length_nonempty path i h_i_lt
-  have h_suffix_head : suffix.head? = some y := by aesop
-  have h_suffix_last : suffix.getLast? = some current := by grind
+  have h_suffix_nonempty : suffix ≠ [] := by
+    simpa [suffix] using (drop_of_lt_length_nonempty path i h_i_lt)
+  have h_suffix_head : suffix.head? = some y := by
+    simpa [suffix, h_i_lt, h_y_eq] using (List.head?_drop (l := path) (i := i))
+  have h_suffix_last : suffix.getLast? = some current := by
+    simpa [suffix, h_end, Nat.not_le_of_lt h_i_lt] using (List.getLast?_drop (l := path) (i := i))
+  have h_suffix_contains : R.containsPath suffix := by
+    simpa [suffix] using (containsPath_drop (R := R) (path := path) (n := i) h_contains)
+  have h_path_nodup : path.Nodup := by
+    exact acyclic_containsPath_nodup (R := R) (path := path) h_acyclic h_contains
+  have h_suffix_nodup : suffix.Nodup := by
+    simpa [suffix] using (List.Sublist.nodup (List.drop_sublist i path) h_path_nodup)
   let cycle := suffix ++ [y]
-  have h_cycle_head : cycle.head? = some y := by grind
-  have h_cycle_last : cycle.getLast? = some y := by grind
-  have h_cycle_len : cycle.length ≥ 2 := by grind
-  use cycle
-  constructor
-  · exact h_cycle_len
-  constructor
+  have h_len_pos : 0 < suffix.length := List.length_pos_iff_ne_nil.mpr h_suffix_nonempty
+  have h_one_le : 1 ≤ suffix.length := Nat.succ_le_of_lt h_len_pos
+  have h_cycle_len : 2 ≤ cycle.length := by
+    simpa [cycle, List.length_append] using Nat.succ_le_succ h_one_le
+  have h_cycle_head : cycle.head? = some y := by
+    cases hs : suffix with
+    | nil => cases h_suffix_nonempty hs
+    | cons a tl =>
+        simpa [cycle, hs] using h_suffix_head
+  have h_cycle_last : cycle.getLast? = some y := by
+    simp [cycle]
+  refine ⟨cycle, h_cycle_len, ?_, ?_⟩
   · rw [h_cycle_head, h_cycle_last]
-  · unfold cycle
-    have h_suffix_contains : R.containsPath suffix := by
-      unfold suffix
-      exact containsPath_drop R path i h_contains
-    have h_path_nodup := acyclic_containsPath_nodup R path h_acyclic h_contains
-    have h_suffix_nodup : suffix.Nodup := by grind
-    exact cycle_from_suffix_contains R suffix current y h_suffix_nodup h_suffix_contains h_suffix_nonempty h_suffix_last h_edge
+  · apply cycle_from_suffix_contains (R := R) (suffix := suffix) (current := current) (y := y)
+    · exact h_suffix_nodup
+    · exact h_suffix_contains
+    · exact h_suffix_nonempty
+    · exact h_suffix_last
+    · exact h_edge
 
-omit [Fintype S] in
 /-- If there's an edge from current to y, and y is in the path from root to current,
     then we can construct a cycle, contradicting acyclicity. -/
 lemma acyclic_edge_not_in_path (R : Run S) (path : List S) (current y : S)

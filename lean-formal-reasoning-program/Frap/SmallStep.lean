@@ -499,33 +499,27 @@ There are two cases to consider:
   Finally, `c (n₁ + n₂)` is a value, which is in turn a normal form by `nf_same_as_value`.
 -/
 
-theorem step_normalizing : normalizing Step := by
+theorem multistep_congr_2_value (v₁ t₂ t₂' : Tm) : Value v₁ → Multi Step t₂ t₂' → Multi Step (p v₁ t₂) (p v₁ t₂') := by
+  intro hv hs
+  induction hs with
+  | multi_refl t₂ =>
+      exact Multi.multi_refl _
+  | multi_step t₂ t₂' t₂'' hstep hmulti ih =>
+      apply Multi.multi_step
+      · exact Step.st_plus2 v₁ t₂ t₂' hv hstep
+      · exact ih
+
+theorem step_normalizing: normalizing Step := by
   unfold normalizing
   intro t
   induction t with
   | c n =>
-    exists c n
-    constructor
-    . apply multi_refl
-    . rw [nf_same_as_value]; apply v_const
+      sorry
   | p t₁ t₂ ih₁ ih₂ =>
-    obtain ⟨t₁', ⟨hs₁, hn₁⟩⟩ := ih₁
-    obtain ⟨t₂', ⟨hs₂, hn₂⟩⟩ := ih₂
-    rw [nf_same_as_value] at hn₁
-    rw [nf_same_as_value] at hn₂
-    cases hn₁; cases hn₂
-    rename_i n₁ n₂
-    exists c (n₁ + n₂)
-    constructor
-    . apply multi_trans
-      . apply multistep_congr_1
-        apply hs₁
-      . apply multi_trans
-        . apply multistep_congr_2
-          apply hs₂
-        . apply multi_R
-          apply st_plusConstConst
-    . rw [nf_same_as_value]; apply v_const
+      guard_hyp ih₁ : ∃ t', Multi Step t₁ t' ∧ normal_form Step t'
+      guard_hyp ih₂ : ∃ t', Multi Step t₂ t' ∧ normal_form Step t'
+      sorry
+
 
 /-
 ### Equivalence of big-step and small-step

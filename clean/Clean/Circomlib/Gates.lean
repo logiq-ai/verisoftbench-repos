@@ -375,6 +375,7 @@ theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α)
   exact ⟨hf, hg⟩
 
 -- Helper theorem for subcircuitsConsistent
+
 theorem subcircuitsConsistent (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
     Operations.SubcircuitsConsistent offset ((main input).operations offset) := by
   induction n using Nat.strong_induction_on generalizing offset with
@@ -393,17 +394,26 @@ theorem subcircuitsConsistent (n : ℕ) (input : Var (fields n) (F p)) (offset :
       rw [main]
       let n1 := (m + 3) / 2
       let n2 := (m + 3) - n1
-      have h_n1_lt : n1 < m + 3 := by unfold n1; omega
-      have h_n2_lt : n2 < m + 3 := by unfold n2; omega
+      have h_n1_lt : n1 < m + 3 := by
+        unfold n1
+        omega
+      have h_n2_lt : n2 < m + 3 := by
+        unfold n2
+        omega
       simp only [Circuit.operations]
       apply Circuit.subcircuitsConsistent_bind
       ·
-        let input1 : Var (fields n1) (F p) := input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega)
+        let input1 : Var (fields n1) (F p) :=
+          input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega)
         apply IH n1 h_n1_lt input1
-      · apply Circuit.subcircuitsConsistent_bind
-        · let input2 : Var (fields n2) (F p) := input.drop n1 |>.cast (by omega)
+      ·
+        apply Circuit.subcircuitsConsistent_bind
+        ·
+          let input2 : Var (fields n2) (F p) := input.drop n1 |>.cast (by omega)
           apply IH n2 h_n2_lt input2
-        · apply AND.circuit.subcircuitsConsistent
+        ·
+          apply AND.circuit.subcircuitsConsistent
+
 
 -- Helper lemma: UsesLocalWitnesses and UsesLocalWitnessesCompleteness are equivalent for MultiAND.main
 lemma main_usesLocalWitnesses_iff_completeness (n : ℕ) (input : Var (fields n) (F p)) (offset1 offset2 : ℕ) (env : Environment (F p)) :

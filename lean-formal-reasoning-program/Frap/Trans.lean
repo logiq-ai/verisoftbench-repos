@@ -500,59 +500,85 @@ example : atrans_sound fold_constants_aexp := by
 Here's the proof for boolean expressions:
 -/
 
+theorem fold_constants_bexp_and_case_sound (b1 b2 : BExp) (hb1 : bequiv b1 (fold_constants_bexp b1)) (hb2 : bequiv b2 (fold_constants_bexp b2)) : bequiv (b_and b1 b2) (fold_constants_bexp (b_and b1 b2)) := by
+  intro st
+  specialize hb1 st
+  specialize hb2 st
+  cases h1 : fold_constants_bexp b1 <;> cases h2 : fold_constants_bexp b2 <;>
+    simp [fold_constants_bexp, beval, h1, h2] at hb1 hb2 ⊢ <;>
+    simp [hb1, hb2]
+
+theorem fold_constants_bexp_eq_case_sound (a1 a2 : AExp) : bequiv (b_eq a1 a2) (fold_constants_bexp (b_eq a1 a2)) := by
+  intro st
+  simp [beval, fold_constants_bexp]
+  rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+  cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2 <;>
+    simp [beval, aeval, fold_constants_bexp, h1, h2]
+  all_goals
+    split <;> simp [beval]
+  all_goals
+    assumption
+
+theorem fold_constants_bexp_le_case_sound (a1 a2 : AExp) : bequiv (b_le a1 a2) (fold_constants_bexp (b_le a1 a2)) := by
+  intro st
+  simp [beval, fold_constants_bexp]
+  rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+  cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2 <;>
+    simp [beval, aeval, fold_constants_bexp, h1, h2]
+  case a_num.a_num =>
+    split <;> simp [beval, aeval, *]
+
+theorem fold_constants_bexp_neq_case_sound (a1 a2 : AExp) : bequiv (b_neq a1 a2) (fold_constants_bexp (b_neq a1 a2)) := by
+  intro st
+  simp [beval, fold_constants_bexp]
+  rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+  split <;> (
+    try rename_i heq
+    simp at heq
+    obtain ⟨⟩ := heq
+  ) <;>
+  (try split) <;> simp [beval, aeval, *]
+
+theorem fold_constants_bexp_not_case_sound (b : BExp) (hb : bequiv b (fold_constants_bexp b)) : bequiv (b_not b) (fold_constants_bexp (b_not b)) := by
+  intro st
+  specialize hb st
+  cases h : fold_constants_bexp b <;> simp [fold_constants_bexp, beval, h] at hb ⊢ <;> exact hb
+
+theorem fold_constants_bexp_or_case_sound (b1 b2 : BExp) (hb1 : bequiv b1 (fold_constants_bexp b1)) (hb2 : bequiv b2 (fold_constants_bexp b2)) : bequiv (b_or b1 b2) (fold_constants_bexp (b_or b1 b2)) := by
+  intro st
+  specialize hb1 st
+  specialize hb2 st
+  cases h1 : fold_constants_bexp b1 <;> cases h2 : fold_constants_bexp b2 <;>
+    simp [fold_constants_bexp, beval, h1, h2] at hb1 hb2 ⊢ <;> simp [hb1, hb2]
+
 theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by
-  intro b st; induction b with simp [fold_constants_bexp]
+  intro b st
+  induction b with
+  | b_true => simp [fold_constants_bexp, beval]
+  | b_false => simp [fold_constants_bexp, beval]
   | b_eq a1 a2 =>
-    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
+    simp [fold_constants_bexp, beval]
+    rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
     split
-    . rename_i hm
+    · rename_i hm
       simp at hm
-      obtain ⟨⟩ := hm
-      split <;> simp [*]
-    . rename_i hm
+      obtain ⟨left, right⟩ := hm
+      sorry
+    · rename_i hm
       simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
+      obtain ⟨left, right⟩ := hm
+      simpa [left, right, beval, aeval]
   | b_neq a1 a2 =>
-    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
-    split
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      split <;> simp [*]
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
+    sorry
   | b_le a1 a2 =>
-    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
-    split
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      split <;> simp [*]
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-  | b_not =>
-    split <;> simp [*]
-  | b_and =>
-    simp [*]
-    split <;> (
-      rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-    )
-  | b_or =>
-    simp [*]
-    split <;> (
-      rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-    )
+    sorry
+  | b_not b1 ih =>
+    sorry
+  | b_and b1 b2 ih1 ih2 =>
+    sorry
+  | b_or b1 b2 ih1 ih2 =>
+    sorry
+
 
 /-
 We see that after doing each split, we need to focus on the last hypothesis and simplify it for further use.

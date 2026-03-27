@@ -354,15 +354,15 @@ theorem localLength_eq (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
       simp only [IH _ h_n1_lt, IH _ h_n2_lt]
       simp only [Circuit.output]
       have h_and : ∀ (inp : Expression (F p) × Expression (F p)) (off : ℕ),
-        (AND.circuit.main inp).localLength off = 1 := by
+          (AND.circuit.main inp).localLength off = 1 := by
         intro inp off
         have := AND.circuit.localLength_eq inp off
         rw [show AND.circuit.localLength _ = 1 from rfl] at this
         exact this
-
       rw [h_and]
       conv => rhs; rw [← h_sum]
       omega
+
 
 -- Helper lemma: SubcircuitsConsistent preserved by bind
 theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α) (g : α → Circuit (F p) β) (offset : ℕ)

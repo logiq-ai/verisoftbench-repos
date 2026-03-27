@@ -549,37 +549,41 @@ lemma Environment.agreesBelow_of_le {F} {n m : ℕ} {env env' : Environment F} :
   fun h_same hi i hi' => h_same i (Nat.lt_of_lt_of_le hi' hi)
 
 namespace FlatOperation
-/--
-If all witness generators only access the environment below the current offset, then
-the entire circuit only accesses the environment below `n + localLength`.
-
-This is not currently used, but seemed like a nice result to have.
--/
 theorem onlyAccessedBelow_all {ops : List (FlatOperation F)} (n : ℕ) :
   forAll n { witness n _ := Environment.OnlyAccessedBelow n } ops →
     Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by
-  intro h_comp env env' h_env
-  simp only
+  intro h_forall
+  intro env env' hAgree
   induction ops generalizing n with
-  | nil => simp [localWitnesses]
+  | nil =>
+      simp only [FlatOperation.forAll, FlatOperation.localLength, FlatOperation.localWitnesses,
+        Environment.OnlyAccessedBelow] at h_forall ⊢
   | cons op ops ih =>
-    simp_all only [forAll_cons, localLength_cons]
-    have h_ih := h_comp.right
-    replace h_comp := h_comp.left
-    replace h_ih := ih (op.singleLocalLength + n) h_ih
-    ring_nf at *
-    specialize h_ih h_env
-    clear ih
-    cases op with
-    | assert | lookup =>
-      simp_all only [Condition.applyFlat, localWitnesses]
-    | witness m c =>
-      simp_all only [Condition.applyFlat, localWitnesses,
-        Environment.OnlyAccessedBelow, Environment.AgreesBelow]
-      congr 1
-      apply h_comp env env'
-      intro i hi
-      exact h_env i (by linarith)
+      cases op with
+      | witness m c =>
+          simp only [FlatOperation.forAll, Condition.applyFlat, FlatOperation.singleLocalLength,
+            FlatOperation.localLength, FlatOperation.localWitnesses] at h_forall ⊢
+          rcases h_forall with ⟨h_head, h_tail⟩
+          have h_head' : c env = c env' := by
+            apply h_head
+            intro i hi
+            exact hAgree i (lt_of_lt_of_le hi (Nat.le_add_right _ _))
+          have h_tail' : localWitnesses env ops = localWitnesses env' ops := by
+            apply ih (n := m + n)
+            · simpa [Nat.add_comm] using h_tail
+            · intro i hi
+              exact hAgree i (by
+                simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hi)
+          simp [h_head', h_tail']
+      | assert e =>
+          simp only [FlatOperation.forAll, Condition.applyFlat, FlatOperation.singleLocalLength,
+            FlatOperation.localLength, FlatOperation.localWitnesses, true_and] at h_forall ⊢
+          exact ih (n := n) h_forall hAgree
+      | lookup l =>
+          simp only [FlatOperation.forAll, Condition.applyFlat, FlatOperation.singleLocalLength,
+            FlatOperation.localLength, FlatOperation.localWitnesses, true_and] at h_forall ⊢
+          exact ih (n := n) h_forall hAgree
+
 end FlatOperation
 
 -- theorem about relationship between FormalCircuit and GeneralFormalCircuit

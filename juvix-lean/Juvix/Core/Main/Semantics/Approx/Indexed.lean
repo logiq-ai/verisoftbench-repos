@@ -226,51 +226,21 @@ lemma Value.Approx.Indexed.invert {n v v'} :
   · subst h₁ h₂
     exact Value.Approx.Indexed.Inversion.closure h
 
-lemma Value.Approx.Indexed.anti_monotone {n n' v₁ v₂} (h : v₁ ≲ᵥ(n) v₂) (h' : n' ≤ n) : v₁ ≲ᵥ(n') v₂ := by
-  revert n n'
-  suffices ∀ n, v₁ ≲ᵥ(n) v₂ → ∀ k ≤ n, v₁ ≲ᵥ(k) v₂ by
-    intro n n' h hn
-    exact this n h n' hn
-  intro n
-  induction n generalizing v₁ v₂ with
-  | zero =>
-    intros h k hk
-    invert h
-    case unit =>
-      exact Value.Approx.Indexed.unit
-    case const =>
-      exact Value.Approx.Indexed.const
-    case constr_app ctr_name args_rev args_rev' hargs =>
-      apply Value.Approx.Indexed.constr_app
-      · intros
-        have : k = 0 := by linarith
-        subst k
-        contradiction
-    case closure env₁ body₁ env₂ body₂ h =>
-      apply Value.Approx.Indexed.closure
-      · intros
-        have : k = 0 := by linarith
-        subst k
-        contradiction
-  | succ n ih =>
-    intros h k hk
-    invert h
-    case unit =>
-      exact Value.Approx.Indexed.unit
-    case const =>
-      exact Value.Approx.Indexed.const
-    case constr_app ctr_name args_rev args_rev' hargs =>
-      apply Value.Approx.Indexed.constr_app
-      · intros k' hk'
-        have : k' < n + 1 := by linarith
-        simp_all only
-    case closure env₁ body₁ env₂ body₂ ch =>
-      apply Value.Approx.Indexed.closure
-      · intro n₁ n₂ hn a₁ a₂ v₁ happrox heval
-        apply ch n₁ n₂
-        · linarith
-        · assumption
-        · assumption
+theorem Value.Approx.Indexed.anti_monotone {n n' : Nat} {v₁ v₂ : Value} (h : v₁ ≲ᵥ(n) v₂) (h' : n' ≤ n) : v₁ ≲ᵥ(n') v₂ := by
+  invert h
+  case unit =>
+    exact Value.Approx.Indexed.unit
+  case const =>
+    exact Value.Approx.Indexed.const
+  case constr_app ctr_name args_rev args_rev' hargs =>
+    apply Value.Approx.Indexed.constr_app
+    intro k hk
+    exact hargs k (lt_of_lt_of_le hk h')
+  case closure env₁ body₁ env₂ body₂ hcl =>
+    apply Value.Approx.Indexed.closure
+    intro n₁ n₂ hlt a₁ a₂ r₁ happrox heval
+    exact hcl n₁ n₂ (lt_of_lt_of_le hlt h') a₁ a₂ r₁ happrox heval
+
 
 lemma Expr.Approx.Param.Indexed.anti_monotone {n n' env₁ env₂ e₁ e₂}
   (h : e₁ ≲(n)⟨env₁, env₂⟩ e₂)

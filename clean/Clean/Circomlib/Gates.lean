@@ -880,6 +880,8 @@ lemma main_output_binary_from_completeness (n : ℕ) (offset : ℕ) (env : Envir
     · rfl
   · exact h_completeness
 
+
+
 theorem completeness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields n) (F p))
       (input : fields n (F p)),

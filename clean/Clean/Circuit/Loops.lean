@@ -235,15 +235,16 @@ lemma foldlAcc_cons_succ (i : Fin m) (x : α) [constant : ConstantLength (prod c
   rw [constant.localLength_eq (init, x), ←constant.localLength_eq (acc, _) 0]
   ac_rfl
 
-theorem operations_eq :
-  (Vector.foldlM circuit init xs).operations n =
+theorem operations_eq: (Vector.foldlM circuit init xs).operations n =
     (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by
-  induction xs using Vector.induct generalizing n init with
-  | nil => rfl
-  | cons x xs ih =>
-    rw [foldlM_cons, bind_operations_eq, ih, List.ofFn_succ, List.flatten_cons]
-    simp only [foldlAcc_cons_succ, foldlAcc_zero]
-    simp +arith [Vector.cons, add_mul, constant.localLength_eq (init, x)]
+  induction xs using Vector.induct generalizing init n with
+  | nil =>
+      rfl
+  | @cons m x xs ih =>
+      rw [foldlM_cons, bind_operations_eq, ih, List.ofFn_succ, List.flatten_cons]
+      simp only [foldlAcc_cons_succ, foldlAcc_zero]
+      simp +arith [Vector.cons, add_mul, constant.localLength_eq (init, x)]
+
 
 variable {prop : Condition F}
 

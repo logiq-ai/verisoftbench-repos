@@ -650,8 +650,10 @@ lemma soundness_two {p : ℕ} [Fact p.Prime]
   simp only [Spec]
   have h_input0 := h_assumptions 0 (by norm_num : 0 < 2)
   have h_input1 := h_assumptions 1 (by norm_num : 1 < 2)
-  have h_eval0 : env input_var[0] = input[0] := by simp [h_env, circuit_norm]
-  have h_eval1 : env input_var[1] = input[1] := by simp [h_env, circuit_norm]
+  have h_eval0 : env input_var[0] = input[0] := by
+    simp [h_env, circuit_norm]
+  have h_eval1 : env input_var[1] = input[1] := by
+    simp [h_env, circuit_norm]
   have h_and_spec := AND.circuit.soundness offset env (input_var[0], input_var[1])
     (input[0], input[1])
     (by simp only [ProvableType.eval_fieldPair, h_eval0, h_eval1])
@@ -659,8 +661,9 @@ lemma soundness_two {p : ℕ} [Fact p.Prime]
 
   rcases h_and_spec with ⟨h_val, h_binary⟩
   constructor
-  · -- Prove output.val = fold
-    have h_fold_two : Vector.foldl (fun x1 x2 => x1 &&& x2) 1 (input.map (·.val)) = input[0].val &&& input[1].val := by
+  · have h_fold_two :
+      Vector.foldl (fun x1 x2 => x1 &&& x2) 1 (input.map (·.val)) =
+        input[0].val &&& input[1].val := by
       rw [Vector.foldl_mk, ← Array.foldl_toList]
       have h_toList : (input.map (·.val)).toList = [input[0].val, input[1].val] := by
         rw [Vector.toList_length_two]
@@ -671,6 +674,8 @@ lemma soundness_two {p : ℕ} [Fact p.Prime]
     rw [h_fold_two]
     exact h_val
   · exact h_binary
+
+
 
 /-- Completeness for n = 0 case -/
 lemma completeness_zero {p : ℕ} [Fact p.Prime]

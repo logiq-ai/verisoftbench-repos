@@ -722,6 +722,7 @@ lemma completeness_two {p : ℕ} [Fact p.Prime]
       rw [h_eval1]
       exact h_binary1
 
+
 theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields n) (F p))
       (input : fields n (F p)),
@@ -764,7 +765,8 @@ theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
         intro i hi
         -- input1[i] = input[i] since input1 is take of input
         simp only [input1]
-        have : (input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega))[i]'hi = input[i]'(by omega) := by
+        have : (input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega))[i]'hi =
+            input[i]'(by omega) := by
           rw [Vector.getElem_cast, Vector.getElem_take]
         rw [this]
         apply h_assumptions i (by omega)
@@ -780,8 +782,10 @@ theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
         apply IH n1 h_n1_lt offset env input_var1 input1 h_eval1 h_assumptions1
         rw [Circuit.ConstraintsHold.bind_soundness] at h_hold
         exact h_hold.1
-      have h_spec2 : Spec n2 input2 (env ((main input_var2).output (offset + (main input_var1).localLength offset))) := by
-        apply IH n2 h_n2_lt (offset + (main input_var1).localLength offset) env input_var2 input2 h_eval2 h_assumptions2
+      have h_spec2 : Spec n2 input2
+          (env ((main input_var2).output (offset + (main input_var1).localLength offset))) := by
+        apply IH n2 h_n2_lt (offset + (main input_var1).localLength offset) env input_var2 input2
+          h_eval2 h_assumptions2
         rw [Circuit.ConstraintsHold.bind_soundness] at h_hold
         rw [Circuit.ConstraintsHold.bind_soundness] at h_hold
         exact h_hold.2.1
@@ -791,7 +795,8 @@ theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
       let out1 := (main input_var1).output offset
       let out2 := (main input_var2).output (offset + (main input_var1).localLength offset)
       have h_and_spec := AND.circuit.soundness
-        (offset + (main input_var1).localLength offset + (main input_var2).localLength (offset + (main input_var1).localLength offset))
+        (offset + (main input_var1).localLength offset +
+          (main input_var2).localLength (offset + (main input_var1).localLength offset))
         env
         (out1, out2)
         (env out1, env out2)
@@ -810,8 +815,9 @@ theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
           simp only [out1, out2]
           simp only [h_val1, h_val2]
 
-        have h_append : input1.cast (by omega : n1 = n1) ++ input2.cast (by omega : n2 = n2) =
-                          input.cast (by omega : m + 3 = n1 + n2) := by
+        have h_append :
+            input1.cast (by omega : n1 = n1) ++ input2.cast (by omega : n2 = n2) =
+              input.cast (by omega : m + 3 = n1 + n2) := by
             simp only [input1, input2]
             have h_eq : n1 + n2 = m + 3 := by omega
             simp only [Vector.cast_cast]
@@ -819,31 +825,40 @@ theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
             congr 1
 
         symm
-        refine Vector.foldl_and_split (Vector.map (·.val) input) (Vector.map (·.val) input1) (Vector.map (·.val) input2) ?_ ?_
+        refine Vector.foldl_and_split (Vector.map (·.val) input) (Vector.map (·.val) input1)
+          (Vector.map (·.val) input2) ?_ ?_
         · exact h_sum
-        · have h_map_append : Vector.map (·.val) (input.cast (by omega : m + 3 = n1 + n2)) =
-                             Vector.map (·.val) (input1.cast (by omega : n1 = n1) ++ input2.cast (by omega : n2 = n2)) := by
+        · have h_map_append :
+              Vector.map (·.val) (input.cast (by omega : m + 3 = n1 + n2)) =
+                Vector.map (·.val)
+                  (input1.cast (by omega : n1 = n1) ++ input2.cast (by omega : n2 = n2)) := by
             congr 1
             exact h_append.symm
 
           simp only [Vector.map_append] at h_map_append
 
-          have h1 : Vector.map (·.val) input = (Vector.map (·.val) (input.cast (by omega : m + 3 = n1 + n2))).cast h_sum := by
+          have h1 :
+              Vector.map (·.val) input =
+                (Vector.map (·.val) (input.cast (by omega : m + 3 = n1 + n2))).cast h_sum := by
             ext i
             simp only [Vector.getElem_map, Vector.getElem_cast]
 
-          have h2 : Vector.map (·.val) (input1.cast (by omega : n1 = n1)) = Vector.map (·.val) input1 := by
+          have h2 :
+              Vector.map (·.val) (input1.cast (by omega : n1 = n1)) =
+                Vector.map (·.val) input1 := by
             ext i
             simp only [Vector.getElem_map, Vector.getElem_cast]
 
-          have h3 : Vector.map (·.val) (input2.cast (by omega : n2 = n2)) = Vector.map (·.val) input2 := by
+          have h3 :
+              Vector.map (·.val) (input2.cast (by omega : n2 = n2)) =
+                Vector.map (·.val) input2 := by
             ext i
             simp only [Vector.getElem_map, Vector.getElem_cast]
 
           rw [h1, h_map_append, h2, h3]
 
-          have h_cast_transport : ∀ {n m : ℕ} (h : n = m) (v : Vector ℕ n),
-                                  Vector.cast h v = h ▸ v := by
+          have h_cast_transport :
+              ∀ {n m : ℕ} (h : n = m) (v : Vector ℕ n), Vector.cast h v = h ▸ v := by
             intros n m h v
             subst h
             rfl
@@ -851,6 +866,7 @@ theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
           rw [h_cast_transport]
 
       · exact h_and_binary
+
 
 lemma main_output_binary (n : ℕ) (offset : ℕ) (env : Environment (F p))
     (input_var : Var (fields n) (F p)) (input : fields n (F p))

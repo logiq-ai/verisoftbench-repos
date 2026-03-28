@@ -209,81 +209,82 @@ lemma Value.Approx.invert {v v'} :
   intro h
   invert (h 0) <;> constructor <;> aesop
 
-@[trans]
-lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
-  revert n
-  suffices ∀ n, ∀ k ≤ n, v₁ ≲ᵥ(k) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(k) v₃ by
-    intro k
-    exact this k k k.le_refl
-  intros n
+theorem Value.Approx.Indexed.trans_aux: ∀ {v₁ v₂ v₃}, ∀ n, ∀ k ≤ n, v₁ ≲ᵥ(k) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(k) v₃ := by
+  intro v₁ v₂ v₃ n
   induction n generalizing v₁ v₂ v₃ with
   | zero =>
-    intros k hk h₁ h₂
-    invert h₁
-    case unit =>
-      invert h₂
+      intro k hk h₁ h₂
+      have hk0 : k = 0 := by
+        linarith
+      invert h₁
       case unit =>
+        have hv₃ : v₃ = Value.unit := by
+          simpa using (Value.Approx.unit_right.mp h₂)
+        subst v₃
         exact Value.Approx.Indexed.unit
-    case const =>
-      invert h₂
-      case const =>
+      case const c =>
+        have hv₃ : v₃ = Value.const c := by
+          simpa using (Value.Approx.const_right.mp h₂)
+        subst v₃
         exact Value.Approx.Indexed.const
-    case constr_app ctr_name args_rev₁ args_rev₁' ch₁ =>
-      cases h₂.invert
-      case constr_app args_rev₂ ch₂ =>
-        apply Value.Approx.Indexed.constr_app;
-        intros
-        simp_all only [nonpos_iff_eq_zero, not_lt_zero', IsEmpty.forall_iff, implies_true]
-    case closure env₁ body₁ env₁' body₁' ch₁ =>
-      cases h₂.invert
-      case closure env₂ body₂ ch₂ =>
-        apply Value.Approx.Indexed.closure
-        · intro k' hk' v v₁ h
-          have : k = 0 := by linarith
-          subst k
-          contradiction
-  | succ n ih =>
-    intros k hk h₁ h₂
-    invert h₁
-    case unit =>
-      invert h₂
-      case unit =>
-        exact Value.Approx.Indexed.unit
-    case const =>
-      invert h₂
-      case const =>
-        exact Value.Approx.Indexed.const
-    case constr_app ctr_name args_rev args_rev' ch₁ =>
-      invert h₂
-      case constr_app args_rev'' ch₂ =>
+      case constr_app ctr_name args_rev args_rev' hargs =>
+        obtain ⟨args_rev'', hv₃, hargs'⟩ := Value.Approx.constr_app_inv_right h₂
+        subst v₃
         apply Value.Approx.Indexed.constr_app
-        · intro k' hk'
-          have hk' : k' ≤ n := by linarith
-          apply Utils.forall₂_trans' (P := fun v₁ v₂ => v₁ ≲ᵥ(k') v₂) (Q := fun v₁ v₂ => v₁ ≲ᵥ v₂)
-          · intros v₁ v₂ v₃ h₁ h₂
-            apply ih <;> assumption
-          · apply ch₁
-            simp_all only
-          · apply ch₂
-    case closure env₁ body₁ env₂ body₂ ch₁ =>
-      invert h₂
-      case closure env₃ body₃ ch₂ =>
+        intro k' hk'
+        subst k
+        exfalso
+        linarith
+      case closure env₁ body₁ env₂ body₂ ch =>
+        obtain ⟨env₃, body₃, hv₃, hcl⟩ := Value.Approx.closure_inv_right h₂
+        subst v₃
         apply Value.Approx.Indexed.closure
-        · intro n₁ n₂ hn a₁ a₃ v₁ happrox heval₁
-          have ah₁ : ∃ v₂, (a₃ ∷ env₂) ⊢ body₂ ↦ v₂ ∧ v₁ ≲ᵥ(n₂) v₂ := by
-            apply ch₁
-            · assumption
-            · assumption
-            · assumption
-          obtain ⟨v₂, heval₂, h₂⟩ := ah₁
-          have ah₂ : ∃ v₃, (a₃ ∷ env₃) ⊢ body₃ ↦ v₃ ∧ v₂ ≲ᵥ v₃ := by
-            apply ch₂
-            · rfl
-            · assumption
-          obtain ⟨v₃, _, h₃⟩ := ah₂
-          have : n₂ ≤ n := by linarith
-          exists v₃
-          aesop
+        intro n₁ n₂ hn a₁ a₃ r₁ happrox heval₁
+        exfalso
+        subst k
+        linarith
+  | succ n ih =>
+      intro k hk h₁ h₂
+      invert h₁
+      case unit =>
+        have hv₃ : v₃ = Value.unit := by
+          simpa using (Value.Approx.unit_right.mp h₂)
+        subst v₃
+        exact Value.Approx.Indexed.unit
+      case const c =>
+        have hv₃ : v₃ = Value.const c := by
+          simpa using (Value.Approx.const_right.mp h₂)
+        subst v₃
+        exact Value.Approx.Indexed.const
+      case constr_app ctr_name args_rev args_rev' hargs =>
+        obtain ⟨args_rev'', hv₃, hargs₂⟩ := Value.Approx.constr_app_inv_right h₂
+        subst v₃
+        apply Value.Approx.Indexed.constr_app
+        intro k' hk'
+        have hk'le : k' ≤ n := by
+          linarith
+        exact Utils.forall₂_trans'
+          (P := fun a b => a ≲ᵥ(k') b)
+          (Q := fun b c => b ≲ᵥ c)
+          (R := fun a c => a ≲ᵥ(k') c)
+          (fun a b c hab hbc => ih k' hk'le hab hbc)
+          (hargs k' hk')
+          hargs₂
+      case closure env₁ body₁ env₂ body₂ ch =>
+        obtain ⟨env₃, body₃, hv₃, hcl⟩ := Value.Approx.closure_inv_right h₂
+        subst v₃
+        apply Value.Approx.Indexed.closure
+        intro n₁ n₂ hn a₁ a₃ r₁ happrox heval₁
+        obtain ⟨r₂, heval₂, h12⟩ := ch n₁ n₂ hn a₁ a₃ r₁ happrox heval₁
+        obtain ⟨r₃, heval₃, h23⟩ := hcl a₃ a₃ (Value.Approx.refl a₃) r₂ heval₂
+        have hn₂ : n₂ ≤ n := by
+          linarith
+        exact ⟨r₃, heval₃, ih n₂ hn₂ h12 h23⟩
+
+theorem Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  intro h₁ h₂
+  exact Value.Approx.Indexed.trans_aux n n (Nat.le_refl n) h₁ h₂
+
 
 @[trans]
 lemma Value.Approx.trans {v₁ v₂ v₃} : v₁ ≲ᵥ v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ v₃ := by

@@ -264,7 +264,7 @@ theorem progress t T
       exists ite t₁' t₂ t₃
       apply st_if; exact h₁
   | t_true =>
-    left;unfold value; left; apply bv_true
+    left; unfold value; left; apply bv_true
   | t_false =>
     left; unfold value; left; apply bv_false
   | t_0 =>
@@ -313,6 +313,7 @@ theorem progress t T
       obtain ⟨t', h⟩ := h
       exists (iszero t')
       apply st_iszero; exact h
+
 
 /-
 ### Type preservation

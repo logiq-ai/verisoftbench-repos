@@ -249,70 +249,71 @@ theorem progress t T
     : HasType t T → value t ∨ ∃ t', Step t t' := by
   intro ht
   induction ht with
-  | t_if t₁ t₂ t₃ T =>
-    rename_i ih₁ ih₂ ih₃
-    right; cases ih₁
-    . -- t₁ is a value
-      have h : BValue t₁ := by
-        apply bool_canonical <;> assumption
-      cases h
-      . exists t₂; apply st_ifTrue
-      . exists t₃; apply st_ifFalse
-    . -- t₁ can take a step
-      rename_i h
-      obtain ⟨t₁', h₁⟩ := h
-      exists ite t₁' t₂ t₃
-      apply st_if; exact h₁
   | t_true =>
-    left;unfold value; left; apply bv_true
-  | t_false =>
-    left; unfold value; left; apply bv_false
-  | t_0 =>
-    left; unfold value; right; apply nv_0
-  | t_succ t =>
-    rename_i ih
-    cases ih
-    . -- t is a value
       left
-      have h : NValue t := by
-        apply nat_canonical <;> assumption
-      cases h
-      . unfold value; right; apply nv_succ; apply nv_0
-      . unfold value; right; apply nv_succ; apply nv_succ; assumption
-    . -- t can take a step
-      right
-      rename_i ih
-      obtain ⟨t', h⟩ := ih
-      exists (scc t')
-      apply st_succ; exact h
-  | t_pred t =>
-    rename_i ih
-    right; cases ih
-    . -- t is a value
-      have h : NValue t := by
-        apply nat_canonical <;> assumption
-      cases h
-      . exists zro; apply st_pred0
-      . constructor; apply st_predSucc; assumption
-    . -- t can take a step
-      rename_i h
-      obtain ⟨t', h⟩ := h
-      exists (prd t')
-      apply st_pred; exact h
-  | t_iszero t =>
-    rename_i ih
-    right; cases ih
-    . -- t is a value
-      have h : NValue t := by
-        apply nat_canonical <;> assumption
-      cases h
-      . exists tru; apply st_iszero0
-      . exists fls; apply st_iszeroSucc; assumption
-    . -- t can take a step
-      rename_i h
-      obtain ⟨t', h⟩ := h
-      exists (iszero t')
-      apply st_iszero; exact h
+      exact Or.inl bv_true
+  | t_false =>
+      left
+      exact Or.inl bv_false
+  | t_if t₁ t₂ t₃ T hcond hthen helse ihCond ihThen ihElse =>
+      cases ihCond with
+      | inl hv =>
+          have hb : BValue t₁ := bool_canonical t₁ hcond hv
+          cases hb with
+          | bv_true =>
+              right
+              exact ⟨t₂, st_ifTrue t₂ t₃⟩
+          | bv_false =>
+              right
+              exact ⟨t₃, st_ifFalse t₂ t₃⟩
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          right
+          exact ⟨ite t₁' t₂ t₃, st_if t₁ t₁' t₂ t₃ hs⟩
+  | t_0 =>
+      left
+      exact Or.inr nv_0
+  | t_succ t₁ hty ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ hty hv
+          left
+          exact Or.inr (nv_succ t₁ hn)
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          right
+          exact ⟨scc t₁', st_succ t₁ t₁' hs⟩
+  | t_pred t₁ hty ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ hty hv
+          cases hn with
+          | nv_0 =>
+              right
+              exact ⟨zro, st_pred0⟩
+          | nv_succ v hv' =>
+              right
+              exact ⟨v, st_predSucc v hv'⟩
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          right
+          exact ⟨prd t₁', st_pred t₁ t₁' hs⟩
+  | t_iszero t₁ hty ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ hty hv
+          cases hn with
+          | nv_0 =>
+              right
+              exact ⟨tru, st_iszero0⟩
+          | nv_succ v hv' =>
+              right
+              exact ⟨fls, st_iszeroSucc v hv'⟩
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          right
+          exact ⟨iszero t₁', st_iszero t₁ t₁' hs⟩
+
 
 /-
 ### Type preservation

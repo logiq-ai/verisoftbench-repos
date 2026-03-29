@@ -847,28 +847,24 @@ theorem MemoryAccessList.filterAddress_addressTimestampSort_eq
   -- Since the lists are equal, the iff is trivial
   simp only [h_eq]
 
-/--
-  Constructive version of the theorem below.
--/
-theorem MemoryAccessList.isConsistentOnline_iff_sorted_isConsistentOffline
-    (accesses : MemoryAccessList)
+theorem MemoryAccessList.isConsistentOnline_iff_sorted_isConsistentOffline (accesses : MemoryAccessList)
     (h_sorted : accesses.isTimestampSorted)
     (h_nodup : accesses.Notimestampdup) :
     MemoryAccessList.isConsistentOnline accesses h_sorted ↔
     MemoryAccessList.isConsistentOffline (MemoryAccessList.addressTimestampSort accesses) (MemoryAccessList.addressTimestampSort_sorted accesses) := by
-  rw [isConsistent_iff_all_single_address]
-  -- Use isConsistentOffline_iff_all_single_addresses
-  rw [isConsistentOffline_iff_all_single_addresses (addressTimestampSort accesses)
-    (addressTimestampSort_sorted accesses)
-    (addressTimestampSort_noTimestampDup accesses h_nodup)]
-  -- Now use filterAddress_addressTimestampSort_eq to relate the two sides
+  rw [MemoryAccessList.isConsistent_iff_all_single_address accesses h_sorted]
+  rw [MemoryAccessList.isConsistentOffline_iff_all_single_addresses
+    (MemoryAccessList.addressTimestampSort accesses)
+    (MemoryAccessList.addressTimestampSort_sorted accesses)
+    (MemoryAccessList.addressTimestampSort_noTimestampDup accesses h_nodup)]
   constructor
   · intro h addr
-    rw [← filterAddress_addressTimestampSort_eq accesses h_sorted h_nodup addr]
+    rw [← MemoryAccessList.filterAddress_addressTimestampSort_eq accesses h_sorted h_nodup addr]
     exact h addr
   · intro h addr
-    rw [filterAddress_addressTimestampSort_eq accesses h_sorted h_nodup addr]
+    rw [MemoryAccessList.filterAddress_addressTimestampSort_eq accesses h_sorted h_nodup addr]
     exact h addr
+
 
 /--
   Technical lemma for soundness: if there exists two address-timestamp sorted lists of memory accesses

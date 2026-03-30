@@ -48,13 +48,6 @@ def formalTable (output : KeccakState (F p)) := table.toFormal initialState outp
 -- The table's statement implies that the output state is the result of keccak-hashing some list of input blocks
 theorem tableStatement (output : KeccakState (F p)) : ∀ n > 0, ∀ trace, ∃ blocks, blocks.length = n - 1 ∧
   (formalTable output).statement n trace →
-    output.Normalized ∧ output.value = absorbBlocks blocks := by
-  intro n hn trace
-  use (InductiveTable.traceInputs trace.tail).map KeccakBlock.value
-  intro Spec
-  simp only [formalTable, FormalTable.statement, table, InductiveTable.toFormal] at Spec
-  simp only [List.length_map, Trace.toList_length, trace.tail.prop, InductiveTable.traceInputs, hn] at Spec
-  simp only [initialState_value, initialState_normalized, absorbBlocks, Specs.Keccak256.initialState, true_and] at Spec
-  exact Spec rfl
+    output.Normalized ∧ output.value = absorbBlocks blocks := by sorry
 
 end Tables.KeccakInductive

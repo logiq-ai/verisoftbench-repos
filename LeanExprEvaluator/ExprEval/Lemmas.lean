@@ -2,58 +2,7 @@ import ExprEval.Expr
 import ExprEval.Steps
 mutual
 
-    theorem arstep_preserve_eval (e e': ArExpr V): (ArStep V val) e e' -> eval V val e = eval V val e' := by
-            intro h
-            cases h with
-
-            | addConstConst n₁ n₂
-            | subConstConst n₁ n₂
-            | mulConstConst n₁ n₂ => simp [eval]
-            | subLeft e₁ e₁' e₂ step
-            | addLeft e₁ e₁' e₂ step =>
-                simp [eval]
-                exact arstep_preserve_eval e₁ e₁' step
-            | mulLeft e₁ e₁' e₂ step =>
-                simp [eval]
-                cases h : (eval V val e₂ == 0)
-                .   rw [beq_eq_false_iff_ne] at h
-                    rw [Int.mul_eq_mul_right_iff]
-                    exact arstep_preserve_eval e₁ e₁' step
-                    exact h
-                .   rw [beq_iff_eq] at h
-                    rw [h]
-                    simp
-            | addRight n e₂ e₁' step
-            | subRight n e₂ e₁' step
-            | mulRight n e₂ e₁' step =>
-                -- have ih := arstep_preserve_eval e₁ e₁' step
-                have ihn := arstep_preserve_eval e₂ e₁' step
-                simp [eval, ihn]
-
-            | getVarValue var => simp [eval]
-            | ifCondTrue a b =>
-                simp [eval]
-                simp [eval_bool]
-            | ifCondFalse a b =>
-                simp [eval]
-                simp [eval_bool]
-            | ifStep e e' a b bstep =>
-                have ihn := boolstep_preserves_eval_bool e e' bstep
-                cases h: (eval_bool V val e)
-                .   simp [eval]
-                    rw [h]
-                    rw [<- ihn]
-                    simp
-                    intro noth
-                    rw [h] at noth
-                    nomatch noth
-                .   simp [eval]
-                    rw [h]
-                    rw [<- ihn]
-                    simp
-                    intro noth
-                    rw [h] at noth
-                    nomatch noth
+    theorem arstep_preserve_eval (e e': ArExpr V): (ArStep V val) e e' -> eval V val e = eval V val e' := by sorry
 
     theorem arstepstar_preserves_eval (e e': ArExpr V) :
             ArStepStar V val e e' -> eval V val e = eval V val e' := by

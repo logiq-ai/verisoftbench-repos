@@ -499,33 +499,7 @@ There are two cases to consider:
   Finally, `c (n₁ + n₂)` is a value, which is in turn a normal form by `nf_same_as_value`.
 -/
 
-theorem step_normalizing : normalizing Step := by
-  unfold normalizing
-  intro t
-  induction t with
-  | c n =>
-    exists c n
-    constructor
-    . apply multi_refl
-    . rw [nf_same_as_value]; apply v_const
-  | p t₁ t₂ ih₁ ih₂ =>
-    obtain ⟨t₁', ⟨hs₁, hn₁⟩⟩ := ih₁
-    obtain ⟨t₂', ⟨hs₂, hn₂⟩⟩ := ih₂
-    rw [nf_same_as_value] at hn₁
-    rw [nf_same_as_value] at hn₂
-    cases hn₁; cases hn₂
-    rename_i n₁ n₂
-    exists c (n₁ + n₂)
-    constructor
-    . apply multi_trans
-      . apply multistep_congr_1
-        apply hs₁
-      . apply multi_trans
-        . apply multistep_congr_2
-          apply hs₂
-        . apply multi_R
-          apply st_plusConstConst
-    . rw [nf_same_as_value]; apply v_const
+theorem step_normalizing : normalizing Step := by sorry
 
 /-
 ### Equivalence of big-step and small-step

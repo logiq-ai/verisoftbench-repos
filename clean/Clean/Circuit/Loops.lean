@@ -211,11 +211,7 @@ lemma finFoldl_cons_succ (x : α) :
 
 theorem output_eq :
   (xs.foldlM circuit init).output n =
-    Fin.foldl m (fun acc i => (circuit acc xs[i.val]).output (n + i * constant.localLength)) init := by
-  induction xs using Vector.induct generalizing init n
-  case nil => rfl
-  case cons x xs ih =>
-    rw [foldlM_cons, bind_output_eq, ih, constant.localLength_eq (init, x), finFoldl_cons_succ]
+    Fin.foldl m (fun acc i => (circuit acc xs[i.val]).output (n + i * constant.localLength)) init := by sorry
 
 def foldlAcc (n : ℕ) (xs : Vector α m) (circuit : β → α → Circuit F β) (init : β) (j : Fin m) : β :=
   Fin.foldl j (fun acc i => (circuit acc xs[i.val]).output (n + i*(circuit acc xs[i.val]).localLength)) init
@@ -237,13 +233,7 @@ lemma foldlAcc_cons_succ (i : Fin m) (x : α) [constant : ConstantLength (prod c
 
 theorem operations_eq :
   (Vector.foldlM circuit init xs).operations n =
-    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by
-  induction xs using Vector.induct generalizing n init with
-  | nil => rfl
-  | cons x xs ih =>
-    rw [foldlM_cons, bind_operations_eq, ih, List.ofFn_succ, List.flatten_cons]
-    simp only [foldlAcc_cons_succ, foldlAcc_zero]
-    simp +arith [Vector.cons, add_mul, constant.localLength_eq (init, x)]
+    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by sorry
 
 variable {prop : Condition F}
 
@@ -307,56 +297,14 @@ theorem operations_eq_const [NeZero m] (constant : ConstantLength (prod circuit)
   (List.ofFn fun (⟨i, _⟩ : Fin (m - 1)) =>
     let k := (circuit default default).localLength
     let acc := (circuit default xs[i]).output (n + i*k)
-    (circuit acc xs[i + 1]).operations (n + (i + 1)*k)).flatten := by
-  rw [operations_eq]
-  simp only
-  set k := (circuit default default).localLength
-  set k' := constant.localLength
-  have : k' = k := by simp only [k]; rw [constant.localLength_eq (_, _)]
-  rw [this]
-  rcases m with rfl | m
-  · nomatch ‹NeZero 0›
-  rw [List.ofFn_succ, List.flatten_cons]
-  simp only [foldlAcc_zero, Fin.val_zero, zero_mul, add_zero, Fin.val_succ, add_mul, one_mul,
-    add_tsub_cancel_right, Nat.add_one_sub_one, Fin.cast_eq_self, List.append_cancel_left_eq]
-  congr
-  funext i
-  rcases i with ⟨ i, hi ⟩
-  simp only [Fin.succ_mk]
-  rw [foldlAcc_const_succ constant h_const_out]
+    (circuit acc xs[i + 1]).operations (n + (i + 1)*k)).flatten := by sorry
 
 theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
     (h_const_out : ConstantOutput (prod circuit)) :
   (xs.foldlM circuit init).forAll n prop ↔
   (circuit init (xs[0]'(NeZero.pos m))).forAll n prop ∧
   ∀ (i : ℕ) (hi : i + 1 < m),
-    let acc := (circuit default xs[i]).output (n + i*(circuit default default).localLength);
-    (circuit acc xs[i + 1]).forAll (n + (i + 1)*(circuit default default).localLength) prop := by
-  rw [forAll_iff (constant:=constant)]
-  set k := (circuit default default).localLength
-  simp only
-  constructor
-  · intro h
-    constructor
-    · specialize h 0
-      simp only [Fin.val_zero] at h
-      rw [foldlAcc_zero, zero_mul, add_zero] at h
-      exact h
-    · intro i hi
-      specialize h ⟨ i + 1, hi ⟩
-      rw [foldlAcc_const_succ constant h_const_out] at h
-      convert h using 3
-      rw [ConstantLength.length_eq_default constant (init, _)]
-      rfl
-  intro h i
-  rcases i with ⟨ _ | i, hi ⟩
-  · simp only [Fin.mk_zero']
-    rw [foldlAcc_zero, zero_mul, add_zero]
-    exact h.left
-  · rw [foldlAcc_const_succ constant h_const_out]
-    convert (h.right i hi) using 3
-    rw [ConstantLength.length_eq_default constant (init, _)]
-    rfl
+    let acc := by sorry
 
 end FoldlM
 

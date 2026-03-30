@@ -94,8 +94,7 @@ theorem ext_iff {f g : Circuit F α} :
 theorem ext {f g : Circuit F α}
   (h_output : ∀ n, f.output n = g.output n)
   (h_operations : ∀ n, f.operations n = g.operations n) :
-    f = g :=
-  ext_iff.mpr fun n => ⟨ h_output n, h_operations n ⟩
+    f = g := by sorry
 
 -- lawful monad
 
@@ -190,35 +189,13 @@ lemma localWitnesses_append {F} {a b: List (FlatOperation F)} {env} :
 The witness length from flat and nested operations is the same
 -/
 lemma localLength_toFlat {ops : Operations F} :
-    localLength ops.toFlat = ops.localLength := by
-  induction ops using Operations.induct with
-  | empty => trivial
-  | witness _ _ ops ih | assert _ ops ih | lookup _ ops ih  | subcircuit _ ops ih =>
-    dsimp only [Operations.toFlat, Operations.localLength]
-    generalize ops.toFlat = flat_ops at *
-    generalize Operations.localLength ops = n at *
-    induction flat_ops using localLength.induct generalizing n with
-    | case1 => simp_all [localLength, add_comm, Subcircuit.localLength_eq]
-    | case2 m' _ ops' ih' =>
-      dsimp only [localLength, witness] at *
-      specialize ih' (n - m') (by rw [←ih]; omega)
-      simp_all +arith only [localLength_append, localLength]
-      try omega
-    | case3 ops _ ih' | case4 ops _ ih' =>
-      simp_all only [localLength_append, forall_eq', localLength]
+    localLength ops.toFlat = ops.localLength := by sorry
 
 /--
 The witnesses created from flat and nested operations are the same
 -/
 lemma localWitnesses_toFlat {ops : Operations F} {env} :
-  (localWitnesses env ops.toFlat).toArray = (ops.localWitnesses env).toArray := by
-  induction ops using Operations.induct with
-  | empty => trivial
-  | witness _ _ _ ih | assert _ _ ih | lookup _ _ ih | subcircuit _ _ ih =>
-    simp only [Operations.toFlat, Operations.localLength, Operations.localWitnesses, Vector.toArray_append]
-    rw [←ih]
-    try rw [localWitnesses_append]
-    try simp only [localLength, localWitnesses, Vector.toArray_append, Subcircuit.witnesses, Vector.toArray_cast]
+  (localWitnesses env ops.toFlat).toArray = (ops.localWitnesses env).toArray := by sorry
 end FlatOperation
 
 namespace Environment
@@ -250,15 +227,7 @@ lemma env_extends_witness {F} {n : ℕ} {ops : List (FlatOperation F)} {env : En
       omega
 
 theorem usesLocalWitnessesFlat_iff_extends {env : Environment F} (n : ℕ) {ops : List (FlatOperation F)}  :
-    env.UsesLocalWitnessesFlat n ops ↔ env.ExtendsVector (localWitnesses env ops) n := by
-  induction ops using FlatOperation.induct generalizing n with
-  | empty => simp [UsesLocalWitnessesFlat, FlatOperation.forAll_empty, ExtendsVector, localLength]
-  | witness m _ _ ih =>
-    rw [UsesLocalWitnessesFlat, FlatOperation.forAll, env_extends_witness,←ih (m + n)]
-    trivial
-  | assert | lookup =>
-    simp_all [UsesLocalWitnessesFlat, circuit_norm,
-      FlatOperation.forAll_cons, Condition.applyFlat, FlatOperation.singleLocalLength]
+    env.UsesLocalWitnessesFlat n ops ↔ env.ExtendsVector (localWitnesses env ops) n := by sorry
 
 theorem can_replace_usesLocalWitnessesCompleteness {env : Environment F} {ops : Operations F} {n : ℕ} (h : ops.SubcircuitsConsistent n) :
   env.UsesLocalWitnesses n ops → env.UsesLocalWitnessesCompleteness n ops := by
@@ -502,34 +471,7 @@ Flat version of the final theorem in this section, `Circuit.proverEnvironment_us
 theorem proverEnvironment_usesLocalWitnesses {ops : List (FlatOperation F)} (init : List F) :
   (∀ (env env' : Environment F),
     forAll init.length { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops) →
-    (proverEnvironment ops init).UsesLocalWitnessesFlat init.length ops := by
-  simp only [proverEnvironment, Environment.UsesLocalWitnessesFlat, Environment.ExtendsVector]
-  intro h_computable
-  induction ops generalizing init with
-  | nil => trivial
-  | cons op ops ih =>
-    simp only [forAll_cons] at h_computable ⊢
-    cases op with
-    | assert | lookup  =>
-      simp_all [dynamicWitnesses_cons, Condition.applyFlat, singleLocalLength, dynamicWitness]
-    | witness m compute =>
-      simp_all only [Condition.applyFlat, singleLocalLength, Environment.AgreesBelow]
-      -- get rid of ih first
-      constructor; case right =>
-        specialize ih (init ++ (compute (.fromList init)).toList)
-        simp only [List.length_append, Vector.length_toList] at ih
-        ring_nf at *
-        exact ih fun _ _ => (h_computable ..).right
-      clear ih
-      replace h_computable := fun env env' => (h_computable env env').left
-      intro i
-      simp only [Environment.fromList]
-      rw [getElem?_dynamicWitnesses_cons_right i.is_lt]
-      simp only [dynamicWitness, Vector.getElem_toList]
-      congr 1
-      apply h_computable
-      intro j hj
-      simp [Environment.fromList, hj, getElem?_dynamicWitnesses_of_lt]
+    (proverEnvironment ops init).UsesLocalWitnessesFlat init.length ops := by sorry
 end FlatOperation
 
 /--
@@ -557,29 +499,7 @@ This is not currently used, but seemed like a nice result to have.
 -/
 theorem onlyAccessedBelow_all {ops : List (FlatOperation F)} (n : ℕ) :
   forAll n { witness n _ := Environment.OnlyAccessedBelow n } ops →
-    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by
-  intro h_comp env env' h_env
-  simp only
-  induction ops generalizing n with
-  | nil => simp [localWitnesses]
-  | cons op ops ih =>
-    simp_all only [forAll_cons, localLength_cons]
-    have h_ih := h_comp.right
-    replace h_comp := h_comp.left
-    replace h_ih := ih (op.singleLocalLength + n) h_ih
-    ring_nf at *
-    specialize h_ih h_env
-    clear ih
-    cases op with
-    | assert | lookup =>
-      simp_all only [Condition.applyFlat, localWitnesses]
-    | witness m c =>
-      simp_all only [Condition.applyFlat, localWitnesses,
-        Environment.OnlyAccessedBelow, Environment.AgreesBelow]
-      congr 1
-      apply h_comp env env'
-      intro i hi
-      exact h_env i (by linarith)
+    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by sorry
 end FlatOperation
 
 -- theorem about relationship between FormalCircuit and GeneralFormalCircuit

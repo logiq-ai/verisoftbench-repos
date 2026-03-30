@@ -498,54 +498,7 @@ Note how it combines aspects of skip and conditionals:
 
 theorem hoare_while P b c :
     {* fun st => P st ∧ beval st b *} c {* P *}
-    → {* P *} c_while b c {* fun st => P st ∧ ¬(beval st b) *} := by
-  intro hHoare st st' hPre hEval
-  -- we proceed by induction on `hEval`
-  generalize hloop : c_while b c = cmd at *
-  induction hEval with simp at *
-  | e_whileFalse =>
-    constructor
-    . exact hPre
-    . simp [*]
-  | e_whileTrue =>
-    simp [*] at *
-    rename_i ih
-    apply ih
-    apply hHoare
-    . constructor
-      . apply hPre
-      . assumption
-    . assumption
-
-/-
-We call `P` a _loop invariant_ of `while b do c` if
-  `{P ∧ b} c {P}`
-is a valid Hoare triple.
-
-This means that `P` will be true at the end of the loop body whenever the loop body executes.
-If `P` contradicts `b`, this holds trivially since the precondition is false.
-
-For instance, `X = 0` is a loop invariant of
-  `while X = 2 do X := 1 end`
-since the program will never enter the loop.
-
-The program
-  `while Y > 10 do Y := Y - 1; Z := Z + 1 end`
-admits an interesting loop invariant:
-  `X = Y + Z`
-Note that this doesn't contradict the loop guard but neither is it a command invariant of
-  `Y := Y - 1; Z := Z + 1`
-since, if `X = 5`, `Y = 0` and `Z = 5`, running the command will set `Y + Z` to 6, because `Y` remains 0.
-The loop guard `Y > 10` guarantees that this will not be the case.
-We will see many such loop invariants in the following lecture.
--/
-
-example :
-    -- { x ≤ 3 }
-    {* fun st => st x ≤ 3 *}
-    <{
-      while x <= 2 do
-        x := x + 1
+    → {* P *} c_while b c {* fun st => P st ∧ ¬(beval st b) *} := by sorry
       end
     }>
     -- { x = 3 }

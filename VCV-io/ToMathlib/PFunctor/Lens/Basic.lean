@@ -250,8 +250,7 @@ theorem sumPair_comp_inr (f : Lens P R) (g : Lens Q R) :
     Lens.sumPair f g ∘ₗ Lens.inr = g := rfl
 
 theorem comp_inl_inr (h : Lens.{max uA₁ uA₂, uB₁, uA₃, uB₃} (P + Q) R) :
-    Lens.sumPair (h ∘ₗ Lens.inl) (h ∘ₗ Lens.inr) = h := by
-  ext a <;> rcases a <;> rfl
+    Lens.sumPair (h ∘ₗ Lens.inl) (h ∘ₗ Lens.inr) = h := by sorry
 
 @[simp]
 theorem sumMap_id :
@@ -349,10 +348,7 @@ theorem snd_comp_prodMap (l₁ : Lens P R) (l₂ : Lens Q W) :
     Lens.snd ∘ₗ (l₁ ×ₗ l₂) = l₂ ∘ₗ Lens.snd := rfl
 
 theorem prodMap_comp_prodPair (l₁ : Lens Q W) (l₂ : Lens R X) (f : Lens P Q) (g : Lens P R) :
-    (l₁ ×ₗ l₂) ∘ₗ Lens.prodPair f g = Lens.prodPair (l₁ ∘ₗ f) (l₂ ∘ₗ g) := by
-  ext a x
-  · rfl
-  · cases x <;> rfl
+    (l₁ ×ₗ l₂) ∘ₗ Lens.prodPair f g = Lens.prodPair (l₁ ∘ₗ f) (l₂ ∘ₗ g) := by sorry
 
 @[simp]
 theorem fst_comp_prodPair (f : Lens P Q) (g : Lens P R) :

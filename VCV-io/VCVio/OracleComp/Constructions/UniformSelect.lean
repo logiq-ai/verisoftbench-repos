@@ -216,27 +216,7 @@ variable {α : Type}
 
 @[simp] lemma evalDist_uniformSelectFinset [DecidableEq α] (s : Finset α) :
     evalDist ($ s) = if hs : s.Nonempty then
-      OptionT.lift (PMF.uniformOfFinset s hs) else failure := by
-  refine PMF.ext λ x ↦ ?_
-  by_cases hs : s.Nonempty
-  · cases x with
-    | none =>
-        refine (probFailure_uniformSelectFinset _).trans ?_
-        simp [hs, OptionT.lift, OptionT.mk]
-    | some x =>
-        simp only [hs, ↓reduceDIte]
-        refine (probOutput_uniformSelectFinset _ _).trans ?_
-        simp only [OptionT.lift, OptionT.mk, PMF.monad_pure_eq_pure, PMF.monad_bind_eq_bind,
-          PMF.bind_apply, PMF.uniformOfFinset_apply, PMF.pure_apply, Option.some.injEq, mul_ite,
-          mul_one, mul_zero]
-        refine symm <| (tsum_eq_single x ?_).trans ?_
-        · simp only [ne_eq, @eq_comm _ x, ite_eq_right_iff, ENNReal.inv_eq_zero,
-            natCast_ne_top, imp_false]
-          intros
-          tauto
-        · simp only [↓reduceIte, ite_eq_ite]
-  · simp only [Finset.not_nonempty_iff_eq_empty] at hs
-    simp [hs, uniformSelectFinset_def]
+      OptionT.lift (PMF.uniformOfFinset s hs) else failure := by sorry
 
 end uniformSelectFinset
 

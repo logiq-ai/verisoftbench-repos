@@ -385,9 +385,7 @@ theorem exists_over_PUnit (p : PUnit → Prop) : (∃ (u : PUnit), p u) = p () :
   simp ; constructor ; intro ⟨⟨⟩, h⟩ ; assumption ; intro h ; exists PUnit.unit
 
 theorem TwoState_sound'_ret_unit [LawfulAction act] (req : SProp σ) (ens : RProp σ PUnit) :
-  act.triple req ens → act.toTwoState.triple req (ens () ·) := by
-  have heq : (ens () ·) = (∃ r, ens r ·) := by ext ; rw [exists_over_PUnit]
-  rw [heq] ; apply TwoState_sound'
+  act.triple req ens → act.toTwoState.triple req (ens () ·) := by sorry
 
 /-- This is used by `#recover_invariants_in_tr` in `Rabia.lean`. -/
 theorem TwoState_sound'_ret_unit' [LawfulAction act] {st : σ} (ens : RProp σ PUnit) :
@@ -428,11 +426,7 @@ theorem big_step_sound' [LawfulAction act] (req : SProp σ) (ens : RProp σ ρ) 
 
 theorem big_step_always_terminating_sound [LawfulAction act] (req : SProp σ) (ens : RProp σ ρ) :
   act.alwaysSuccessfullyTerminates req ->
-  act.toBigStep.triple req ens -> act.triple req ens := by
-  intro ensTaut htriple s hreq
-  by_cases h: (¬ ∀ r s, ens r s)
-  { solve_by_elim [big_step_sound] }
-  apply LawfulAction.impl (post := fun _ _ => True) <;> try simp_all
+  act.toBigStep.triple req ens -> act.triple req ens := by sorry
 
 theorem big_step_to_wp (act : Wp m σ ρ) [LawfulAction act] (req : SProp σ) :
   act.alwaysSuccessfullyTerminates req ->
@@ -610,13 +604,7 @@ theorem lift_transition_big_step' {σ σ'} [IsSubStateOf σ σ'] (m : Mode) (r :
   (@Wp.lift _  m σ σ' _ r).toBigStep st =
   fun r' st' =>
     r.toBigStep (getFrom st) r' (getFrom st') ∧
-    st' = (setIn (@getFrom σ σ' _ st') st) := by
-  intro term
-  have rEq : r.lift.toBigStep st = (r.toBigStep.toWp.lift.toBigStep st) := by {
-    unfold Wp.lift Wp.toBigStep Wp.toWlp; ext; simp
-    rw [big_step_to_wp (act := r) (req := (fun x => x = getFrom st))] <;> try simp [*]
-    unfold Wp.toBigStep Wp.toWlp; simp }
-  rw [rEq, lift_transition_big_step]
+    st' = (setIn (@getFrom σ σ' _ st') st) := by sorry
 
 instance {σ σ'} [IsSubStateOf σ σ'] (act : Wp .external σ ρ) (actTr : BigStep σ ρ) [inst:GenBigStep σ ρ act actTr]
   : GenBigStep σ' ρ (Wp.lift (σ' := σ') act) (BigStep.lift (σ := σ) actTr) where
@@ -634,15 +622,7 @@ theorem bind_terminates m (act : Wp m σ ρ) (act' : ρ -> Wp m σ ρ') s [Lawfu
   act.alwaysSuccessfullyTerminates pre →
   (act.bind act').alwaysSuccessfullyTerminates pre ->
   act.toBigStep s r' s' ->
-  (act' r').alwaysSuccessfullyTerminates (· = s') := by
-    unfold Wp.alwaysSuccessfullyTerminates Wp.toBigStep Wp.toWlp Wp.bind
-    intros hpre actT act'T
-    have actT := actT s hpre
-    have act'T := act'T s hpre
-    have act''T := big_step_sound' (act := act) (req := (· = s))
-    unfold Wp.triple BigStep.triple Wp.toBigStep Wp.toWlp at act''T
-    simp at act''T; specialize act''T _ act'T s r' s' rfl
-    simp_all
+  (act' r').alwaysSuccessfullyTerminates (· = s') := by sorry
 
 attribute [-simp] not_and in
 instance (act : Wp .external σ ρ) (act' : ρ -> Wp .external σ ρ')

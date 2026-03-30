@@ -87,25 +87,7 @@ theorem soundness_to_u64 {x y z : U64 (F p)}
   simp only [U64.value_xor_horner, x_norm, y_norm, z_norm, h_eq, xor_mul_two_pow]
   ac_rfl
 
-theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
-  intro i0 env input_var input h_input h_as h_holds
-
-  let ⟨⟨ x0_var, x1_var, x2_var, x3_var, x4_var, x5_var, x6_var, x7_var ⟩,
-       ⟨ y0_var, y1_var, y2_var, y3_var, y4_var, y5_var, y6_var, y7_var ⟩⟩ := input_var
-  let ⟨⟨ x0, x1, x2, x3, x4, x5, x6, x7 ⟩,
-       ⟨ y0, y1, y2, y3, y4, y5, y6, y7 ⟩⟩ := input
-
-  simp only [circuit_norm, explicit_provable_type, Inputs.mk.injEq, U64.mk.injEq] at h_input
-
-  simp only [circuit_norm, Assumptions] at h_as
-  obtain ⟨ x_norm, y_norm ⟩ := h_as
-
-  simp only [h_input, circuit_norm, main, ByteXorTable,
-    varFromOffset, Vector.mapRange] at h_holds
-
-  apply soundness_to_u64 x_norm y_norm
-  simp only [circuit_norm, explicit_provable_type]
-  simp [h_holds]
+theorem soundness : Soundness (F p) elaborated Assumptions Spec := by sorry
 
 lemma xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) :
     (x.val ^^^ y.val : F p).val = x.val ^^^ y.val := by
@@ -113,15 +95,7 @@ lemma xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) :
   have h_byte : x.val ^^^ y.val < 256 := Nat.xor_lt_two_pow (n:=8) hx hy
   linarith [p_large_enough.elim]
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by
-  intro i0 env input_var h_env input h_input as
-  let ⟨⟨ x0, x1, x2, x3, x4, x5, x6, x7 ⟩, ⟨ y0, y1, y2, y3, y4, y5, y6, y7 ⟩⟩ := input
-  simp only [circuit_norm, explicit_provable_type, Inputs.mk.injEq, U64.mk.injEq] at h_input
-  simp only [Assumptions, circuit_norm, U64.Normalized] at as
-  simp only [h_input, circuit_norm, main, ByteXorTable,
-    explicit_provable_type, Fin.forall_iff] at h_env ⊢
-  have h_env0 : env.get i0 = ↑(ZMod.val x0 ^^^ ZMod.val y0) := by simpa using h_env 0
-  simp_all [xor_val]
+theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
 
 def circuit : FormalCircuit (F p) Inputs U64 where
   Assumptions

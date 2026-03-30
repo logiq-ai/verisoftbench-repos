@@ -103,11 +103,7 @@ lemma map_pure (f : PureEquiv m n) {α : Type u} (x : α) :
 
 @[simp]
 lemma map_pure_inv (f : PureEquiv m n) {α : Type u} (x : α) :
-    f.invFun (pure x) = (pure x : m α) := by
-  have h1 : f.toFun (f.invFun (pure x)) = pure x := f.right_inv (pure x)
-  have h2 : f.toFun (pure x) = pure x := f.map_pure' x
-  have h3 : f.toFun (f.invFun (pure x)) = f.toFun (pure x) := by rw [h1, h2]
-  exact Function.LeftInverse.injective f.left_inv h3
+    f.invFun (pure x) = (pure x : m α) := by sorry
 
 instance : Coe (PureEquiv m n) (PureHom n m) where
   coe f := ⟨f.toNatEquiv, f.map_pure_inv⟩
@@ -139,21 +135,7 @@ lemma map_bind (f : BindEquiv m n) {α β : Type u} (x : m α) (y : α → m β)
 
 @[simp]
 lemma map_bind_inv (f : BindEquiv m n) {α β : Type u} (x : n α) (y : α → n β) :
-    f.invFun (x >>= y) = f.invFun x >>= (fun a => f.invFun (y a)) := by
-  -- We'll show f.toFun applied to both sides gives the same result
-  have h1 : f.toFun (f.invFun (x >>= y)) = x >>= y := f.right_inv (x >>= y)
-  have h2 : f.toFun (f.invFun x >>= (fun a => f.invFun (y a))) =
-            f.toFun (f.invFun x) >>= (fun a => f.toFun (f.invFun (y a))) := f.map_bind' _ _
-  have h3 : f.toFun (f.invFun x) = x := f.right_inv x
-  have h4 : ∀ a, f.toFun (f.invFun (y a)) = y a := fun a => f.right_inv (y a)
-  have h5 : f.toFun (f.invFun x >>= (fun a => f.invFun (y a))) = x >>= y := by
-    rw [h2, h3]
-    congr 1
-    ext a
-    exact h4 a
-  have h6 : f.toFun (f.invFun (x >>= y)) = f.toFun (f.invFun x >>= (fun a => f.invFun (y a))) := by
-    rw [h1, h5]
-  exact Function.LeftInverse.injective f.left_inv h6
+    f.invFun (x >>= y) = f.invFun x >>= (fun a => f.invFun (y a)) := by sorry
 
 instance : Coe (BindEquiv m n) (BindHom n m) where
   coe f := ⟨f.toNatEquiv, f.map_bind_inv⟩

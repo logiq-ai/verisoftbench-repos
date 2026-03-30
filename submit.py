@@ -4,9 +4,10 @@ Submit a VeriSoftBench task to AlephProver and print the tracking URL.
 
 Usage:
     python submit.py 4
-    python submit.py 4 --env dev
-    python submit.py 4 --cost-budget 50 --time-budget 600
     python submit.py 4 5 14 --env dev
+    python submit.py 4 --cost-budget 50 --time-budget 600
+    python submit.py 4 -o runs.json         # append submission to tracking file
+    python submit.py 4 -o runs.json --env dev  # same task, different env — both tracked
 """
 
 import argparse
@@ -17,6 +18,7 @@ import shutil
 import sys
 import tarfile
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -69,6 +71,8 @@ def main():
     p.add_argument("--cost-budget", type=float, default=30.0, help="Cost budget in dollars (default: 30)")
     p.add_argument("--time-budget", type=int, default=60, help="Time budget in minutes (default: 60)")
     p.add_argument("--repo-base", type=Path, default=SCRIPT_DIR, help="Base dir with Lean repos")
+    p.add_argument("-o", "--output", type=Path, default=None,
+                   help="Append submissions to this JSON file (array of runs, multiple per task OK)")
     args = p.parse_args()
 
     api_key = os.environ.get("ALEPH_API_KEY")
@@ -78,6 +82,12 @@ def main():
 
     with open(TASKS_JSON) as f:
         tasks_by_id = {t["id"]: t for t in json.load(f)}
+
+    # Load existing tracking file (append-only list)
+    runs: list = []
+    if args.output and args.output.exists():
+        with open(args.output) as f:
+            runs = json.load(f)
 
     base_url = ENVS[args.env]
 
@@ -97,9 +107,29 @@ def main():
             )
             resp.raise_for_status()
             request_id = resp.json().get("id", "unknown")
-            print(f"{base_url}/requests/{request_id}")
+            track_url = f"{base_url}/requests/{request_id}"
+            print(track_url)
+
+            if args.output is not None:
+                runs.append({
+                    "task_id": tid,
+                    "theorem_name": task["theorem_name"],
+                    "lean_root": task["lean_root"],
+                    "request_id": request_id,
+                    "env": args.env,
+                    "api_url": track_url,
+                    "status": "submitted",
+                    "submitted_at": datetime.now(timezone.utc).isoformat(),
+                    "cost_budget": args.cost_budget,
+                    "time_budget": args.time_budget,
+                })
+
         except Exception as e:
             print(f"ERROR: task {tid}: {e}", file=sys.stderr)
+
+    if args.output is not None:
+        with open(args.output, "w") as f:
+            json.dump(runs, f, indent=2)
 
 
 if __name__ == "__main__":

@@ -43,7 +43,8 @@ verisoftbench-repos/
 ├── verisoftbench_final_results.csv
 ├── patches/                          # .patch files (92 committed, more via download_patches.py)
 ├── submit.py                         # Submit tasks to AlephProver API
-├── download_patches.py               # Download patches from API to local disk
+├── update_results.py                 # Check status, update results JSON, download patches
+├── download_patches.py               # Bulk-download patches from API to local disk
 ├── connector/                        # Connector source (already applied in verisoftbench branch)
 │   ├── patch_prover.py
 │   ├── aleph_patch.yaml
@@ -201,24 +202,16 @@ curl -s -H "Authorization: Bearer $ALEPH_API_KEY" \
 
 ### Step 3: Update results and download patch
 
-Once a task completes, update `verisoftbench_final_results.json` with the new request ID and status:
-
-```json
-{
-    "task_id": 122,
-    ...
-    "request_id": "<new-uuid>",
-    "status": "completed",
-    "api_url": "https://alephprover.logicalintelligence.com/requests/<new-uuid>",
-    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/<N>"
-}
+```bash
+python3 update_results.py 122
 ```
 
-Then download the patch:
+This queries the API, updates `verisoftbench_final_results.json` with the latest status/PR URL, and downloads the `.patch` file if the task completed.
+
+To check all non-completed tasks at once:
 
 ```bash
-python3 download_patches.py --task-id 122
-# Downloads to patches/task_122.patch
+python3 update_results.py
 ```
 
 ### Step 4: Verify with the benchmark

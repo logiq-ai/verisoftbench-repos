@@ -12,6 +12,20 @@ Evaluation of [Aleph Prover](https://alephprover.logicalintelligence.com) on the
 | Aristotle (with local lemmas) | 69% (Pass@8) |
 | Gemini-3-Pro | 65% (Pass@8) |
 
+## What's Already Here
+
+This repo contains everything needed to reproduce the evaluation:
+
+- **`verisoftbench_final_results.json`** — results for all 100 tasks, including:
+  - `request_id` — AlephProver proof request UUID
+  - `api_url` — link to track each request (e.g. `https://alephprover.logicalintelligence.com/requests/<id>`)
+  - `pr_url` — GitHub PR with the proven code
+  - `status` — `completed` (92 tasks) or `failed` (8 tasks)
+- **`patches/`** — 92 `.patch` files already committed, one per completed task. These are the raw git diffs produced by AlephProver showing the proven theorems.
+- **`aristotle_tasks.json`** — the 100 tasks with metadata, theorem names, file paths, and hints
+
+So for existing results, **you don't need API access** — the patches are already in the repo. You only need the API to submit new tasks or re-download patches.
+
 ## Repository Structure
 
 Two branches:
@@ -25,9 +39,9 @@ Two branches:
 verisoftbench-repos/
 ├── README.md
 ├── aristotle_tasks.json              # 100 Aristotle tasks with metadata + hints
-├── verisoftbench_final_results.json  # Results: request IDs, PR URLs, status
+├── verisoftbench_final_results.json  # Results: request IDs, API URLs, PR URLs, status
 ├── verisoftbench_final_results.csv
-├── patches/                          # Downloaded .patch files (via download_patches.py)
+├── patches/                          # .patch files (92 committed, more via download_patches.py)
 ├── submit.py                         # Submit tasks to AlephProver API
 ├── download_patches.py               # Download patches from API to local disk
 ├── connector/                        # Connector source (already applied in verisoftbench branch)
@@ -48,20 +62,22 @@ Fork of the official benchmark with connector applied. Contains:
 - `configs/aleph_patch.yaml` — evaluation config
 - Modified `core/evaluator.py` and `evaluate.py` (minimal changes to route `model_name: patch`)
 
-## Fresh Server Setup (from scratch)
+## Reproducing the Evaluation (fresh server)
 
 ### Prerequisites
 
 - **Docker** (with ~130 GB free disk for the Lean image)
-- **Python 3.10+**
+- **Python 3.10+** with pip
 - **Git**
+- **`OPENAI_API_KEY`** — for GPT-5.4 proof extraction during evaluation
 
 ### Step 1: Environment variables
 
 ```bash
-export ALEPH_API_KEY=sk-aleph-...     # AlephProver API (submit + download patches)
 export OPENAI_API_KEY=sk-proj-...     # GPT-5.4 (proof extraction during eval)
 ```
+
+(`ALEPH_API_KEY` is only needed if you want to submit new tasks or re-download patches — not needed for reproducing existing results.)
 
 ### Step 2: Clone repos
 
@@ -119,18 +135,9 @@ docker rm -f verisoftbench-lean
 docker run -d --name verisoftbench-lean verisoftbench/lean:latest
 ```
 
-### Step 4: Download patches from AlephProver API
+### Step 4: Run the evaluation
 
-Patches are fetched from the API using request IDs in `verisoftbench_final_results.json`:
-
-```bash
-cd ~/verisoftbench-repos
-python3 download_patches.py
-```
-
-This downloads `.patch` files for all completed tasks into `patches/`. Already-downloaded patches are skipped (use `--force` to re-download).
-
-### Step 5: Run the evaluation
+The 92 `.patch` files are already committed in the repo — no download step needed for existing results.
 
 ```bash
 cd ~/VeriSoftBench-eval
@@ -145,77 +152,111 @@ python3 evaluate.py \
 
 This will:
 1. Load each task from `data/verisoftbench.jsonl`
-2. Read the `.patch` file for each task
-3. Call GPT-5.4 to extract proof body + auxiliary lemmas
-4. Compile against the clean Docker container
+2. Read the `.patch` file from `patches/` for each task (8 unsolved tasks have no patch — they'll score 0)
+3. Call GPT-5.4 to extract proof body + auxiliary lemmas into XML
+4. Compile the proof against the clean Docker container
 5. Report pass/fail
 
 Expected output: `Success rate w/o fix: 85/100 (85.0%)`
 
-Single task test (good for verifying setup):
+Single task test (good for verifying your setup works):
 
 ```bash
 python3 evaluate.py --config configs/aleph_patch.yaml --task-ids "29" --save-debug-lean --refresh-cache
 # Expected: Success rate w/o fix: 1/1 (100.0%)
 ```
 
-## Submitting New Tasks to AlephProver
+## Proving New Tasks
 
-### Submit
+To solve tasks that Aleph Prover hasn't proven yet (or to re-run failed ones with more budget):
+
+### Step 1: Submit to AlephProver
 
 ```bash
+export ALEPH_API_KEY=sk-aleph-...
 cd ~/verisoftbench-repos
 
 # Single task
-python3 submit.py --task-id 4
+python3 submit.py --task-id 122
+# Output: [122] Circomlib.MultiAND.soundness  OK  https://alephprover.logicalintelligence.com/requests/<id>
 
 # Multiple tasks
-python3 submit.py --task-id 4,5,14
+python3 submit.py --task-id 122,127,155
 
-# All unsolved tasks with custom budget
+# All unsolved tasks with higher budget
 python3 submit.py --unsolved --cost-budget 50 --time-budget 600
 
-# Submit to dev environment
-python3 submit.py --task-id 4 --env dev
+# Submit to dev environment instead of prod
+python3 submit.py --task-id 122 --env dev
 
 # Dry run (show what would be submitted)
 python3 submit.py --unsolved --dry-run
 ```
 
-### Check status
+### Step 2: Wait for completion
+
+Check status:
 
 ```bash
 python3 submit.py --status <request-id>
-python3 submit.py --status <request-id> --env dev
+# Returns JSON with status: "running", "completed", or "failed"
 ```
 
-### After a submission completes
+Or visit the tracking URL printed during submission.
 
-1. Update `verisoftbench_final_results.json` with the new request ID and status
-2. Download the patch:
-   ```bash
-   python3 download_patches.py --task-id <id>
-   ```
-3. Re-run evaluation to verify:
-   ```bash
-   cd ~/VeriSoftBench-eval
-   python3 evaluate.py --config configs/aleph_patch.yaml --task-ids "<id>" --save-debug-lean --refresh-cache
-   ```
+### Step 3: Update results and download patch
+
+Once a task completes, update `verisoftbench_final_results.json` with the new request ID and status:
+
+```json
+{
+    "task_id": 122,
+    ...
+    "request_id": "<new-uuid>",
+    "status": "completed",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/<new-uuid>",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/<N>"
+}
+```
+
+Then download the patch:
+
+```bash
+python3 download_patches.py --task-id 122
+# Downloads to patches/task_122.patch
+```
+
+### Step 4: Verify with the benchmark
+
+```bash
+cd ~/VeriSoftBench-eval
+python3 evaluate.py --config configs/aleph_patch.yaml --task-ids "122" --save-debug-lean --refresh-cache
+```
+
+### Step 5: Commit the new results
+
+```bash
+cd ~/verisoftbench-repos
+git add patches/task_122.patch verisoftbench_final_results.json
+git commit -m "Add task 122: Circomlib.MultiAND.soundness"
+git push
+```
 
 ## How It Works
 
 ### Evaluation flow
 
 ```
-download_patches.py              evaluate.py + patch_prover.py
-        │                                │
-        │  ALEPH_API_KEY                 │  OPENAI_API_KEY
-        ▼                                ▼
-  AlephProver API ──► patches/     GPT-5.4 extracts proof ──► Lean compiler
-  (fetch .patch)     (on disk)     from patch into XML        verifies in Docker
+patches/ (committed)          evaluate.py + patch_prover.py
+   or                                  │
+download_patches.py                    │  OPENAI_API_KEY
+   │  ALEPH_API_KEY                    ▼
+   ▼                             GPT-5.4 extracts proof
+AlephProver API ──► patches/     from patch into XML    ──► Lean compiler
+(fetch .patch)     (on disk)                                verifies in Docker
 ```
 
-1. `download_patches.py` fetches `.patch` files from AlephProver API
+1. `.patch` files are either already committed or fetched via `download_patches.py`
 2. `evaluate.py` loads each task from the benchmark's `verisoftbench.jsonl`
 3. `PatchProverInterface` reads the local `.patch` file for that task
 4. GPT-5.4 extracts proof body + auxiliary lemmas into XML:
@@ -237,7 +278,7 @@ Patches are complex whole-file diffs that may add helper lemmas, new imports, re
 
 ## Config Reference
 
-`configs/aleph_patch.yaml`:
+`VeriSoftBench-eval/configs/aleph_patch.yaml`:
 
 | Key | Description | Default |
 |---|---|---|
@@ -255,3 +296,5 @@ Patches are complex whole-file diffs that may add helper lemmas, new imports, re
 **`evaluate.py` hangs on GPT calls**: GPT-5.4 reasoning calls can take 10-60 seconds each. With `max_workers: 8`, 100 tasks take ~10-15 minutes total.
 
 **Proofs fail that previously passed**: GPT-5.4 extraction is non-deterministic. Re-run with `--refresh-cache` to get a fresh extraction. The 85% rate is typical; individual tasks may flip between runs.
+
+**`download_patches.py` fails with 401/403**: Check that `ALEPH_API_KEY` is set correctly. The API key must have access to the proof requests.

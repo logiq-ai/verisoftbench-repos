@@ -10,6 +10,7 @@ import logging
 
 from prompts.prompt_builder import PromptBuilder
 from core.prover_interface import ProverInterface
+from core.patch_prover import PatchProverInterface
 from core.lean_interface import LeanREPL
 import utils.utils as utils
 
@@ -94,7 +95,10 @@ class BenchmarkEvaluator:
         self.output_dir = output_dir
 
         self.prompt_builder = PromptBuilder(prompts_dir, mode=model_config.get("mode", "filtered_context"))
-        self.prover = ProverInterface(model_config)
+        if model_config.get("model_name") == "patch":
+            self.prover = PatchProverInterface(model_config)
+        else:
+            self.prover = ProverInterface(model_config)
         self.lean_src_dir = lean_src_dir
         self.docker_container = docker_container
         self.lean_repl = LeanREPL(lean_src_dir, docker_container=docker_container)

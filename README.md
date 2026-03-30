@@ -14,6 +14,13 @@ Evaluation of [Aleph Prover](https://alephprover.logicalintelligence.com) on the
 
 ## Repository Structure
 
+Two branches:
+
+- **`main`** — results, patches, scripts, Lean project repos
+- **`verisoftbench`** — fork of [utopia-group/VeriSoftBench](https://github.com/utopia-group/VeriSoftBench) with the Aleph Prover connector pre-applied
+
+### `main` branch
+
 ```
 verisoftbench-repos/
 ├── README.md
@@ -23,16 +30,23 @@ verisoftbench-repos/
 ├── patches/                          # Downloaded .patch files (via download_patches.py)
 ├── submit.py                         # Submit tasks to AlephProver API
 ├── download_patches.py               # Download patches from API to local disk
-├── connector/                        # Connector for VeriSoftBench eval pipeline
-│   ├── patch_prover.py               # PatchProverInterface (reads patches, calls GPT-5.4)
-│   ├── aleph_patch.yaml              # Config for evaluate.py
-│   ├── evaluator.patch               # Patch for core/evaluator.py
-│   └── evaluate.patch                # Patch for evaluate.py
+├── connector/                        # Connector source (already applied in verisoftbench branch)
+│   ├── patch_prover.py
+│   ├── aleph_patch.yaml
+│   ├── evaluator.patch
+│   └── evaluate.patch
 ├── ArkLib/                           # Lean project repos (used by submit.py)
 ├── clean/
 ├── veil/
 └── ...                               # (23 repos total)
 ```
+
+### `verisoftbench` branch
+
+Fork of the official benchmark with connector applied. Contains:
+- `core/patch_prover.py` — PatchProverInterface
+- `configs/aleph_patch.yaml` — evaluation config
+- Modified `core/evaluator.py` and `evaluate.py` (minimal changes to route `model_name: patch`)
 
 ## Fresh Server Setup (from scratch)
 
@@ -54,11 +68,11 @@ export OPENAI_API_KEY=sk-proj-...     # GPT-5.4 (proof extraction during eval)
 ```bash
 cd ~
 
-# This repo (results, patches, connector, Lean project sources)
+# This repo — main branch (results, patches, Lean project sources)
 git clone https://github.com/logiq-ai/verisoftbench-repos.git
 
-# Official VeriSoftBench benchmark
-git clone https://github.com/utopia-group/VeriSoftBench.git VeriSoftBench-eval
+# Benchmark with connector — verisoftbench branch (fork of official repo + connector pre-applied)
+git clone -b verisoftbench https://github.com/logiq-ai/verisoftbench-repos.git VeriSoftBench-eval
 
 # Python deps for the benchmark
 pip install pyyaml openai anthropic google-genai tqdm requests
@@ -68,11 +82,11 @@ The expected directory layout is:
 
 ```
 ~/
-├── verisoftbench-repos/       # this repo
-└── VeriSoftBench-eval/        # official benchmark
+├── verisoftbench-repos/       # main branch — results, patches, submit scripts
+└── VeriSoftBench-eval/        # verisoftbench branch — benchmark + connector
 ```
 
-The connector config uses relative paths (`../verisoftbench-repos/...`) based on this layout. If you use different directories, update `configs/aleph_patch.yaml` after step 4.
+The connector config uses relative paths (`../verisoftbench-repos/...`) based on this layout. If you use different directories, update `VeriSoftBench-eval/configs/aleph_patch.yaml`.
 
 ### Step 3: Build Docker verification environment
 
@@ -105,30 +119,7 @@ docker rm -f verisoftbench-lean
 docker run -d --name verisoftbench-lean verisoftbench/lean:latest
 ```
 
-### Step 4: Apply connector to benchmark
-
-The connector is a custom `ProverInterface` that reads `.patch` files and uses GPT-5.4 to extract proofs into the XML format the benchmark expects. It requires two small patches to the official benchmark code.
-
-```bash
-cd ~/VeriSoftBench-eval
-
-# Copy connector
-cp ~/verisoftbench-repos/connector/patch_prover.py core/
-cp ~/verisoftbench-repos/connector/aleph_patch.yaml configs/
-
-# Patch evaluation scripts (adds 'patch' model_name support + config passthrough)
-patch -p1 < ~/verisoftbench-repos/connector/evaluator.patch
-patch -p1 < ~/verisoftbench-repos/connector/evaluate.patch
-```
-
-To verify patches applied correctly:
-
-```bash
-grep "PatchProverInterface" core/evaluator.py    # should find the import
-grep "patches_dir" evaluate.py                   # should find the config key
-```
-
-### Step 5: Download patches from AlephProver API
+### Step 4: Download patches from AlephProver API
 
 Patches are fetched from the API using request IDs in `verisoftbench_final_results.json`:
 
@@ -139,7 +130,7 @@ python3 download_patches.py
 
 This downloads `.patch` files for all completed tasks into `patches/`. Already-downloaded patches are skipped (use `--force` to re-download).
 
-### Step 6: Run the evaluation
+### Step 5: Run the evaluation
 
 ```bash
 cd ~/VeriSoftBench-eval
@@ -260,8 +251,6 @@ Patches are complex whole-file diffs that may add helper lemmas, new imports, re
 ## Troubleshooting
 
 **`docker build` fails or is very slow**: The build downloads Mathlib caches (~50 GB). Ensure stable internet and sufficient disk space (~130 GB for the image).
-
-**`patch -p1` fails**: The patches are against the latest VeriSoftBench commit (`ad1591d`). If upstream has changed, you may need to apply manually — the changes are minimal (3 lines in `evaluator.py`, 8 lines in `evaluate.py`).
 
 **`evaluate.py` hangs on GPT calls**: GPT-5.4 reasoning calls can take 10-60 seconds each. With `max_workers: 8`, 100 tasks take ~10-15 minutes total.
 

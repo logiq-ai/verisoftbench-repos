@@ -1,0 +1,53 @@
+--- a/loom/Loom/MonadAlgebras/NonDetT'/Extract.lean
++++ b/loom/Loom/MonadAlgebras/NonDetT'/Extract.lean
+@@ -376,24 +376,33 @@
+ lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
+   wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+   unhygienic induction inst
+-  { simp [wp_pure, NonDetT.extract] }
+-  { simp [NonDetT.wp_vis, NonDetT.prop]; rw [inf_comm, wlp_join_wp]
++  · simp [wp_pure, NonDetT.extract]
++  · simp [NonDetT.wp_vis, NonDetT.prop]
++    rw [inf_comm, wlp_join_wp]
+     simp [NonDetT.extract, wp_bind]
+-    apply wp_cons; aesop (add norm inf_comm) }
+-  { simp [NonDetT.wp_pickCont, NonDetT.prop, NonDetT.extract]; split
+-    { have := Findable.find_none (p := p) (by simpa);
+-      have : (∀ x, p x = False) := by simpa
+-      simp [this] }
+-    rw [<-inf_assoc]; refine inf_le_of_left_le ?_
+-    rw [← @iInf_inf_eq]; simp [meet_himp _ _ _ _ rfl]
+-    rename_i y _
+-    refine iInf_le_of_le y ?_
+-    have := Findable.find_some_p (p := p) (by assumption)
+-    simp [this]; apply a_ih }
+-  simp [NonDetT.wp_pickCont, NonDetT.prop, NonDetT.extract]
+-  have : ∀ a : PUnit.{u_1 + 1}, a = .unit := by simp
+-  simp [this, iInf_const]; split_ifs <;> simp [*, iSup_const]
+-  apply a_ih
++    apply wp_cons
++    intro y
++    simpa [inf_comm] using a_ih y
++  · simp [NonDetT.wp_pickCont, NonDetT.prop, NonDetT.extract]
++    split
++    · have hnone := Findable.find_none (p := p) (by simpa)
++      have hpfalse : ∀ x, p x = False := by simpa using hnone
++      simp [hpfalse]
++    · rw [← inf_assoc]
++      refine inf_le_of_left_le ?_
++      rw [← @iInf_inf_eq]
++      simp [meet_himp _ _ _ _ rfl]
++      rename_i y hy
++      refine iInf_le_of_le y ?_
++      have hpy := Findable.find_some_p (p := p) hy
++      simp [hpy]
++      exact a_ih y
++  · simp [NonDetT.wp_pickCont, NonDetT.prop, NonDetT.extract]
++    have hunit : ∀ a : PUnit.{u_1 + 1}, a = .unit := by simp
++    simp [hunit, iInf_const]
++    split_ifs <;> simp [*, iSup_const]
++    apply a_ih
++
+ 
+ lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
+   triple pre s post ->

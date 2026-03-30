@@ -1,0 +1,128 @@
+--- a/LeroyCompilerVerificationCourse/LeroyCompilerVerificationCourse/Compil.lean
++++ b/LeroyCompilerVerificationCourse/LeroyCompilerVerificationCourse/Compil.lean
+@@ -472,18 +472,15 @@
+ /-
+   4.2 Correctness of generated code for commands, terminating case.
+ -/
+-theorem compile_com_correct_terminating (s s' : store) (c : com) (h₁ : cexec s c s') :
+- ∀ C pc stk, code_at C pc (compile_com c) →
+-  transitions C
+-      (pc, stk, s)
+-      (pc + codelen (compile_com c), stk, s') := by
++theorem compile_com_correct_terminating (s s' : store) (c : com) (h₁ : cexec s c s') : ∀ C pc stk, code_at C pc (compile_com c) → transitions C (pc, stk, s) (pc + codelen (compile_com c), stk, s') := by
+   induction h₁
+   case cexec_skip =>
+     intro C pc stk h
+     unfold compile_com
+     dsimp [codelen]
+     simp only [Int.add_zero]
+-    apply star.star_refl
++    exact star.star_refl _
++
+   case cexec_assign s' x a =>
+     intro C pc stk h
+     unfold compile_com
+@@ -491,8 +488,9 @@
+     · apply compile_aexp_correct (a := a)
+       grind
+     · apply star_one
+-      · have := @transition.trans_setvar C
+-        grind
++      have := @transition.trans_setvar C
++      grind
++
+   case cexec_seq s'2 c1 s1 c2 s2 cexec1 cexec2 c1_ih c2_ih =>
+     intro C pc stk h
+     apply star_trans
+@@ -503,6 +501,7 @@
+       simp [Int.add_assoc] at c2_ih
+       apply c2_ih
+       grind
++
+   case cexec_ifthenelse s b c1 c2 s' cexec_h ih =>
+     intro C pc stk
+     generalize heq1 : compile_com c1 = code1
+@@ -513,29 +512,31 @@
+     intro h
+     apply star_trans
+     · have := compile_bexp_correct C s b 0 (codelen code1 + 1) pc stk (by grind)
+-      apply this
+-    · by_cases beval s b = true
+-      case pos isTrue =>
+-        simp [isTrue]
++      exact this
++    · by_cases hb : beval s b = true
++      · simp [hb]
+         apply star_trans
+         · apply ih
+           grind
+         · apply star_one
+-          · apply transition.trans_branch (d := codelen code2) <;> grind
+-      case neg isFalse =>
+-        simp [isFalse]
++          apply transition.trans_branch (d := codelen code2) <;> grind
++      · simp [hb]
+         rw [heq3]
+         specialize ih C (pc + codelen code3 + (codelen code1 + 1)) stk
+-        simp [isFalse] at ih
+-        suffices h2 : code_at C (pc + codelen code3 + (codelen code1 + 1)) (compile_com c2) from by
++        simp [hb] at ih
++        suffices h2 : code_at C (pc + codelen code3 + (codelen code1 + 1)) (compile_com c2) by
+           specialize ih h2
+           simp [codelen_app, codelen_cons]
+-          have : (pc + codelen code3 + (codelen code1 + 1) + codelen (compile_com c2)) = (pc + (codelen code3 + (codelen code1 + (codelen code2 + 1)))) := by grind
+-          rw [this] at ih
+-          apply ih
+-        have := @code_at_app_right C pc (code3 ++ code1 ++ [instr.Ibranch (codelen code2)]) code2 (by simp[h])
+-        grind
+-  case cexec_while_done s b c1 isFalse =>
++          have harr :
++            pc + codelen code3 + (codelen code1 + 1) + codelen (compile_com c2)
++              = pc + (codelen code3 + (codelen code1 + (codelen code2 + 1))) := by
++            grind
++          rw [harr] at ih
++          exact ih
++        have := @code_at_app_right C pc (code3 ++ code1 ++ [instr.Ibranch (codelen code2)]) code2 (by simp [h])
++        grind
++
++  case cexec_while_done s b c1 hbfalse =>
+     intro C pc stk h
+     generalize heq1 : compile_com c1 = code_body
+     generalize heq2 : compile_bexp b 0 (codelen code_body + 1) = code_branch
+@@ -546,7 +547,8 @@
+     apply star_trans
+     · apply compile_bexp_correct C s b 0 (codelen code_body + 1) pc stk (by grind)
+     · grind
+-  case cexec_while_loop s b c1 s_intermediate s' isTrue cexec1 cexec2 ih1 ih2 =>
++
++  case cexec_while_loop s b c1 s_intermediate s' hbtrue cexec1 cexec2 ih1 ih2 =>
+     intro C pc stk
+     generalize heq1 : compile_com c1 = code_body
+     generalize heq2 : compile_bexp b 0 (codelen code_body + 1) = code_branch
+@@ -568,17 +570,20 @@
+           · grind
+           · grind
+         · specialize ih2 C (pc + codelen code_branch + codelen code_body + 1 + d) stk
+-          suffices h2 : code_at C (pc + codelen code_branch + codelen code_body + 1 + d) (compile_com (com.WHILE b c1)) from by
++          suffices h2 : code_at C (pc + codelen code_branch + codelen code_body + 1 + d) (compile_com (com.WHILE b c1)) by
+             specialize ih2 h2
+             simp [compile_com] at ih2
+             rw [heq1, heq2, heq3] at ih2
+-            simp [codelen_app]
+             simp [codelen_app] at ih2
+-            have : (pc + codelen code_branch + codelen code_body + 1 + d +
+-      (codelen code_branch + (codelen code_body + codelen [instr.Ibranch d])) ) = (pc + (codelen code_branch + (codelen code_body + codelen [instr.Ibranch d]))) := by grind
+-            rw [←this]
+-            apply ih2
++            have harr :
++              pc + codelen code_branch + codelen code_body + 1 + d +
++                (codelen code_branch + (codelen code_body + codelen [instr.Ibranch d])) =
++                pc + (codelen code_branch + (codelen code_body + codelen [instr.Ibranch d])) := by
++              grind
++            rw [harr] at ih2
++            simpa [codelen_app] using ih2
+           grind
++
+ 
+ /-
+   7.  Full proof of compiler correctness

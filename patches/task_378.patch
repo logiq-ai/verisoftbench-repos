@@ -1,0 +1,43 @@
+--- a/loom/Loom/MonadAlgebras/NonDetT'/Extract.lean
++++ b/loom/Loom/MonadAlgebras/NonDetT'/Extract.lean
+@@ -419,20 +419,26 @@
+ omit [MAlgDet m l] in
+ lemma ExtractNonDet.extract_refines_wp_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
+   wp s post <= wp s.extractWeak post := by
+-  unhygienic induction inst
+-  { simp [wp_pure, NonDetT.extractWeak] }
+-  { simp only [NonDetT.wp_vis, NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind]
+-    apply wp_cons; aesop (add norm inf_comm) }
+-  { simp only [NonDetT.wp_pickCont, NonDetT.extractWeak, NonDetT.extractGen]; split
+-    simp only [CCPOBotLawful.prop, wp_bot, le_top]
+-    rename_i y h
+-    refine iInf_le_of_le y ?_
+-    have := WeakFindable.find_some_p (p := p) (by assumption)
+-    simp only [this, trueE, top_himp, ge_iff_le]; apply a_ih }
+-  simp only [NonDetT.wp_pickCont, NonDetT.extractWeak, NonDetT.extractGen]
+-  have : ∀ a : PUnit.{u_1 + 1}, a = .unit := by simp
+-  simp [this, iInf_const]; split_ifs <;> simp [*, CCPOBotLawful.prop, wp_bot]
+-  apply a_ih
++  unhygienic induction inst generalizing post
++  · simp [wp_pure, NonDetT.extractWeak]
++  · simp only [NonDetT.wp_vis, NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind]
++    apply wp_cons
++    intro y
++    simpa using a_ih y
++  · simp only [NonDetT.wp_pickCont, NonDetT.extractWeak, NonDetT.extractGen]
++    split
++    · simp only [CCPOBotLawful.prop, wp_bot, le_top]
++    · rename_i y h
++      refine iInf_le_of_le y ?_
++      have hy := WeakFindable.find_some_p (p := p) h
++      simp only [hy, trueE, top_himp, ge_iff_le]
++      exact a_ih y
++  · simp only [NonDetT.wp_pickCont, NonDetT.extractWeak, NonDetT.extractGen]
++    have hunit : ∀ a : PUnit.{u_1 + 1}, a = .unit := by simp
++    simp [hunit, iInf_const]
++    split_ifs <;> simp [*, CCPOBotLawful.prop, wp_bot]
++    exact a_ih .unit
++
+ 
+ 
+ omit [MAlgDet m l] in

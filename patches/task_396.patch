@@ -1,0 +1,44 @@
+--- a/pcf-lean/PCF/Flat.lean
++++ b/pcf-lean/PCF/Flat.lean
+@@ -65,24 +65,25 @@
+     rw [si, sj] at h₀
+     injection h₀ (by simp)
+ 
+-theorem Flat.sup_some {c : Chain _} {a : α} : (∃ k, c.act k = .some a) ↔ (flat_sup c = .some a) := by
++theorem Flat.sup_some {c : Chain (Flat α)} {a : α} : (∃ k, c.act k = .some a) ↔ (flat_sup c = .some a) := by
+   constructor
+-  case mp =>
+-    intro h;
+-    have p : ∃ a n, c.act n = .some a := ⟨a, h⟩
+-    rw [Flat.chain_some h p.choose_spec]
+-    exact dif_pos p
+-  case mpr =>
+-    intro h;
+-    if p : ∃ a n, c.act n = .some a
+-    then
+-      have q : flat_sup c = .some _ := dif_pos p
+-      rw [← h, q]
+-      exact p.choose_spec
+-    else
+-      have q : flat_sup c = .none := dif_neg p
+-      rw [q] at h
++  · intro h
++    let p : ∃ b n, c.act n = .some b := ⟨a, h⟩
++    have hp : ∃ b n, c.act n = .some b := p
++    rw [flat_sup, dif_pos hp]
++    have hEq : a = hp.choose := Flat.chain_some h hp.choose_spec
++    simpa [hEq]
++  · intro h
++    by_cases p : ∃ b n, c.act n = .some b
++    · rw [flat_sup, dif_pos p] at h
++      rcases p.choose_spec with ⟨k, hk⟩
++      injection h with hEq
++      refine ⟨k, ?_⟩
++      simpa [hEq] using hk
++    · rw [flat_sup, dif_neg p] at h
++      exfalso
+       exact Flat.noConfusion h
++
+ 
+ noncomputable instance : Domain (Flat α) where
+   bot := .none

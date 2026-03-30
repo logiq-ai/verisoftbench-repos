@@ -1,0 +1,28 @@
+--- a/VCV-io/VCVio/OracleComp/DistSemantics/EvalDist.lean
++++ b/VCV-io/VCVio/OracleComp/DistSemantics/EvalDist.lean
+@@ -739,19 +739,17 @@
+ 
+ section mul_le_probEvent_bind
+ 
+-lemma mul_le_probEvent_bind {oa : OracleComp spec α} {ob : α → OracleComp spec β}
+-    {p : α → Prop} {q : β → Prop} {r r' : ℝ≥0∞}
+-    (h : r ≤ [p | oa]) (h' : ∀ x ∈ oa.support, p x → r' ≤ [q | ob x]) :
+-    r * r' ≤ [q | oa >>= ob] := by
++theorem mul_le_probEvent_bind {oa : OracleComp spec α} {ob : α → OracleComp spec β} {p : α → Prop} {q : β → Prop} {r r' : ℝ≥0∞} (h : r ≤ [p | oa]) (h' : ∀ x ∈ oa.support, p x → r' ≤ [q | ob x]) : r * r' ≤ [q | oa >>= ob] := by
+   rw [probEvent_bind_eq_tsum]
+   refine (mul_le_mul_right' h r').trans ?_
+   rw [probEvent_eq_tsum_indicator, ← ENNReal.tsum_mul_right]
+-  refine ENNReal.tsum_le_tsum fun x => ?_
++  refine ENNReal.tsum_le_tsum (fun x => ?_)
+   rw [← Set.indicator_mul_const]
+   by_cases hx : x ∈ oa.support
+-  · refine Set.indicator_apply_le' (fun h => ?_) (fun _ => zero_le')
+-    exact (ENNReal.mul_le_mul_left (probOutput_ne_zero _ _ hx) probOutput_ne_top).mpr (h' x hx h)
+-  · simp [probOutput_eq_zero _ _ hx]
++  · refine Set.indicator_apply_le' (fun hx_p => ?_) (fun _ => zero_le')
++    exact (ENNReal.mul_le_mul_left (probOutput_ne_zero _ _ hx) probOutput_ne_top).mpr (h' x hx hx_p)
++  · simp [Set.indicator, probOutput_eq_zero _ _ hx]
++
+ 
+ end mul_le_probEvent_bind
+ 

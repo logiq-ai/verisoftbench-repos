@@ -1,0 +1,110 @@
+--- a/clean/Clean/Utils/OfflineMemory.lean
++++ b/clean/Clean/Utils/OfflineMemory.lean
+@@ -507,61 +507,57 @@
+     simp_all only
+   · simp_all only [↓reduceIte]
+ 
+-/--
+-  A memory access list is consistent if and only if, for each possible address, considering
+-  only the accesses to that address, the single address consistency check holds.
+--/
++theorem MemoryAccessList.all_single_address_implies_isConsistentOnline (accesses : MemoryAccessList) (h_sorted : accesses.isTimestampSorted) : (∀ addr : ℕ, MemoryAccessList.isConsistentSingleAddress (MemoryAccessList.filterAddress accesses addr) (MemoryAccessList.filterAddress_sorted accesses h_sorted addr)) → MemoryAccessList.isConsistentOnline accesses h_sorted := by
++  intro h
++  induction accesses with
++  | nil =>
++      simp [MemoryAccessList.isConsistentOnline]
++  | cons head tail ih =>
++      rcases head with ⟨t, a, r, w⟩
++      have h_sorted' : MemoryAccessList.isTimestampSorted tail := by
++        exact List.Sorted.of_cons h_sorted
++      have h_tail := MemoryAccessList.isConsistentSingleAddress_cons_forall (t, a, r, w) tail h_sorted h
++      have ih_tail := ih h_sorted' (by simpa using h_tail)
++      have h_tail_filter_sorted : MemoryAccessList.isTimestampSorted (MemoryAccessList.filterAddress tail a) :=
++        MemoryAccessList.filterAddress_sorted tail h_sorted' a
++      have h_filtered_sorted : MemoryAccessList.isTimestampSorted ((t, a, r, w) :: MemoryAccessList.filterAddress tail a) := by
++        simpa [MemoryAccessList.filterAddress_cons] using
++          (MemoryAccessList.filterAddress_sorted ((t, a, r, w) :: tail) h_sorted a)
++      have h_a : MemoryAccessList.isConsistentSingleAddress ((t, a, r, w) :: MemoryAccessList.filterAddress tail a) h_filtered_sorted := by
++        simpa [MemoryAccessList.filterAddress_cons] using (h a)
++      have h_all : ((t, a, r, w) :: MemoryAccessList.filterAddress tail a).all
++          (fun (_t, addr', _readValue, _writeValue) => addr' = a) := by
++        simp only [MemoryAccessList.filterAddress, List.all_cons, decide_true, List.all_filter,
++          Bool.not_or_self, Bool.true_and, List.all_eq_true, implies_true, forall_const]
++      have h_iff := MemoryAccessList.isConsistentSingleAddress_iff
++        ((t, a, r, w) :: MemoryAccessList.filterAddress tail a) a h_filtered_sorted h_all
++      have h_online_filtered := h_iff.mpr h_a
++      have h_eq_filtered : r = MemoryAccessList.lastWriteValue (MemoryAccessList.filterAddress tail a) h_tail_filter_sorted a := by
++        simpa [MemoryAccessList.isConsistentOnline] using h_online_filtered.1
++      simp [MemoryAccessList.isConsistentOnline]
++      constructor
++      · rw [MemoryAccessList.lastWriteValue_filter tail h_sorted' a h_tail_filter_sorted]
++        exact h_eq_filtered
++      · simpa using ih_tail
++
++theorem MemoryAccessList.isConsistentOnline_implies_all_single_address (accesses : MemoryAccessList) (h_sorted : accesses.isTimestampSorted) : MemoryAccessList.isConsistentOnline accesses h_sorted → ∀ addr : ℕ, MemoryAccessList.isConsistentSingleAddress (MemoryAccessList.filterAddress accesses addr) (MemoryAccessList.filterAddress_sorted accesses h_sorted addr) := by
++  intro h addr
++  let hiff := MemoryAccessList.isConsistentSingleAddress_iff
++    (MemoryAccessList.filterAddress accesses addr) addr
++    (MemoryAccessList.filterAddress_sorted accesses h_sorted addr)
++    (by
++      simp only [MemoryAccessList.filterAddress, List.all_filter, Bool.not_or_self, List.all_eq_true, implies_true])
++  exact hiff.mp <| MemoryAccessList.isConsistentOnline_filter_of_consistentOnline accesses h_sorted h addr
++
+ theorem MemoryAccessList.isConsistent_iff_all_single_address (accesses : MemoryAccessList) (h_sorted : accesses.isTimestampSorted) :
+     MemoryAccessList.isConsistentOnline accesses h_sorted ↔
+     (∀ addr : ℕ, MemoryAccessList.isConsistentSingleAddress (MemoryAccessList.filterAddress accesses addr) (MemoryAccessList.filterAddress_sorted accesses h_sorted addr)) := by
+   constructor
+-  · intro h addr
+-    have h' := MemoryAccessList.isConsistentSingleAddress_iff (accesses.filterAddress addr) addr (MemoryAccessList.filterAddress_sorted accesses h_sorted addr)
+-        (by simp only [filterAddress, List.all_filter, Bool.not_or_self, List.all_eq_true,
+-          implies_true])
+-    exact h'.mp (MemoryAccessList.isConsistentOnline_filter_of_consistentOnline accesses h_sorted h addr)
+   · intro h
+-    -- by induction on the list of accesses
+-    induction accesses with
+-    | nil =>
+-      simp [isConsistentOnline]
+-    | cons head tail ih =>
+-      obtain ⟨t, a, r, w⟩ := head
+-      have h_sorted' : isTimestampSorted tail := by
+-        unfold isTimestampSorted at h_sorted
+-        exact List.Sorted.of_cons h_sorted
+-      specialize ih h_sorted'
+-      have h_tail := MemoryAccessList.isConsistentSingleAddress_cons_forall (t, a, r, w) tail h_sorted h
+-      specialize ih h_tail
+-      simp only [isConsistentOnline, ih, and_true]
+-
+-      have h_tail_filter_sorted : (MemoryAccessList.filterAddress tail a).isTimestampSorted := by
+-        simp only [filterAddress]
+-        apply List.Sorted.filter
+-        exact h_sorted'
+-
+-      have h_filtered_sorted : MemoryAccessList.isTimestampSorted ((t, a, r, w) :: (MemoryAccessList.filterAddress tail a)) := by
+-        simp only [isTimestampSorted, List.sorted_cons, filterAddress, List.mem_filter,
+-          and_imp] at ⊢ h_sorted
+-        simp_all only [implies_true, true_and]
+-        apply List.Sorted.filter
+-        assumption
+-
+-
+-      have h' := MemoryAccessList.lastWriteValue_filter tail h_sorted' a h_tail_filter_sorted
+-
+-      specialize h a
+-      simp [filterAddress_cons] at h
+-      -- rw [h']
+-
+-      have h_iff := MemoryAccessList.isConsistentSingleAddress_iff ((t, a, r, w) :: filterAddress tail a) a h_filtered_sorted
+-      simp only [filterAddress, List.all_cons, decide_true, List.all_filter, Bool.not_or_self,
+-        Bool.true_and, List.all_eq_true, implies_true, forall_const] at h_iff
+-      have is_consistent_online_full := h_iff.mpr h
+-      simp only [isConsistentOnline] at is_consistent_online_full
+-      simp only [is_consistent_online_full.left]
+-      rw [eq_comm]
+-      apply MemoryAccessList.lastWriteValue_filter
++    exact MemoryAccessList.isConsistentOnline_implies_all_single_address accesses h_sorted h
++  · intro h
++    exact MemoryAccessList.all_single_address_implies_isConsistentOnline accesses h_sorted h
++
+ 
+ /--
+   Offline version of memory consistency checking.

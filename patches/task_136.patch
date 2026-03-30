@@ -1,0 +1,77 @@
+--- a/clean/Clean/Utils/OfflineMemory.lean
++++ b/clean/Clean/Utils/OfflineMemory.lean
+@@ -573,47 +573,36 @@
+     (if addr1 = addr2 then readValue2 = writeValue1 else readValue2 = 0) ∧
+     MemoryAccessList.isConsistentOffline ((t1, addr1, readValue1, writeValue1) :: rest) (List.Sorted.of_cons h_sorted)
+ 
+-theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted
+-    (accesses : MemoryAccessList)
+-    (h_sorted : accesses.isAddressTimestampSorted)
+-    (h_nodup : accesses.Notimestampdup)
+-    (addr : ℕ) :
+-    (accesses.filterAddress addr).isTimestampSorted := by
+-  have h_strict := addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup accesses h_sorted h_nodup
+-  simp only [isAddressStrictTimestampSorted, filterAddress, isTimestampSorted] at h_strict ⊢
++theorem MemoryAccessList.filterAddress_sorted_from_addressStrictTimestampSorted (accesses : MemoryAccessList) (h_strict : accesses.isAddressStrictTimestampSorted) (addr : ℕ) : (accesses.filterAddress addr).isTimestampSorted := by
++  simp only [MemoryAccessList.isAddressStrictTimestampSorted, MemoryAccessList.filterAddress,
++    MemoryAccessList.isTimestampSorted] at h_strict ⊢
+   induction accesses with
+-  | nil => simp
++  | nil =>
++      simp
+   | cons head tail ih =>
+-    obtain ⟨t, a, r, w⟩ := head
+-    simp only [List.filter_cons]
+-    split_ifs with h_addr
+-    · simp only [List.sorted_cons]
+-      constructor
+-      · intro z hz
+-        simp only [List.mem_filter] at hz
+-        obtain ⟨hz_mem, hz_addr⟩ := hz
+-        obtain ⟨t_z, a_z, r_z, w_z⟩ := z
+-        simp only [decide_eq_true_eq] at hz_addr
++      obtain ⟨t, a, r, w⟩ := head
++      simp only [List.filter_cons]
++      by_cases h_addr : a = addr
++      · simp only [h_addr, ↓reduceIte]
++        simp only [List.sorted_cons] at h_strict ⊢
++        constructor
++        · intro z hz
++          simp only [List.mem_filter] at hz
++          have hz_mem : z ∈ tail := hz.1
++          have h_ord := h_strict.1 z hz_mem
++          obtain ⟨t_z, a_z, r_z, w_z⟩ := z
++          rcases hz with ⟨_, hz_addr⟩
++          rw [decide_eq_true_eq] at hz_addr
++          simp only [address_strict_timestamp_ordering, timestamp_ordering] at h_ord ⊢
++          simpa [h_addr, hz_addr] using h_ord
++        · exact ih h_strict.2
++      · simp only [h_addr, ↓reduceIte]
+         simp only [List.sorted_cons] at h_strict
+-        have h_ord := h_strict.1 (t_z, a_z, r_z, w_z) hz_mem
+-        simp only [address_strict_timestamp_ordering] at h_ord
+-        simp only [decide_eq_true_eq] at h_addr
+-        rw [hz_addr, h_addr] at h_ord
+-        simp only [↓reduceIte] at h_ord
+-        simp only [timestamp_ordering]
+-        exact h_ord
+-      · apply ih
+-        · simp only [isAddressTimestampSorted] at h_sorted ⊢
+-          exact List.Sorted.of_cons h_sorted
+-        · simp only [Notimestampdup] at h_nodup ⊢
+-          exact List.Pairwise.of_cons h_nodup
+-        · exact List.Sorted.of_cons h_strict
+-    · apply ih
+-      · simp only [isAddressTimestampSorted] at h_sorted ⊢
+-        exact List.Sorted.of_cons h_sorted
+-      · simp only [Notimestampdup] at h_nodup ⊢
+-        exact List.Pairwise.of_cons h_nodup
+-      · exact List.Sorted.of_cons h_strict
++        exact ih h_strict.2
++
++theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted (accesses : MemoryAccessList) (h_sorted : accesses.isAddressTimestampSorted) (h_nodup : accesses.Notimestampdup) (addr : ℕ) : (accesses.filterAddress addr).isTimestampSorted := by
++  exact MemoryAccessList.filterAddress_sorted_from_addressStrictTimestampSorted accesses (MemoryAccessList.addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup accesses h_sorted h_nodup) addr
++
+ 
+ theorem MemoryAccessList.isConsistentSingleAddress_filterAddress_forall_of_cons
+     (head : MemoryAccess) (tail : MemoryAccessList)

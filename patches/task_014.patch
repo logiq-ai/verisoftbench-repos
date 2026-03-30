@@ -1,0 +1,125 @@
+--- a/ArkLib/ArkLib/Data/Nat/Bitwise.lean
++++ b/ArkLib/ArkLib/Data/Nat/Bitwise.lean
+@@ -1101,72 +1101,58 @@
+       have h_a_lt_ℓ: a < ℓ := by exact a.isLt
+       omega
+ 
+-lemma getLowBits_succ {n: ℕ} (numLowBits: ℕ) :
+-    getLowBits (numLowBits + 1) n = getLowBits numLowBits n
+-    + (getBit numLowBits n) <<< numLowBits := by
+-  apply eq_iff_eq_all_getBits.mpr;
++theorem getLowBits_succ_of_getBit_eq_one {n : ℕ} (numLowBits : ℕ) (h : getBit numLowBits n = 1) : getLowBits (numLowBits + 1) n = getLowBits numLowBits n + (1 <<< numLowBits) := by
++  have h_lowbit_zero : getBit numLowBits (getLowBits numLowBits n) = 0 := by
++    rw [getBit_of_lowBits (n := n) (numLowBits := numLowBits)]
++    simp only [lt_self_iff_false, ↓reduceIte]
++  have h_disjoint : getLowBits numLowBits n &&& (1 <<< numLowBits) = 0 := by
++    rw [Nat.shiftLeft_eq, one_mul]
++    exact and_two_pow_eq_zero_of_getBit_0 (n := getLowBits numLowBits n) (i := numLowBits) h_lowbit_zero
++  rw [sum_of_and_eq_zero_is_or h_disjoint]
++  apply eq_iff_eq_all_getBits.mpr
+   intro k
+-  have h_getBit_lt_numLowBits: getBit numLowBits n < 2 := by exact getBit_lt_2
+-  interval_cases h_getBit: getBit numLowBits n
+-  · rw [Nat.zero_shiftLeft]
+-    simp only [add_zero]
+-    -- ⊢ getLowBits n (numLowBits + 1) >>> k &&& 1 = getLowBits n numLowBits >>> k &&& 1
+-    change getBit k (getLowBits (numLowBits + 1) n) = getBit k (getLowBits numLowBits n)
+-    have getBit_right := getBit_of_lowBits (n := n) (numLowBits := numLowBits) k
+-    have getBit_left := getBit_of_lowBits (n := n) (numLowBits := numLowBits + 1) k
+-    rw [getBit_right, getBit_left]
+-    if h_k: k < numLowBits then
+-      simp only [h_k, ↓reduceIte]
+-      have h_k_lt: k < numLowBits + 1 := by omega
+-      simp only [h_k_lt, ↓reduceIte]
+-    else if h_k_eq: k = numLowBits then
+-      simp only [h_k_eq]
+-      simp only [lt_add_iff_pos_right, zero_lt_one, ↓reduceIte, lt_self_iff_false]
++  rw [getBit_of_lowBits (n := n) (numLowBits := numLowBits + 1)]
++  rw [getBit_of_or]
++  rw [getBit_of_lowBits (n := n) (numLowBits := numLowBits)]
++  rw [Nat.shiftLeft_eq, one_mul, getBit_two_pow]
++  by_cases hk_lt : k < numLowBits
++  · have hk_lt_succ : k < numLowBits + 1 := by omega
++    have hk_ne : numLowBits ≠ k := by omega
++    simp only [hk_lt_succ, hk_lt, beq_iff_eq, hk_ne, ↓reduceIte, Nat.or_zero]
++  · by_cases hk_eq : k = numLowBits
++    · subst k
++      simp only [lt_add_iff_pos_right, zero_lt_one, lt_self_iff_false, BEq.rfl, ↓reduceIte,
++        h, Nat.zero_or]
++    · have hk_nlt_succ : ¬ k < numLowBits + 1 := by omega
++      have hk_ne : numLowBits ≠ k := by omega
++      simp only [hk_nlt_succ, hk_lt, beq_iff_eq, hk_ne, ↓reduceIte, Nat.zero_or]
++
++theorem getLowBits_succ_of_getBit_eq_zero {n : ℕ} (numLowBits : ℕ) (h : getBit numLowBits n = 0) : getLowBits (numLowBits + 1) n = getLowBits numLowBits n := by
++  apply eq_iff_eq_all_getBits.mpr
++  intro k
++  rw [getBit_of_lowBits (n := n) (numLowBits := numLowBits + 1),
++    getBit_of_lowBits (n := n) (numLowBits := numLowBits)]
++  by_cases hk : k < numLowBits
++  · have hk' : k < numLowBits + 1 := by
+       omega
+-    else
+-      have k_ne_lt: ¬(k < numLowBits) := by omega
+-      have k_ne_lt_add_1: ¬(k < numLowBits + 1) := by omega
+-      simp only [k_ne_lt_add_1, ↓reduceIte, k_ne_lt]
+-  · change getBit k (getLowBits (numLowBits + 1) n)
+-      = getBit k (getLowBits numLowBits n + 1 <<< numLowBits)
+-    have getBit_left := getBit_of_lowBits (n := n) (numLowBits := numLowBits + 1) k
+-    have getBit_right := getBit_of_lowBits (n := n) (numLowBits := numLowBits) k
+-    rw [getBit_left]
+-
+-    have h_and_eq_0 := and_two_pow_eq_zero_of_getBit_0 (n:=getLowBits numLowBits n)
+-      (i:=numLowBits) (by
+-      simp only [getBit_of_lowBits (n := n) (numLowBits := numLowBits) numLowBits,
+-        lt_self_iff_false, ↓reduceIte]
+-    )
+-    rw [←one_mul (a:=2 ^ numLowBits)] at h_and_eq_0
+-    rw [←Nat.shiftLeft_eq (a:=1) (b:=numLowBits)] at h_and_eq_0
+-    have h_sum_eq_xor := sum_of_and_eq_zero_is_xor (n:=getLowBits numLowBits n)
+-      (m:=1 <<< numLowBits) (h_n_AND_m:=h_and_eq_0)
+-    have h_sum_eq_or := xor_of_and_eq_zero_is_or (n:=getLowBits numLowBits n)
+-      (m:=1 <<< numLowBits) (h_n_AND_m:=h_and_eq_0)
+-    rw [h_sum_eq_or] at h_sum_eq_xor
+-    rw [h_sum_eq_xor]
+-    rw [getBit_of_or]
+-    rw [getBit_of_lowBits]
+-    conv_rhs =>
+-      enter [2, 2]; rw [Nat.shiftLeft_eq, one_mul]
+-    rw [getBit_two_pow]
+-
+-    if h_k: k < numLowBits then
+-      have h_k_lt: k < numLowBits + 1 := by omega
+-      simp only [h_k_lt, ↓reduceIte, h_k, beq_iff_eq]
+-      have h_k_ne_eq: numLowBits ≠ k := by omega
+-      simp only [h_k_ne_eq, ↓reduceIte, Nat.or_zero]
+-    else if h_k_eq: k = numLowBits then
+-      simp only [h_k_eq, lt_add_iff_pos_right, zero_lt_one, ↓reduceIte, lt_self_iff_false, BEq.rfl,
+-        Nat.zero_or]
+-      omega
+-    else
+-      have k_ne_lt: ¬(k < numLowBits) := by omega
+-      have k_ne_lt_add_1: ¬(k < numLowBits + 1) := by omega
+-      simp only [k_ne_lt_add_1, ↓reduceIte, k_ne_lt, beq_iff_eq, Nat.zero_or, right_eq_ite_iff,
+-        zero_ne_one, imp_false, ne_eq]
+-      omega
++    simp only [hk, hk', if_true]
++  · by_cases hkeq : k = numLowBits
++    · subst k
++      have hk' : numLowBits < numLowBits + 1 := by
++        omega
++      simp only [hk', if_true, Nat.lt_irrefl, if_false, h]
++    · have hk' : ¬ k < numLowBits + 1 := by
++        omega
++      simp only [hk, hk', if_false]
++
++theorem getLowBits_succ {n : ℕ} (numLowBits : ℕ) : getLowBits (numLowBits + 1) n = getLowBits numLowBits n + (getBit numLowBits n) <<< numLowBits := by
++  have hbitlt : getBit numLowBits n < 2 := by
++    exact Nat.getBit_lt_2 (k := numLowBits) (n := n)
++  interval_cases hbit : getBit numLowBits n
++  · simp only [Nat.zero_shiftLeft, Nat.add_zero]
++    exact getLowBits_succ_of_getBit_eq_zero numLowBits hbit
++  · exact getLowBits_succ_of_getBit_eq_one numLowBits hbit
++
+ 
+ /-- This takes a argument for the number of lowBitss to remove from the number -/
+ def getHighBits_no_shl (numLowBits : ℕ) (n : ℕ) : ℕ := n >>> numLowBits

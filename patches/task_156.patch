@@ -1,0 +1,40 @@
+--- a/clean/Clean/Circuit/Theorems.lean
++++ b/clean/Clean/Circuit/Theorems.lean
+@@ -186,26 +186,20 @@
+   | case3 _ _ ih | case4 _ _ ih =>
+     simp only [List.cons_append, localLength, localWitnesses, ih]
+ 
+-/--
+-The witness length from flat and nested operations is the same
+--/
+ lemma localLength_toFlat {ops : Operations F} :
+     localLength ops.toFlat = ops.localLength := by
+   induction ops using Operations.induct with
+-  | empty => trivial
+-  | witness _ _ ops ih | assert _ ops ih | lookup _ ops ih  | subcircuit _ ops ih =>
+-    dsimp only [Operations.toFlat, Operations.localLength]
+-    generalize ops.toFlat = flat_ops at *
+-    generalize Operations.localLength ops = n at *
+-    induction flat_ops using localLength.induct generalizing n with
+-    | case1 => simp_all [localLength, add_comm, Subcircuit.localLength_eq]
+-    | case2 m' _ ops' ih' =>
+-      dsimp only [localLength, witness] at *
+-      specialize ih' (n - m') (by rw [←ih]; omega)
+-      simp_all +arith only [localLength_append, localLength]
+-      try omega
+-    | case3 ops _ ih' | case4 ops _ ih' =>
+-      simp_all only [localLength_append, forall_eq', localLength]
++  | empty =>
++      rfl
++  | witness m c ops ih =>
++      simpa [Operations.toFlat, Operations.localLength, FlatOperation.localLength] using ih
++  | assert e ops ih =>
++      simpa [Operations.toFlat, Operations.localLength, FlatOperation.localLength] using ih
++  | lookup l ops ih =>
++      simpa [Operations.toFlat, Operations.localLength, FlatOperation.localLength] using ih
++  | subcircuit s ops ih =>
++      simpa [Operations.toFlat, Operations.localLength, FlatOperation.localLength_append, s.localLength_eq] using ih
++
+ 
+ /--
+ The witnesses created from flat and nested operations are the same

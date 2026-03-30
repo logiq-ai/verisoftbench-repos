@@ -1,0 +1,400 @@
+--- a/juvix-lean/Juvix/Core/Main/Semantics/Approx/Indexed.lean
++++ b/juvix-lean/Juvix/Core/Main/Semantics/Approx/Indexed.lean
+@@ -327,252 +327,155 @@
+   refine h m n env env' e v ?_ h₁ h₂
+   linarith
+ 
+-lemma Value.Approx.Indexed.preserved_step {k} :
+-  (∀ k' < k, Preservation k') → Preservation k := by
+-  intro ihk
+-  intro m n env env' e v h₀ h₁ h₂
+-  induction h₂ generalizing m env'
+-  case var env i v h =>
+-    obtain ⟨v', hget, happrox⟩ := Env.Approx.Indexed'.value h₁ h
+-    exists v'
+-    constructor
+-    · apply Eval.var
+-      aesop
+-    · apply Value.Approx.Indexed.anti_monotone
+-      · assumption
+-      · linarith
+-  case var_rec n' env₁ name i env₁' e₁' v' hget heval ih =>
+-    have hget_or :
+-        (∃ env₂' e₂', e₁' ≲(m + n')⟨env₁', env₂'⟩ e₂' ∧
+-          env'[i]? = some (Object.delayed env₂' e₂')) ∨
+-        (∃ env₂', env₁' ≲ₑ'(m + n') env₂' ∧
+-          env'[i]? = some (Object.delayed env₂' e₁')) := by
+-      apply Env.Approx.Indexed'.delayed h₁; assumption
+-    cases hget_or
+-    case inl hget' =>
+-      obtain ⟨env₂', e₂', h₂, hget'⟩ := hget'
+-      simp [Expr.Approx.Param.Indexed] at h₂
+-      obtain ⟨v'', heval', happrox'⟩ := h₂ n' m v' (by linarith) heval
+-      exists v''
++theorem Value.Approx.Indexed.preserved_step {k : Nat} : (∀ k' < k, Value.Approx.Indexed.Preservation k') → Value.Approx.Indexed.Preservation k := by
++  intro ihk m n env env' e v hk henv hev
++  induction hev generalizing m env'
++  case var h =>
++    obtain ⟨v', hget, happrox⟩ := Env.Approx.Indexed'.value henv h
++    refine ⟨v', Eval.var hget, ?_⟩
++    apply Value.Approx.Indexed.anti_monotone happrox
++    linarith
++  case var_rec n env name idx env₁ expr val hget heval ih =>
++    rcases Env.Approx.Indexed'.delayed henv hget with ⟨env₂', e₂', hexpr, hget'⟩ | ⟨env₂, henv₂, hget'⟩
++    · simp only [Expr.Approx.Param.Indexed] at hexpr
++      obtain ⟨v'', heval', happrox'⟩ := hexpr n m val (by linarith) heval
++      exact ⟨v'', Eval.var_rec hget' heval', happrox'⟩
++    · obtain ⟨v'', heval', happrox'⟩ := ih m env₂ (by linarith) henv₂
++      exact ⟨v'', Eval.var_rec hget' heval', happrox'⟩
++  case unit =>
++    exact ⟨Value.unit, Eval.unit, Value.Approx.Indexed.unit⟩
++  case const n env c =>
++    exact ⟨Value.const c, Eval.const, Value.Approx.Indexed.const⟩
++  case constr n env name =>
++    refine ⟨Value.constr_app name [], Eval.constr, ?_⟩
++    apply Value.Approx.Indexed.constr_app
++    intro k hk
++    simp
++  case app n n₁ n₂ env env₁ f body arg val val' hn heval_f heval_arg heval_body ih_f ih_arg ih_body =>
++    have henv_f : env ≲ₑ'(m + n₂ + 1 + n₁) env' := by
++      apply Env.Approx.Indexed'.anti_monotone henv
++      linarith
++    obtain ⟨v_f, heval_f', happrox_f⟩ := ih_f (m + n₂ + 1) env' (by linarith) henv_f
++    have henv_arg : env ≲ₑ'(m + n₂ + (n₁ + 1)) env' := by
++      apply Env.Approx.Indexed'.anti_monotone henv
++      linarith
++    obtain ⟨v_arg, heval_arg', happrox_arg⟩ := ih_arg (m + n₂) env' (by linarith) henv_arg
++    invert happrox_f
++    case closure ch =>
++      have hcomm : m + n₂ = n₂ + m := by linarith
++      rw [hcomm] at happrox_arg
++      obtain ⟨v_body, heval_body', happrox_body⟩ := ch n₂ m (by linarith) val v_arg val' happrox_arg heval_body
++      exact ⟨v_body, Eval.app heval_f' heval_arg' heval_body', happrox_body⟩
++  case constr_app n n' env ctr ctr_name ctr_args_rev arg val hlt heval_ctr heval_arg ih_ctr ih_arg =>
++    obtain ⟨v_ctr, heval_ctr', happrox_ctr⟩ := ih_ctr m env' hk henv
++    have henv_arg : env ≲ₑ'(m + n') env' := by
++      apply Env.Approx.Indexed'.anti_monotone henv
++      linarith
++    obtain ⟨v_arg, heval_arg', happrox_arg⟩ := ih_arg m env' (by linarith) henv_arg
++    invert happrox_ctr
++    case constr_app args_rev' hargs =>
++      refine ⟨Value.constr_app ctr_name (v_arg :: args_rev'), Eval.constr_app heval_ctr' heval_arg', ?_⟩
++      apply Value.Approx.Indexed.constr_app
++      intro k hk'
+       constructor
+-      · apply Eval.var_rec
+-        · exact hget'
+-        · assumption
+-      · assumption
+-    case inr hget' =>
+-      obtain ⟨env₂, happrox, hget'⟩ := hget'
+-      obtain ⟨v'', heval', happrox'⟩ := ih m env₂ (by linarith) happrox
+-      exists v''
+-      constructor
+-      · apply Eval.var_rec
+-        · exact hget'
+-        · assumption
+-      · assumption
+-  case unit =>
+-    exists Value.unit
+-    constructor
+-    · apply Eval.unit
+-    · apply Value.Approx.Indexed.unit
+-  case const c =>
+-    exists Value.const c
+-    constructor
+-    · apply Eval.const
+-    · apply Value.Approx.Indexed.const
+-  case constr ctr_name =>
+-    exists Value.constr_app ctr_name []
+-    constructor
+-    · apply Eval.constr
+-    · apply Value.Approx.Indexed.constr_app
+-      intro k hk
+-      simp
+-  case app n n₁ n₂ env env₀ f body arg val val' hn hcl h₂ h₃ ih_f ih_arg ih_body =>
+-    have : env ≲ₑ'(m + n₂ + 1 + n₁) env' := by
+-      apply Env.Approx.Indexed'.anti_monotone
+-      · assumption
+-      · linarith
+-    obtain ⟨v_f, heval_f, happrox_f⟩ := ih_f (m + n₂ + 1) env' (by linarith) this
+-    clear this
+-    have : env ≲ₑ'(m + n₂ + n₁ + 1) env' := by
+-      apply Env.Approx.Indexed'.anti_monotone
+-      · assumption
+-      · linarith
+-    obtain ⟨v_arg, heval_arg, happrox_arg⟩ := ih_arg (m + n₂) env' (by nlinarith) this
+-    clear this
+-    invert happrox_f
+-    case closure cenv cbody ch =>
+-      have happrox_arg' : val ≲ᵥ(n₂ + m) v_arg := by
+-        have : m + n₂ = n₂ + m := by linarith
+-        rw [this] at happrox_arg
+-        exact happrox_arg
+-      obtain ⟨v_body, heval_body, happrox_body⟩ := ch n₂ m (by linarith) val v_arg val' happrox_arg' h₃
+-      exists v_body
+-      constructor
+-      · apply Eval.app
+-        · exact heval_f
+-        · exact heval_arg
+-        · exact heval_body
+-      · assumption
+-  case constr_app n₁ n₂ env₁ e₁ cname args arg v' hlt _ h₂ h₃ h₄ =>
+-    obtain ⟨v₁, heval_e₁, happrox_e₁⟩ := h₃ m env' (by linarith) h₁
+-    have : env₁ ≲ₑ'(m + n₂) env' := by
+-      apply Env.Approx.Indexed'.anti_monotone
+-      · assumption
+-      · linarith
+-    obtain ⟨v₂, heval_arg, happrox_arg⟩ := h₄ m env' (by linarith) this
+-    invert happrox_e₁
+-    case constr_app args_rev hargs =>
+-      exists (Value.constr_app cname (v₂ :: args_rev))
+-      constructor
+-      · apply Eval.constr_app
+-        · exact heval_e₁
+-        · exact heval_arg
+-      · apply Value.Approx.Indexed.constr_app
+-        intro k hk
+-        constructor
+-        · apply Value.Approx.Indexed.anti_monotone
+-          · exact happrox_arg
+-          · linarith
+-        · apply hargs
+-          linarith
+-  case binop n' env₁ op arg₁ arg₂ i₁ i₂ v₁ v₂ hv₁ hv₂ =>
+-    obtain ⟨v₁', heval₁, happrox₁⟩ := hv₁ m env' (by linarith) h₁
+-    obtain ⟨v₂', heval₂, happrox₂⟩ := hv₂ m env' (by linarith) h₁
++      · exact Value.Approx.Indexed.anti_monotone happrox_arg (by linarith)
++      · exact hargs k hk'
++  case binop n env op arg₁ arg₂ val₁ val₂ heval₁ heval₂ ih₁ ih₂ =>
++    obtain ⟨v₁', heval₁', happrox₁⟩ := ih₁ m env' hk henv
++    obtain ⟨v₂', heval₂', happrox₂⟩ := ih₂ m env' hk henv
+     invert happrox₁
+-    invert happrox₂
+-    exists (Value.const (Constant.int (eval_binop_int op i₁ i₂)))
+-    constructor
+-    · apply Eval.binop
+-      · exact heval₁
+-      · exact heval₂
+-    · apply Value.Approx.Indexed.const
+-  case lambda n' env₁ name body =>
+-    exists (Value.closure env' body)
+-    constructor
+-    · apply Eval.lambda
+-    · apply Value.Approx.Indexed.closure
+-      intro n₁ n₂ hlt a₁ a₂ v₁ happrox heval
+-      have happrox_env : a₁ ∷ env₁ ≲ₑ'(n₁ + n₂) a₂ ∷ env' := by
+-        constructor
+-        · constructor
+-          exact happrox
+-        · apply Env.Approx.Indexed'.anti_monotone (n := m + n')
+-          · assumption
+-          · linarith
+-      apply ihk (n₁ + n₂ + 1) (by linarith) (m := n₂) (n := n₁)
+-      · linarith
+-      · have : n₁ + n₂ = n₂ + n₁ := by linarith
+-        rw [<- this]
+-        exact happrox_env
+-      · exact heval
+-  case save n' n₁ n₂ env₁ name e₁ e₂ val val' hle ha₁ ha₂ ih₁ ih₂ =>
+-    have : env₁ ≲ₑ'(m + n₂ + n₁) env' := by
+-      apply Env.Approx.Indexed'.anti_monotone
+-      · assumption
+-      · linarith
+-    obtain ⟨v₁, heval₁, happrox₁⟩ := ih₁ (m + n₂) env' (by linarith) this
+-    clear this
+-    have : val ∷ env₁ ≲ₑ'(m + n₂) v₁ ∷ env' := by
+-      constructor
+-      · apply Object.Approx.Indexed'.value
+-        · apply Value.Approx.Indexed.anti_monotone
+-          · exact happrox₁
+-          · linarith
+-      apply Env.Approx.Indexed'.anti_monotone
+-      · assumption
+-      · linarith
+-    obtain ⟨v₂, heval₂, happrox₂⟩ := ih₂ m (v₁ ∷ env') (by linarith) this
+-    exists v₂
+-    constructor
+-    · apply Eval.save
+-      · exact heval₁
+-      · exact heval₂
+-    · assumption
+-  case branch_matches e' n₁ n₁' env₁ name args_rev body val hlt heval_body ih =>
+-    rcases env' with
+-      ⟨⟩ | ⟨⟨hd⟩, env'⟩
+-    case nil =>
+-      cases h₁
+-    case cons.value =>
+-      cases h₁
+-      case cons h₁ h₂ =>
+-        cases h₁
+-        case value h₁ =>
+-          invert h₁
+-          case constr_app args_rev' happrox =>
+-            let args := List.map Object.value args_rev
+-            let args' := List.map Object.value args_rev'
+-            have : args ++ env₁ ≲ₑ'(m + n₁') args' ++ env' := by
+-              apply Env.Approx.Indexed'.concat
+-              · apply Env.Approx.Indexed'.from_value
+-                apply happrox
+-                linarith
+-              · apply Env.Approx.Indexed'.anti_monotone
+-                · assumption
+-                · linarith
+-            obtain ⟨v', heval', happrox'⟩ := ih m (args' ++ env') (by linarith) this
+-            exists v'
+-            constructor
+-            · apply Eval.branch_matches
+-              · exact heval'
+-            · assumption
+-    case cons.delayed =>
+-      cases h₁
+-      case cons h _ =>
+-        cases h
+-  case branch_fails e' n' env₁ name name' args e₂ v₂ hname heval ih =>
+-    rcases env' with
+-      ⟨⟩ | ⟨⟨hd⟩, env'⟩
+-    case nil =>
+-      cases h₁
+-    case cons.value =>
+-      cases h₁
+-      case cons h₁ h₂ =>
+-        cases h₁
+-        case value h₁ =>
+-          invert h₁
+-          case constr_app args_rev h =>
+-            have h₃ : Value.constr_app name args ∷ env₁ ≲ₑ'(m + n') Value.constr_app name args_rev ∷ env' := by
+-              constructor
+-              · apply Object.Approx.Indexed'.value
+-                apply Value.Approx.Indexed.constr_app
+-                intro k hk
+-                apply h
+-                exact hk
+-              · apply Env.Approx.Indexed'.anti_monotone
+-                · assumption
+-                · linarith
+-            obtain ⟨v', heval', happrox'⟩ := ih m (Value.constr_app name args_rev ∷ env') (by linarith) h₃
+-            exists v'
+-            constructor
+-            · apply Eval.branch_fails
+-              · exact hname
+-              · exact heval'
+-            · assumption
+-    case cons.delayed =>
+-      cases h₁
+-      case cons h _ =>
+-        cases h
+-  case recur n₁ n₂ env₁ name body val hn ha₁ ih =>
+-    let d := Object.delayed env₁ (Expr.recur name body)
++    case const =>
++      invert happrox₂
++      case const =>
++        exact ⟨Value.const (Constant.int (eval_binop_int op val₁ val₂)), Eval.binop heval₁' heval₂', Value.Approx.Indexed.const⟩
++  case lambda n env name body =>
++    refine ⟨Value.closure env' body, Eval.lambda, ?_⟩
++    apply Value.Approx.Indexed.closure
++    intro n₁ n₂ hlt a₁ a₂ v₁ happrox heval
++    have happrox_env : a₁ ∷ env ≲ₑ'(n₁ + n₂) a₂ ∷ env' := by
++      apply Env.Approx.Indexed'.cons
++      · exact Object.Approx.Indexed'.value happrox
++      · apply Env.Approx.Indexed'.anti_monotone henv
++        linarith
++    have hk' : n₁ + n₂ + 1 < k := by
++      linarith
++    have hpres := ihk (n₁ + n₂ + 1) hk'
++    have hcomm : n₁ + n₂ = n₂ + n₁ := by linarith
++    rw [hcomm] at happrox_env
++    exact hpres n₂ n₁ (a₁ ∷ env) (a₂ ∷ env') body v₁ (by linarith) happrox_env heval
++  case save n n₁ n₂ env name value body val val' hle heval_val heval_body ih_val ih_body =>
++    have henv_val : env ≲ₑ'(m + n₂ + n₁) env' := by
++      apply Env.Approx.Indexed'.anti_monotone henv
++      linarith
++    obtain ⟨v₁, heval₁, happrox₁⟩ := ih_val (m + n₂) env' (by linarith) henv_val
++    have henv_body : val ∷ env ≲ₑ'(m + n₂) v₁ ∷ env' := by
++      apply Env.Approx.Indexed'.cons
++      · exact Object.Approx.Indexed'.value happrox₁
++      · apply Env.Approx.Indexed'.anti_monotone henv
++        linarith
++    obtain ⟨v₂, heval₂, happrox₂⟩ := ih_body m (v₁ ∷ env') (by linarith) henv_body
++    exact ⟨v₂, Eval.save heval₁ heval₂, happrox₂⟩
++  case branch_matches next n n' env name args_rev body val hlt heval_body ih =>
++    cases env' with
++    | nil =>
++        cases henv
++    | cons hd env' =>
++        cases henv with
++        | cons hhd htail =>
++            cases hd with
++            | value vhd =>
++                cases hhd with
++                | value happrox_head =>
++                    invert happrox_head
++                    case constr_app args_rev' hargs =>
++                      have henv_body : List.map Object.value args_rev ++ env ≲ₑ'(m + n') List.map Object.value args_rev' ++ env' := by
++                        apply Env.Approx.Indexed'.concat
++                        · apply Env.Approx.Indexed'.from_value
++                          exact hargs (m + n') (by linarith)
++                        · apply Env.Approx.Indexed'.anti_monotone htail
++                          linarith
++                      obtain ⟨v', heval', happrox'⟩ := ih m (List.map Object.value args_rev' ++ env') (by linarith) henv_body
++                      exact ⟨v', Eval.branch_matches heval', happrox'⟩
++            | delayed env₂ e₂ =>
++                cases hhd
++  case branch_fails body n env name name' args_rev next val hname heval ih =>
++    cases env' with
++    | nil =>
++        cases henv
++    | cons hd env' =>
++        cases henv with
++        | cons hhd htail =>
++            cases hd with
++            | value vhd =>
++                cases hhd with
++                | value happrox_head =>
++                    invert happrox_head
++                    case constr_app args_rev' hargs =>
++                      have henv_next : Value.constr_app name args_rev ∷ env ≲ₑ'(m + n) Value.constr_app name args_rev' ∷ env' := by
++                        apply Env.Approx.Indexed'.cons
++                        · apply Object.Approx.Indexed'.value
++                          apply Value.Approx.Indexed.constr_app
++                          intro k hk'
++                          exact hargs k hk'
++                        · exact htail
++                      obtain ⟨v', heval', happrox'⟩ := ih m (Value.constr_app name args_rev' ∷ env') hk henv_next
++                      exact ⟨v', Eval.branch_fails hname heval', happrox'⟩
++            | delayed env₂ e₂ =>
++                cases hhd
++  case recur n n' env name body val hlt heval_body ih_body =>
++    let d := Object.delayed env (Expr.recur name body)
+     let d' := Object.delayed env' (Expr.recur name body)
+-    have : d ≲ₒ'(m + n₂) d' := by
+-      simp [d, d']
++    have hd : d ≲ₒ'(m + n') d' := by
+       apply Object.Approx.Indexed'.delayed_eq
+-      apply Env.Approx.Indexed'.anti_monotone
+-      · assumption
+-      · linarith
+-    have : d :: env₁ ≲ₑ'(m + n₂) d' :: env' := by
+-      apply Env.Approx.Indexed'.cons
+-      · assumption
+-      · apply Env.Approx.Indexed'.anti_monotone
+-        · assumption
+-        · linarith
+-    obtain ⟨v, heval, happrox⟩ := ih m (d' :: env') (by linarith) this
+-    exists v
+-    constructor
+-    · apply Eval.recur
+-      exact heval
+-    · assumption
++      apply Env.Approx.Indexed'.anti_monotone henv
++      linarith
++    have henv_body : d :: env ≲ₑ'(m + n') d' :: env' := by
++      apply Env.Approx.Indexed'.cons hd
++      apply Env.Approx.Indexed'.anti_monotone henv
++      linarith
++    obtain ⟨v', heval', happrox'⟩ := ih_body m (d' :: env') (by linarith) henv_body
++    exact ⟨v', Eval.recur heval', happrox'⟩
++
+ 
+ lemma Value.Approx.Indexed.preserved' {k} : Preservation k := by
+   suffices ∀ k' ≤ k, Preservation k' by

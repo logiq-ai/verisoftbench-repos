@@ -1,0 +1,33 @@
+--- a/VCV-io/VCVio/OracleComp/DistSemantics/EvalDist.lean
++++ b/VCV-io/VCVio/OracleComp/DistSemantics/EvalDist.lean
+@@ -679,15 +679,21 @@
+ 
+ lemma probFailure_bind_of_const [Nonempty α] (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
+     [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by
+-  have : r ≠ ⊤ := λ hr ↦ probFailure_ne_top ((h (Classical.arbitrary α)).trans hr)
+-  simp [probFailure_bind_eq_tsum, h, ENNReal.tsum_mul_right, tsum_probOutput_eq_sub]
+-  rw [ENNReal.sub_mul λ _ _ ↦ this, one_mul]
+-  refine symm (AddLECancellable.add_tsub_assoc_of_le ?_ ?_ _)
+-  · refine ENNReal.addLECancellable_iff_ne.2 (ENNReal.mul_ne_top probFailure_ne_top this)
+-  · by_cases hr : r = 0
+-    · simp only [hr, mul_zero, le_refl]
+-    refine mul_le_of_le_div (le_of_le_of_eq probFailure_le_one ?_)
+-    refine symm (ENNReal.div_self hr this)
++  have h_top : r ≠ ∞ := by
++    intro hr
++    let x : α := Classical.arbitrary α
++    exact probFailure_ne_top (oa := ob x) ((h x).trans hr)
++  rw [probFailure_bind_eq_tsum]
++  simp only [h, ENNReal.tsum_mul_right, tsum_probOutput_eq_sub]
++  rw [ENNReal.sub_mul (fun _ _ => h_top), one_mul]
++  refine (AddLECancellable.add_tsub_assoc_of_le ?_ ?_ _).symm
++  · exact (ENNReal.addLECancellable_iff_ne).2 (ENNReal.mul_ne_top probFailure_ne_top h_top)
++  · by_cases hr0 : r = 0
++    · simp [hr0]
++    · refine ENNReal.mul_le_of_le_div ?_
++      refine le_of_le_of_eq probFailure_le_one ?_
++      exact (ENNReal.div_self hr0 h_top).symm
++
+ 
+ lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
+     (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :

@@ -1,0 +1,58 @@
+--- a/VCV-io/VCVio/OracleComp/DistSemantics/EvalDist.lean
++++ b/VCV-io/VCVio/OracleComp/DistSemantics/EvalDist.lean
+@@ -689,31 +689,34 @@
+     refine mul_le_of_le_div (le_of_le_of_eq probFailure_le_one ?_)
+     refine symm (ENNReal.div_self hr this)
+ 
+-lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
+-    (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
+-    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by
++theorem probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β} (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) : [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by
+   rw [probFailure_bind_eq_tsum]
+   rw [← tsum_probOutput_eq_sub]
+   rw [← ENNReal.tsum_mul_right]
+-  have hl : ∀ x, [=x|oa] * [⊥|ob x] ≤ [=x|oa] :=
+-    λ x ↦ le_of_le_of_eq (mul_le_mul' le_rfl probFailure_le_one) (mul_one _)
+-  calc [⊥ | oa] + ∑' x, [= x | oa] * [⊥ | ob x]
+-    _ = 1 - (∑' x, [= x | oa]) + (∑' x, [= x | oa] * [⊥ | ob x]) := by
+-      rw [probFailure_eq_sub_tsum]
+-    _ = 1 - (∑' x, [= x | oa] - ∑' x, [= x | oa] * [⊥ | ob x]) := by
+-      exact Eq.symm (AddLECancellable.tsub_tsub_assoc
+-        (by simp) tsum_probOutput_le_one (ENNReal.tsum_le_tsum hl))
++  have hl : ∀ x, [= x | oa] * [⊥ | ob x] ≤ [= x | oa] := by
++    intro x
++    exact le_of_le_of_eq (mul_le_mul' le_rfl probFailure_le_one) (mul_one _)
++  calc
++    [⊥ | oa] + ∑' x, [= x | oa] * [⊥ | ob x]
++        = 1 - (∑' x, [= x | oa]) + ∑' x, [= x | oa] * [⊥ | ob x] := by
++            rw [probFailure_eq_sub_tsum]
++    _ = 1 - ((∑' x, [= x | oa]) - ∑' x, [= x | oa] * [⊥ | ob x]) := by
++          exact Eq.symm (AddLECancellable.tsub_tsub_assoc (by simp) tsum_probOutput_le_one (ENNReal.tsum_le_tsum hl))
+     _ = 1 - ∑' x, ([= x | oa] - [= x | oa] * [⊥ | ob x]) := by
+-      refine congr_arg (1 - ·) (ENNReal.eq_sub_of_add_eq ?_ ?_).symm
+-      · refine ne_top_of_le_ne_top one_ne_top ?_
+-        refine le_trans ?_ (@tsum_probOutput_le_one _ _ _ _ oa)
+-        refine ENNReal.tsum_le_tsum λ x ↦ ?_
+-        exact hl x
+-      rw [← ENNReal.tsum_add]
+-      refine tsum_congr λ x ↦ tsub_add_cancel_of_le (hl x)
+-    _ = 1 - ∑' x : α, [= x | oa] * (1 - r) := by
+-      refine congr_arg (1 - ·) (tsum_congr λ x ↦ ?_)
+-      rw [ENNReal.mul_sub (λ _ _ ↦ probOutput_ne_top), mul_one, ← h x]
++          refine congr_arg (fun z => 1 - z) ?_
++          refine (ENNReal.eq_sub_of_add_eq ?_ ?_).symm
++          · exact ne_top_of_le_ne_top one_ne_top (le_trans (ENNReal.tsum_le_tsum hl) tsum_probOutput_le_one)
++          · rw [← ENNReal.tsum_add]
++            refine tsum_congr ?_
++            intro x
++            exact tsub_add_cancel_of_le (hl x)
++    _ = 1 - ∑' x, [= x | oa] * (1 - r) := by
++          refine congr_arg (fun z => 1 - z) ?_
++          refine tsum_congr ?_
++          intro x
++          rw [ENNReal.mul_sub (fun _ _ => probOutput_ne_top), mul_one, ← h x]
++
++
+ 
+ lemma probFailure_bind_le_of_forall {oa : OracleComp spec α} {s : ℝ≥0∞}
+     -- TODO: this should be a general type of `uniformOutput` computations

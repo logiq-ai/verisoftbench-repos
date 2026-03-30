@@ -1,0 +1,182 @@
+--- a/LeroyCompilerVerificationCourse/LeroyCompilerVerificationCourse/Constprop.lean
++++ b/LeroyCompilerVerificationCourse/LeroyCompilerVerificationCourse/Constprop.lean
+@@ -599,88 +599,96 @@
+   This pattern follows closely the structure of the abstract interpreter
+   `Cexec`: structural induction on the command + local fixpoint for loops.
+ -/
+-theorem cp_com_correct_terminating :
+-  ∀ c s1 s2 S1,
+-  cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by
+-    intro c s1 s2 S1 EXEC AG
+-    induction c generalizing s1 s2 S1
+-    any_goals grind
+-    case ASSIGN x a =>
++theorem cp_com_correct_while_inner (b : bexp) (c : com) (S1 X : Store) : Le (Join S1 (Cexec X c)) X -> (∀ s1 s2 S, cexec s1 c s2 -> matches' s1 S -> cexec s1 (cp_com S c) s2) -> ∀ s1 s2, cexec s1 (.WHILE b c) s2 -> matches' s1 X -> cexec s1 (mk_WHILE (cp_bexp X b) (cp_com X c)) s2 := by
++  intro hle hbody
++  have H : ∀ s1 c1 s2,
++      cexec s1 c1 s2 ->
++      c1 = .WHILE b c ->
++      matches' s1 X ->
++      cexec s1 (mk_WHILE (cp_bexp X b) (cp_com X c)) s2 := by
++    intro s1 c1 s2 hexec hc1 hmatch
++    induction hexec generalizing b c with
++    | cexec_skip =>
++        cases hc1
++    | cexec_assign =>
++        cases hc1
++    | cexec_seq hexec1 hexec2 ih1 ih2 =>
++        cases hc1
++    | cexec_ifthenelse hexec ih =>
++        cases hc1
++    | cexec_while_done hdone =>
++        rename_i s b c
++        cases hc1
++        apply cexec_mk_WHILE_done
++        have hcp : beval s (cp_bexp X b) = beval s b := cp_bexp_sound s X hmatch b
++        simpa [hcp] using hdone
++    | cexec_while_loop hguard hexec_body hexec_tail ih_body ih_tail =>
++        rename_i s b c s' s''
++        cases hc1
++        apply cexec_mk_WHILE_loop
++        · have hcp : beval s (cp_bexp X b) = beval s b := cp_bexp_sound s X hmatch b
++          simpa [hcp] using hguard
++        · exact hbody s _ X hexec_body hmatch
++        · have hmid : matches' s' (Cexec X c) := Cexec_sound c s s' X hexec_body hmatch
++          have hmidJoin : matches' s' (Join S1 (Cexec X c)) := by
++            exact matches_Le s' (Cexec X c) (Join S1 (Cexec X c)) (Le_Join_r S1 (Cexec X c)) hmid
++          have hmidX : matches' s' X := by
++            exact matches_Le s' (Join S1 (Cexec X c)) X hle hmidJoin
++          exact ih_tail b c hle hbody rfl hmidX
++  intro s1 s2 hexec hmatch
++  exact H s1 (.WHILE b c) s2 hexec rfl hmatch
++
++theorem matches_Cexec_while (b : bexp) (c : com) (s1 : store) (S1 : Store) : matches' s1 S1 -> matches' s1 (Cexec S1 (.WHILE b c)) := by
++  intro hmatch
++  let F : Store → Store := fun x => Join S1 (Cexec x c)
++  let X : Store := fixpoint F S1
++  have hfix : Le (F X) X := by
++    simpa [X] using (fixpoint_sound F S1 rfl)
++  have hjoin : Le S1 (F X) := by
++    simpa [F] using (Le_Join_l S1 (Cexec X c))
++  simpa [Cexec, F, X] using
++    (matches_Le s1 (F X) X hfix (matches_Le s1 S1 (F X) hjoin hmatch))
++
++theorem cp_com_correct_terminating: ∀ c s1 s2 S1, cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by
++  intro c
++  induction c with
++  | SKIP =>
++      intro s1 s2 S1 EXEC MATCH
+       cases EXEC
+-      next =>
+-        have := @cexec.cexec_assign s1 x (cp_aexp S1 a)
+-        grind
+-    case IFTHENELSE b c1 c2 c1_ih c2_ih =>
++      simpa [cp_com] using (cexec.cexec_skip (s := s1))
++  | ASSIGN x a =>
++      intro s1 s2 S1 EXEC MATCH
+       cases EXEC
+-      next =>
+-        apply cexec_mk_IFTHENELSE
+-        grind [cp_bexp_sound]
+-    case WHILE b c c_ih =>
+-      generalize heq1 : com.WHILE b c = loop
+-      generalize heq2 : Cexec S1 (.WHILE b c) = X
+-      have INNER : ∀ s1 c1 s2,
+-                 cexec s1 c1 s2 ->
+-                 c1 = .WHILE b c ->
+-                 matches' s1 X ->
+-                 cexec s1 (mk_WHILE (cp_bexp X b) (cp_com X c)) s2 := by
+-                  intro s1 c1
+-                  induction c1 generalizing s1 c
+-                  any_goals grind
+-                  case WHILE b1 c1 c1_ih  =>
+-                    intro s2 EXEC EQ AG1
+-                    injections heq1' heq2'
+-                    generalize heq : (com.WHILE b1 c1) = loop
+-                    rw [heq] at EXEC
+-                    induction EXEC
+-                    any_goals grind
+-                    case cexec_while_done isFalse =>
+-                      apply cexec_mk_WHILE_done
+-                      · grind [cp_bexp_sound]
+-                    case cexec_while_loop s3 b' c' s4 s5 isTrue EXEC2 EXEC3 a_ih a_ih2 =>
+-                      apply cexec_mk_WHILE_loop
+-                      · grind [cp_bexp_sound]
+-                      · apply c_ih
+-                        · injections heq4 heq5
+-                          rw [heq2'] at heq5
+-                          rw [←heq5] at EXEC2
+-                          exact EXEC2
+-                        · exact AG1
+-                      · apply a_ih2
+-                        rotate_left
+-                        · grind
+-                        · apply matches_Le
+-                          rw [←heq2]
+-                          simp [Cexec]
+-                          apply fixpoint_sound
+-                          rotate_left
+-                          · exact (fun x => Join S1 (Cexec x c))
+-                          · exact S1
+-                          rotate_left
+-                          · grind
+-                          · apply matches_Le
+-                            · apply Le_Join_r
+-                            · apply Cexec_sound
+-                              · rw [←heq2']
+-                                injections heq3 heq4
+-                                rw [heq4]
+-                                exact EXEC2
+-                              · grind
+-      rw [heq1] at EXEC
+-      induction EXEC
+-      any_goals grind
+-      case cexec_while_loop s3 b' c' s4 s5 isTrue EXEC1 EXEC2 ih1 ih2 =>
+-        injections heq3 heq4
+-        simp [cp_com]
+-        specialize INNER s3 (.WHILE b' c') s5
+-        rw [←heq3, ←heq4, heq2]
+-        apply INNER
+-        any_goals grind
+-        · rw [←heq2]
+-          simp [Cexec]
+-          apply matches_Le
+-          · apply fixpoint_sound
+-            rotate_left
+-            · exact (fun x => Join S1 (Cexec x c))
+-            · exact S1
+-            · grind
+-          · grind
++      have hcp : aeval s1 (cp_aexp S1 a) = aeval s1 a := cp_aexp_sound s1 S1 MATCH a
++      simpa [cp_com, hcp] using (cexec.cexec_assign (s := s1) (x := x) (a := cp_aexp S1 a))
++  | SEQ c1 c2 ih1 ih2 =>
++      intro s1 s2 S1 EXEC MATCH
++      cases EXEC with
++      | cexec_seq EXEC1 EXEC2 =>
++          have H1 := ih1 s1 _ S1 EXEC1 MATCH
++          have MATCHMID := Cexec_sound c1 s1 _ S1 EXEC1 MATCH
++          have H2 := ih2 _ s2 (Cexec S1 c1) EXEC2 MATCHMID
++          exact cexec.cexec_seq H1 H2
++  | IFTHENELSE b c1 c2 ih1 ih2 =>
++      intro s1 s2 S1 EXEC MATCH
++      cases EXEC with
++      | cexec_ifthenelse EXEC' =>
++          have hcp : beval s1 (cp_bexp S1 b) = beval s1 b := cp_bexp_sound s1 S1 MATCH b
++          apply cexec_mk_IFTHENELSE
++          by_cases hb : beval s1 b
++          · simp [hb, hcp] at EXEC' ⊢
++            exact ih1 s1 s2 S1 EXEC' MATCH
++          · simp [hb, hcp] at EXEC' ⊢
++            exact ih2 s1 s2 S1 EXEC' MATCH
++  | WHILE b c ih =>
++      intro s1 s2 S1 EXEC MATCH
++      change cexec s1 (mk_WHILE (cp_bexp (Cexec S1 (.WHILE b c)) b) (cp_com (Cexec S1 (.WHILE b c)) c)) s2
++      apply cp_com_correct_while_inner b c S1 (Cexec S1 (.WHILE b c))
++      · simpa [Cexec] using
++          (fixpoint_sound (S := Cexec S1 (.WHILE b c))
++            (F := fun x => Join S1 (Cexec x c)) (init_S := S1) (by simp [Cexec]))
++      · intro s1 s2 S EXEC' MATCH'
++        exact ih s1 s2 S EXEC' MATCH'
++      · exact EXEC
++      · exact matches_Cexec_while b c s1 S1 MATCH
++

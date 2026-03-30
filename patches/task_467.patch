@@ -1,0 +1,16 @@
+--- a/VCV-io/ToMathlib/PFunctor/Lens/Basic.lean
++++ b/VCV-io/ToMathlib/PFunctor/Lens/Basic.lean
+@@ -258,10 +258,9 @@
+     Lens.sumMap (Lens.id P) (Lens.id Q) = Lens.id.{max uA₁ uA₂, uB₁} (P + Q) := by
+   ext a <;> rcases a <;> rfl
+ 
+-@[simp]
+-theorem sumPair_inl_inr :
+-    Lens.sumPair Lens.inl Lens.inr = Lens.id.{max uA₁ uA₂, uB₁} (P + Q) := by
+-  ext a <;> rcases a <;> rfl
++theorem sumPair_inl_inr: Lens.sumPair Lens.inl Lens.inr = Lens.id.{max uA₁ uA₂, uB₁} (P + Q) := by
++  ext a <;> cases a <;> rfl
++
+ 
+ namespace Equiv
+ 

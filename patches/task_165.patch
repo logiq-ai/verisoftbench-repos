@@ -1,0 +1,38 @@
+--- a/clean/Clean/Circuit/Loops.lean
++++ b/clean/Clean/Circuit/Loops.lean
+@@ -309,21 +309,22 @@
+     let acc := (circuit default xs[i]).output (n + i*k)
+     (circuit acc xs[i + 1]).operations (n + (i + 1)*k)).flatten := by
+   rw [operations_eq]
+-  simp only
+   set k := (circuit default default).localLength
+-  set k' := constant.localLength
+-  have : k' = k := by simp only [k]; rw [constant.localLength_eq (_, _)]
+-  rw [this]
++  have hk : constant.localLength = k := by
++    simpa [prod, k] using (constant.localLength_eq (default, default) 0).symm
++  rw [hk]
+   rcases m with rfl | m
+-  · nomatch ‹NeZero 0›
+-  rw [List.ofFn_succ, List.flatten_cons]
+-  simp only [foldlAcc_zero, Fin.val_zero, zero_mul, add_zero, Fin.val_succ, add_mul, one_mul,
+-    add_tsub_cancel_right, Nat.add_one_sub_one, Fin.cast_eq_self, List.append_cancel_left_eq]
+-  congr
+-  funext i
+-  rcases i with ⟨ i, hi ⟩
+-  simp only [Fin.succ_mk]
+-  rw [foldlAcc_const_succ constant h_const_out]
++  · exact False.elim ((NeZero.ne (n := 0)) rfl)
++  · rw [List.ofFn_succ, List.flatten_cons]
++    simp only [foldlAcc_zero, Fin.val_zero, zero_mul, add_zero, Nat.add_one_sub_one]
++    rw [List.append_cancel_left_eq]
++    congr
++    funext i
++    rcases i with ⟨i, hi⟩
++    simp only [Fin.succ_mk]
++    rw [foldlAcc_const_succ constant h_const_out]
++
++
+ 
+ theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
+     (h_const_out : ConstantOutput (prod circuit)) :

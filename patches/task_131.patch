@@ -1,0 +1,39 @@
+--- a/clean/Clean/Utils/SourceSinkPath.lean
++++ b/clean/Clean/Utils/SourceSinkPath.lean
+@@ -670,35 +670,24 @@
+   rw [cycle_netFlow_zero cycle x h_cycle]
+   simp
+ 
+-/-- Removing a cycle decreases the total size of the run. -/
+ lemma size_removeCycle_lt (R : Run S) (cycle : List S)
+     (h_len : cycle.length ≥ 2)
+     (h_contains : R.containsPath cycle)
+     (_h_cycle : cycle.head? = cycle.getLast?) :
+     (R.removeCycle cycle).size < R.size := by
+-  -- Get a transition in the path
+   obtain ⟨t, h_in_zip⟩ := path_has_transition cycle h_len
+-  -- This transition has positive capacity
+   have h_pos := containsPath_has_positive_transition R cycle h_contains t h_in_zip
+   let (x, y) := t
+-  -- Show that this transition appears in the cycle, so countTransitionInPath > 0
+   have h_count_pos : countTransitionInPath (x, y) cycle > 0 := by
+     unfold countTransitionInPath
+     exact List.count_pos_iff.mpr h_in_zip
+-  -- The size decreases because we subtract countTransitionInPath (x,y) cycle from R(x,y)
+-  -- Since R(x,y) > 0 and countTransitionInPath (x,y) cycle > 0, the total decreases.
+   unfold Run.size Run.removeCycle
+-  -- We'll prove that the sum of (R t - countTransitionInPath t cycle) is less than sum of R t
+   have h_decrease : (fun t => R t - countTransitionInPath t cycle) (x, y) < R (x, y) := by
+-    -- R(x,y) > 0 and countTransitionInPath (x,y) cycle > 0
+-    -- So R(x,y) - count < R(x,y) by Nat.sub_lt
+     exact Nat.sub_lt h_pos h_count_pos
+-  have h_xy_in_univ : (x, y) ∈ (Finset.univ : Finset (Transition S)).toList := by
+-    simp [Finset.mem_toList]
+   have h_others_le : ∀ t, (fun t => R t - countTransitionInPath t cycle) t ≤ R t := fun t =>
+     Nat.sub_le (R t) (countTransitionInPath t cycle)
+-  -- Apply the sum_decrease lemma
+   exact sum_decrease R (fun t => R t - countTransitionInPath t cycle) (x, y) h_decrease h_others_le
++
+ 
+ omit [Fintype S] in
+ /-- Removing a cycle gives a smaller or equal run at each transition. -/

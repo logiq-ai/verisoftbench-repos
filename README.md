@@ -176,33 +176,28 @@ To solve tasks that Aleph Prover hasn't proven yet (or to re-run failed ones wit
 export ALEPH_API_KEY=sk-aleph-...
 cd ~/verisoftbench-repos
 
-# Single task
-python3 submit.py --task-id 122
-# Output: [122] Circomlib.MultiAND.soundness  OK  https://alephprover.logicalintelligence.com/requests/<id>
+# Single task — prints tracking URL
+python3 submit.py 122
+# https://alephprover.logicalintelligence.com/requests/<id>
 
 # Multiple tasks
-python3 submit.py --task-id 122,127,155
+python3 submit.py 122 127 155
 
-# All unsolved tasks with higher budget
-python3 submit.py --unsolved --cost-budget 50 --time-budget 600
+# Higher budget
+python3 submit.py 122 --cost-budget 50 --time-budget 600
 
-# Submit to dev environment instead of prod
-python3 submit.py --task-id 122 --env dev
-
-# Dry run (show what would be submitted)
-python3 submit.py --unsolved --dry-run
+# Submit to dev
+python3 submit.py 122 --env dev
 ```
 
 ### Step 2: Wait for completion
 
-Check status:
+Visit the tracking URL printed by `submit.py`, or query the API directly:
 
 ```bash
-python3 submit.py --status <request-id>
-# Returns JSON with status: "running", "completed", or "failed"
+curl -s -H "Authorization: Bearer $ALEPH_API_KEY" \
+    https://alephprover.logicalintelligence.com/api/v1/requests/<id>
 ```
-
-Or visit the tracking URL printed during submission.
 
 ### Step 3: Update results and download patch
 

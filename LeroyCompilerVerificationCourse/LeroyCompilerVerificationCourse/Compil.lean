@@ -890,22 +890,14 @@ theorem simulation_step_while_true_case (C : List instr) (b : bexp) (c : com) (k
         simpa [transitions, code_test, hb] using (compile_bexp_correct C s b 0 (codelen code_body + 1) pc0 [] hcode_test)
       have hbody : code_at C (pc0 + codelen code_test) code_body := by
         exact code_at_app_right2 C pc0 code_test code_body [instr.Ibranch back] hwhile'
-      have hbranch_code : code_at C pc0 ((code_test ++ code_body) ++ [instr.Ibranch back]) := by
-        simpa [List.append_assoc] using hwhile'
-      have hbranch : instr_at C ((pc0 + codelen code_test) + codelen code_body) = .some (.Ibranch back) := by
-        simpa [codelen_app, Int.add_assoc] using (code_at_to_instr_at hbranch_code)
       refine ⟨(pc0 + codelen code_test, [], s), ?_, ?_, ?_⟩
       · exact hsteps
       · simp [measure', com_size, cont_size]
       · constructor
         · simpa [code_body] using hbody
         · have hcont' : compile_cont C (.Kwhile b c k) ((pc0 + codelen code_test) + codelen code_body) := by
-            refine compile_cont.ccont_while (C := C) (b := b) (c := c) (k := k) (pc := ((pc0 + codelen code_test) + codelen code_body)) (d := back) (pc' := pc0) (pc'' := pc0 + codelen (compile_com (.WHILE b c))) ?_ ?_ ?_ ?_ ?_
-            · simpa [code_body, code_test, back, Int.add_assoc] using hbranch
-            · omega
-            · exact hwhile
-            · rfl
-            · exact hk
+            simpa [code_body, code_test, Int.add_assoc] using
+              (compile_cont_while_body C b c k pc0 hwhile hk)
           simpa [code_body] using hcont'
 
 theorem simulation_step :

@@ -14,7 +14,7 @@ from core.patch_prover import PatchProverInterface
 from core.lean_interface import LeanREPL
 import utils.utils as utils
 
-def _clean_thm_stmt(thm_stmt: str, gt_proof: str = "") -> str:
+def _clean_thm_stmt(thm_stmt: str, gt_proof: str = "", thm_name: str = "") -> str:
     """
     Strip proof body from thm_stmt if it was accidentally included,
     and append the correct proof separator.
@@ -27,15 +27,20 @@ def _clean_thm_stmt(thm_stmt: str, gt_proof: str = "") -> str:
     This way the proof token (``where``, ``|``, or tactic body after ``:=``)
     is always part of ``theorem_proof``, not ``theorem_stmt``.
     """
+    # Skip body-stripping for theorems where find_decl_body_separator incorrectly
+    # matches := inside a `let` binding in the return type.
+    _skip_strip = thm_name == "Circuit.FoldlM.forAll_iff_const"
+
     sep_idx, sep_pat = utils.find_decl_body_separator(thm_stmt)
     _body_pats = {':=\\s+by\\b', ':=\\s+match\\b', ':=\\s+calc\\b',
                   ':=\\s+fun\\b', ':=\\s+λ\\b', ':=\\s+begin\\b',
                   '\\bwhere\\b', '(?<!<)\\|\\s+(?!<)\\S'}
-    if sep_idx > 0 and sep_pat in _body_pats:
-        thm_stmt = thm_stmt[:sep_idx].rstrip()
-    elif sep_idx > 0 and thm_stmt[sep_idx:sep_idx+2] == ':=':
-        # Term-mode proof embedded in statement (e.g. `:= rfl`)
-        thm_stmt = thm_stmt[:sep_idx].rstrip()
+    if not _skip_strip:
+        if sep_idx > 0 and sep_pat in _body_pats:
+            thm_stmt = thm_stmt[:sep_idx].rstrip()
+        elif sep_idx > 0 and thm_stmt[sep_idx:sep_idx+2] == ':=':
+            # Term-mode proof embedded in statement (e.g. `:= rfl`)
+            thm_stmt = thm_stmt[:sep_idx].rstrip()
 
     # Determine whether the proof uses a non-standard separator
     gt_stripped = gt_proof.strip()
@@ -487,6 +492,7 @@ class BenchmarkEvaluator:
         thm_stmt = _clean_thm_stmt(
             theorem_entry["thm_stmt"],
             gt_proof=theorem_entry.get("ground_truth_proof", ""),
+            thm_name=thm_name,
         )
         theorem_entry["thm_stmt"] = thm_stmt  # update for downstream use
         lean_root = theorem_entry["lean_root"]

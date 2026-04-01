@@ -116,15 +116,35 @@ lemma fib_vars (curr next : Row (F p) RowType) (aux_env : Environment (F p)) :
     Fin.isValue, List.getElem_toArray, List.getElem_cons_zero, List.getElem_cons_succ]
   and_intros <;> rfl
 
-/--
-  Main lemma that shows that if the constraints hold over the two-row window,
-  then the Spec of add32 and equality are satisfied
--/
+def fib_window_env (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : Environment (F p) := recursiveRelation.windowEnv ⟨<+> +> curr +> next, rfl⟩ aux_env
+
+theorem fib_window_env_vars (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : eval (fib_window_env curr next aux_env) (varFromOffset U32 0) = curr.x ∧ eval (fib_window_env curr next aux_env) (varFromOffset U32 4) = curr.y ∧ eval (fib_window_env curr next aux_env) (varFromOffset U32 8) = next.x ∧ eval (fib_window_env curr next aux_env) (U32.mk (var ⟨16⟩) (var ⟨18⟩) (var ⟨20⟩) (var ⟨22⟩)) = next.y := by
+  simpa [fib_window_env] using (fib_vars curr next aux_env)
+
+theorem fib_window_env_next_y_bytes (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : (fib_window_env curr next aux_env).get 16 = next.y.x0 ∧ (fib_window_env curr next aux_env).get 18 = next.y.x1 ∧ (fib_window_env curr next aux_env).get 20 = next.y.x2 ∧ (fib_window_env curr next aux_env).get 22 = next.y.x3 := by
+  rcases next with ⟨nx, ⟨y0, y1, y2, y3⟩⟩
+  have h := (fib_window_env_vars curr ⟨nx, ⟨y0, y1, y2, y3⟩⟩ aux_env).2.2.2
+  simpa [circuit_norm, U32.mk.injEq] using h
+
 lemma fib_constraints (curr next : Row (F p) RowType) (aux_env : Environment (F p))
   : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env →
   curr.y = next.x ∧
   (curr.x.Normalized → curr.y.Normalized → next.y.value = (curr.x.value + curr.y.value) % 2^32 ∧ next.y.Normalized)
-   := by sorry
+   := by
+  intro h
+  change Circuit.ConstraintsHold.Soundness (fib_window_env curr next aux_env) recursiveRelation.operations at h
+  rcases fib_window_env_vars curr next aux_env with ⟨hx, hy, hnextx, hnexty⟩
+  rcases fib_window_env_next_y_bytes curr next aux_env with ⟨hz0, hz1, hz2, hz3⟩
+  set_option maxHeartbeats 400000 in
+    simp only [TableConstraint.operations, recursiveRelation, assignU32,
+      Gadgets.Addition32.circuit, Gadgets.Addition32.Assumptions, Gadgets.Addition32.Spec,
+      table_norm, circuit_norm, Nat.reduceAdd] at h
+  rw [hx, hy, hnextx, hz0, hz1, hz2, hz3] at h
+  refine ⟨h.2, ?_⟩
+  intro hxNorm hyNorm
+  have hadd := h.1 ⟨hxNorm, hyNorm⟩
+  simpa [U32.value, U32.Normalized] using hadd
+
 
 lemma boundary_constraints (first_row : Row (F p) RowType) (aux_env : Environment (F p)) :
   Circuit.ConstraintsHold.Soundness (windowEnv boundary ⟨<+> +> first_row, rfl⟩ aux_env) boundary.operations →

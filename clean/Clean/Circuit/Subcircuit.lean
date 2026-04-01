@@ -339,7 +339,16 @@ end ElaboratedCircuit
 
 theorem Circuit.subcircuit_computableWitnesses (circuit : FormalCircuit F β α) (input : Var β F) (n : ℕ) :
   Environment.OnlyAccessedBelow n (eval · input) ∧ circuit.ComputableWitnesses →
-    (subcircuit circuit input).ComputableWitnesses n := by sorry
+    (subcircuit circuit input).ComputableWitnesses n := by
+  intro h
+  intro env env'
+  change Operations.ComputableWitnesses ((subcircuit circuit input).operations n) n env env'
+  simp [Operations.ComputableWitnesses, subcircuit, Circuit.operations, Operations.forAllFlat, Operations.forAll,
+    FormalCircuit.toSubcircuit]
+  rw [Operations.forAll_toFlat_iff]
+  exact (ElaboratedCircuit.compose_computableWitnesses
+    (circuit := circuit.elaborated) (input := input) (n := n) h) env env'
+
 
 -- to reduce offsets, `circuit_norm` will use these theorems to unfold subcircuits
 attribute [circuit_norm] Circuit.subcircuit_localLength_eq Circuit.assertion_localLength_eq

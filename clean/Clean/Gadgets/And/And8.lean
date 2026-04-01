@@ -80,7 +80,33 @@ instance elaborated : ElaboratedCircuit (F p) Inputs field where
   localLength _ := 1
   output _ i := var ⟨i⟩
 
-theorem soundness : Soundness (F p) elaborated Assumptions Spec := by sorry
+theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
+  intro i env ⟨x_var, y_var⟩ ⟨x, y⟩ h_input h_assumptions h_constraint
+  simp_all only [circuit_norm, main, Assumptions, Spec, ByteXorTable, Inputs.mk.injEq]
+  have ⟨hx_byte, hy_byte⟩ := h_assumptions
+  set w := env.get i
+  set xor := x + y + -(2 * w)
+  have h_xor : xor.val = x.val ^^^ y.val := by
+    simpa [xor] using h_constraint
+  have value_goal : w.val = x.val &&& y.val := by
+    have hxy : (x + y).val = x.val + y.val := by
+      field_to_nat
+    have h_xor_le : xor.val ≤ (x + y).val := by
+      rw [h_xor, hxy]
+      exact xor_le_add hx_byte hy_byte
+    have h_sub : (x + y - xor).val = (x + y).val - xor.val := ZMod.val_sub h_xor_le
+    have h_field : x + y - xor = 2 * w := by
+      ring
+    rw [h_field, hxy, h_xor] at h_sub
+    have h_two_w : (2 * w).val = 2 * (x.val &&& y.val) := by
+      have h_id := and_times_two_add_xor hx_byte hy_byte
+      omega
+    have h_mul : (2 * w).val = 2 * w.val :=
+      FieldUtils.mul_nat_val_of_dvd 2 (by linarith [p_large_enough.elim]) h_two_w
+    rw [h_mul] at h_two_w
+    omega
+  simpa using value_goal
+
 
 theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
 

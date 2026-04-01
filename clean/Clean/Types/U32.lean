@@ -337,6 +337,21 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
+theorem bitwise_split_at_pow (f : Bool → Bool → Bool) {n a b c d : ℕ} (ha : a < 2 ^ n) (hc : c < 2 ^ n) : f false false = false → Nat.bitwise f (a + 2 ^ n * b) (c + 2 ^ n * d) = Nat.bitwise f a c + 2 ^ n * Nat.bitwise f b d := by
+  intro hff
+  apply eq_of_mod_eq_and_div_eq (2 ^ n)
+  · rw [Nat.bitwise_mod_two_pow (f := f) (x := a + 2 ^ n * b) (y := c + 2 ^ n * d) (n := n) (of_false_false := hff)]
+    rw [Nat.add_mul_mod_self_left a (2 ^ n) b, Nat.add_mul_mod_self_left c (2 ^ n) d]
+    rw [Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hc]
+    rw [Nat.add_mul_mod_self_left (Nat.bitwise f a c) (2 ^ n) (Nat.bitwise f b d)]
+    rw [Nat.mod_eq_of_lt (Nat.bitwise_lt_two_pow ha hc)]
+  · rw [Nat.bitwise_div_two_pow (f := f) (x := a + 2 ^ n * b) (y := c + 2 ^ n * d) (n := n) (of_false_false := hff)]
+    rw [Nat.add_mul_div_left a b (Nat.two_pow_pos n), Nat.add_mul_div_left c d (Nat.two_pow_pos n)]
+    rw [Nat.div_eq_of_lt ha, Nat.div_eq_of_lt hc]
+    rw [Nat.add_mul_div_left (Nat.bitwise f a c) (Nat.bitwise f b d) (Nat.two_pow_pos n)]
+    rw [Nat.div_eq_of_lt (Nat.bitwise_lt_two_pow ha hc)]
+    simpa only [Nat.zero_add]
+
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma bitwise_componentwise (f : Bool → Bool → Bool)
     {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
@@ -344,7 +359,25 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  rcases x_norm with ⟨hx0, hx1, hx2, hx3⟩
+  rcases y_norm with ⟨hy0, hy1, hy2, hy3⟩
+  rw [value_horner x, value_horner y]
+  rw [bitwise_split_at_pow f (n := 8) (a := x.x0.val)
+      (b := x.x1.val + 2 ^ 8 * (x.x2.val + 2 ^ 8 * x.x3.val))
+      (c := y.x0.val)
+      (d := y.x1.val + 2 ^ 8 * (y.x2.val + 2 ^ 8 * y.x3.val)) hx0 hy0 hff]
+  rw [bitwise_split_at_pow f (n := 8) (a := x.x1.val)
+      (b := x.x2.val + 2 ^ 8 * x.x3.val)
+      (c := y.x1.val)
+      (d := y.x2.val + 2 ^ 8 * y.x3.val) hx1 hy1 hff]
+  rw [bitwise_split_at_pow f (n := 8) (a := x.x2.val)
+      (b := x.x3.val)
+      (c := y.x2.val)
+      (d := y.x3.val) hx2 hy2 hff]
+  norm_num
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :

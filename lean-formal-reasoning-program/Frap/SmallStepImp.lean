@@ -399,9 +399,44 @@ theorem par_body_n n st
 ... the above loop can exit with `x` having any value whatsoever.
 -/
 
+theorem par_loop_finish (st : State) : Multi CStep (par_loop, st) (c_skip, y !-> 1; st) := by
+  apply multi_step
+  · apply cs_par1
+    apply cs_asgn
+  · apply multi_step
+    · apply cs_par2
+      apply cs_while
+    · apply multi_step
+      · apply cs_par2
+        apply cs_ifStep
+        apply bs_eq1
+        apply as_id
+      · apply multi_step
+        · apply cs_par2
+          apply cs_ifStep
+          apply bs_eq
+        · simp [update]
+          apply multi_step
+          · apply cs_par2
+            apply cs_ifFalse
+          · apply multi_R
+            apply cs_parDone
+
+theorem par_loop_prefix (n : Nat) : ∃ st, Multi CStep (par_loop, empty) (par_loop, st) ∧ st x = n ∧ st y = 0 := by
+  simpa using (par_body_n n empty (by constructor <;> rfl))
+
 theorem par_loop_any_x n
     : ∃ st', Multi CStep (par_loop, empty) (c_skip, st')
-        ∧ st' x = n := by sorry
+        ∧ st' x = n := by
+  rcases par_loop_prefix n with ⟨st, hprefix, hx, hy⟩
+  refine ⟨y !-> 1; st, ?_, ?_⟩
+  · apply multi_trans
+    · exact hprefix
+    · exact par_loop_finish st
+  · have hxy : x ≠ y := by simp [x, y]
+    rw [show (y !-> 1; st) x = st x from lookup_update_neq st y x 1 hxy]
+    exact hx
+
 
 end CImp
 

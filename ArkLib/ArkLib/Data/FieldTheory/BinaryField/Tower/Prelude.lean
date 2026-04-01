@@ -1186,14 +1186,63 @@ lemma lifted_trace_map_eval_at_roots_prev_BTField
       rw [Nat.sub_one_add_one (two_pow_ne_zero k)]
     _ = 1 := by rw [trace_map_at_prev_root]
 
-theorem rsum_eq_t1_square_aux
-  {curBTField : Type*} [Field curBTField] -- curBTField ≃ 𝔽_{2^{2^k}}
+theorem inverse_trace_shifted_eq_one {curBTField : Type*} [Field curBTField] (u : curBTField) (k : ℕ)
+  (x_pow_card : ∀ (x : curBTField), x ^ (2 ^ (2 ^ k)) = x)
+  (trace_map_prop : TraceMapProperty curBTField u k) :
+  ∑ j ∈ Finset.Icc 1 (2 ^ k), (u⁻¹) ^ (2 ^ j) = 1 := by
+  let f : ℕ → curBTField := fun i => (u⁻¹) ^ (2 ^ i)
+  have htotal : ∑ i ∈ Finset.range (2 ^ k + 1), f i = 1 + u⁻¹ := by
+    rw [Finset.sum_range_succ, trace_map_prop.inverse_trace]
+    unfold f
+    rw [x_pow_card (u⁻¹)]
+  have hshift := Finset.sum_range_succ' (f := f) (n := 2 ^ k)
+  rw [htotal] at hshift
+  unfold f at hshift
+  rw [pow_zero, pow_one] at hshift
+  have hrange : ∑ i ∈ Finset.range (2 ^ k), f (i + 1) = 1 := by
+    exact add_right_cancel hshift.symm
+  calc
+    ∑ j ∈ Finset.Icc 1 (2 ^ k), f j = ∑ j ∈ Finset.Ico 1 (2 ^ k + 1), f j := by
+      rw [Finset.Ico_add_one_right_eq_Icc]
+    _ = ∑ i ∈ Finset.range (2 ^ k), f (1 + i) := by
+      rw [Finset.sum_Ico_eq_sum_range, Nat.add_sub_cancel_right]
+    _ = ∑ i ∈ Finset.range (2 ^ k), f (i + 1) := by
+      refine Finset.sum_congr rfl ?_
+      intro i hi
+      rw [Nat.add_comm]
+    _ = 1 := hrange
+
+theorem rsum_eq_t1_square_aux {curBTField : Type*} [Field curBTField] -- curBTField ≃ 𝔽_{2^{2^k}}
   (u : curBTField) -- here u is already lifted to curBTField
   (k : ℕ)
   (x_pow_card : ∀ (x : curBTField), x ^ (2 ^ (2 ^ (k))) = x)
   (u_ne_zero : u ≠ 0)
   (trace_map_prop : TraceMapProperty curBTField u k):
-   ∑ j ∈ Finset.Icc 1 (2 ^ (k)), u ^ (2 ^ 2 ^ (k) - 2 ^ j) = u := by sorry
+   ∑ j ∈ Finset.Icc 1 (2 ^ (k)), u ^ (2 ^ 2 ^ (k) - 2 ^ j) = u := by
+  let q : ℕ := 2 ^ (2 ^ k)
+  calc
+    ∑ j ∈ Finset.Icc 1 (2 ^ k), u ^ (q - 2 ^ j)
+        = ∑ j ∈ Finset.Icc 1 (2 ^ k), u * (u⁻¹) ^ (2 ^ j) := by
+            refine Finset.sum_congr rfl ?_
+            intro j hj
+            have hjle : j ≤ 2 ^ k := (Finset.mem_Icc.mp hj).2
+            have hpowle : 2 ^ j ≤ q := by
+              dsimp [q]
+              exact Nat.pow_le_pow_right (by decide) hjle
+            calc
+              u ^ (q - 2 ^ j) = u ^ q * (u ^ (2 ^ j))⁻¹ := by
+                rw [pow_sub₀ u u_ne_zero hpowle]
+              _ = u * (u ^ (2 ^ j))⁻¹ := by
+                rw [x_pow_card u]
+              _ = u * (u⁻¹) ^ (2 ^ j) := by
+                rw [inv_pow]
+    _ = u * (∑ j ∈ Finset.Icc 1 (2 ^ k), (u⁻¹) ^ (2 ^ j)) := by
+          rw [Finset.mul_sum]
+    _ = u * 1 := by
+          rw [inverse_trace_shifted_eq_one u k x_pow_card trace_map_prop]
+    _ = u := by
+          rw [mul_one]
+
 
 instance charP_eq_2_of_add_self_eq_zero {F : Type*} [Field F]
     (sumZeroIffEq : ∀ (x y : F), x + y = 0 ↔ x = y) : CharP F 2 :=

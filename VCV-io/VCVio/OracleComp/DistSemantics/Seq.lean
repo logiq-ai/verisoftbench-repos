@@ -197,13 +197,44 @@ lemma probOutput_seq_map_eq_mul_of_injective2 [spec.FiniteRange]
 
 end injective2
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and there exists unique `x` and `y` such that `f x y = z` (given as explicit arguments),
-then the probability of getting `z` as an output of `f <$> oa <*> ob`
-is the product of probabilities of getting `x` and `y` from `oa` and `ob` respectively. -/
 lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
-    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
+    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by
+  rw [probOutput_seq_map_eq_tsum]
+  rw [← ENNReal.tsum_prod]
+  refine (tsum_eq_single (x, y) ?_).trans ?_
+  · intro p hp
+    rcases p with ⟨x', y'⟩
+    by_cases hx' : x' ∈ oa.support
+    · by_cases hy' : y' ∈ ob.support
+      · have hne : ¬(x' = x ∧ y' = y) := by
+          simpa [Prod.mk.inj_iff] using hp
+        have hzneq : z ≠ f x' y' := by
+          intro hz
+          exact hne ((h x' hx' y' hy').1 hz)
+        have hz0 : [= z | (pure (f x' y') : OracleComp spec γ)] = 0 := by
+          exact (probOutput_eq_zero_iff (oa := (pure (f x' y') : OracleComp spec γ)) (x := z)).2 (by
+            simp only [support_pure, Set.mem_singleton_iff]
+            exact hzneq)
+        rw [hz0]
+        simp
+      · have hy0 : [= y' | ob] = 0 := (probOutput_eq_zero_iff (oa := ob) (x := y')).2 hy'
+        rw [hy0]
+        simp
+    · have hx0 : [= x' | oa] = 0 := (probOutput_eq_zero_iff (oa := oa) (x := x')).2 hx'
+      rw [hx0]
+      simp
+  · by_cases hx : x ∈ oa.support
+    · by_cases hy : y ∈ ob.support
+      · have hz : z = f x y := (h x hx y hy).2 ⟨rfl, rfl⟩
+        rw [hz, probOutput_pure_self, mul_one]
+      · have hy0 : [= y | ob] = 0 := (probOutput_eq_zero_iff (oa := ob) (x := y)).2 hy
+        rw [hy0]
+        simp
+    · have hx0 : [= x | oa] = 0 := (probOutput_eq_zero_iff (oa := oa) (x := x)).2 hx
+      rw [hx0]
+      simp
+
 
 /-- If the results of the computations `oa` and `ob` are combined with some function `f`,
 and `p` is an event such that outputs of `f` are in `p` iff the individual components

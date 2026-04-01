@@ -663,7 +663,18 @@ lemma probFailure_bind_of_const [Nonempty α] (r : ℝ≥0∞) (h : ∀ x, [⊥ 
 
 lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
-    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by sorry
+    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by
+  rw [probFailure_eq_sub_probEvent (oa := oa >>= ob)]
+  rw [probEvent_bind_eq_tsum (oa := oa) (ob := ob) (q := fun _ => true)]
+  have htrue : ∀ x, [fun _ => true | ob x] = 1 - r := by
+    intro x
+    rw [probEvent_true, h]
+  rw [show (∑' x : α, [= x | oa] * [fun _ => true | ob x]) = ∑' x : α, [= x | oa] * (1 - r) by
+    apply tsum_congr
+    intro x
+    rw [htrue x]]
+  rw [ENNReal.tsum_mul_right, tsum_probOutput_eq_sub (oa := oa)]
+
 
 lemma probFailure_bind_le_of_forall {oa : OracleComp spec α} {s : ℝ≥0∞}
     -- TODO: this should be a general type of `uniformOutput` computations

@@ -359,8 +359,54 @@ def ExtractNonDet.prop {α : Type u} (s : NonDetT m α) :  ExtractNonDet WeakFin
 
 namespace DemonicChoice
 
+theorem ExtractNonDet.pickSuchThat_choose {τ : Type u} (p : τ → Prop) (f : τ → NonDetT m α) (y : τ) (hy : p y) : (⨅ a, ⌜p a⌝ ⇨ wp (f a) post) ⊓ ((⨅ a, ⌜p a⌝ ⇨ (f a).prop ⊤) ⊓ ⨆ a, ⌜p a⌝) <= wp (f y) post ⊓ (f y).prop ⊤ := by
+  let A := ⨅ a, ⌜p a⌝ ⇨ wp (f a) post
+  let B := ⨅ a, ⌜p a⌝ ⇨ (f a).prop ⊤
+  let C : l := ⨆ a, ⌜p a⌝
+  have hdrop : A ⊓ (B ⊓ C) <= A ⊓ B := by
+    exact inf_le_inf_left _ inf_le_left
+  have hA : A <= wp (f y) post := by
+    refine iInf_le_of_le y ?_
+    simp [hy]
+  have hB : B <= (f y).prop ⊤ := by
+    refine iInf_le_of_le y ?_
+    simp [hy]
+  exact le_trans hdrop (inf_le_inf hA hB)
+
+theorem ExtractNonDet.vis_refines_step {β : Type u} (x : m β) (f : β → NonDetT m α) (exf : ∀ a, ExtractNonDet Findable (f a)) (h : ∀ a, wp (f a) post ⊓ (f a).prop ⊤ <= wp (NonDetT.extract (f a) (exf a)) post) : wp x (fun a => wp (f a) post) ⊓ wlp x (fun a => (f a).prop ⊤) <= wp x (fun a => wp (NonDetT.extract (f a) (exf a)) post) := by
+  rw [inf_comm, wlp_join_wp]
+  apply wp_cons
+  intro a
+  simpa [inf_comm] using h a
+
 lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
-  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by sorry
+  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+  unhygienic induction inst
+  · simp [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, wp_pure]
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_vis, wp_bind, monadLift_self]
+    simpa using ExtractNonDet.vis_refines_step x f a a_ih
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.wp_pickCont, NonDetT.prop]
+    split
+    · rename_i h
+      have hnone := Findable.find_none (p := p) (by simpa [h])
+      have hpfalse : ∀ t, p t = False := by
+        intro t
+        by_cases ht : p t
+        · exact False.elim (hnone t ht)
+        · simp [ht]
+      simp [hpfalse]
+    · rename_i y h
+      have hy : p y := Findable.find_some_p (p := p) h
+      exact le_trans (ExtractNonDet.pickSuchThat_choose p f y hy) (by simpa using a_ih y)
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.wp_pickCont, NonDetT.prop]
+    split_ifs with h
+    · exact le_trans (ExtractNonDet.pickSuchThat_choose p f PUnit.unit h) (by simpa using a_ih PUnit.unit)
+    · have hpfalse : ∀ t : PUnit, p t = False := by
+        intro t
+        cases t
+        simp [h]
+      simp [hpfalse, h]
+
 
 lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
   triple pre s post ->

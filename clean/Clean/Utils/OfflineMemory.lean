@@ -452,7 +452,11 @@ theorem MemoryAccessList.isConsistentSingleAddress_cons_forall (head : MemoryAcc
     (h_sorted : isTimestampSorted (head :: tail))
     : (∀ addr : ℕ, (filterAddress (head :: tail) addr).isConsistentSingleAddress (MemoryAccessList.filterAddress_sorted (head :: tail) h_sorted addr)) →
     (∀ addr : ℕ, isConsistentSingleAddress (filterAddress tail addr) (MemoryAccessList.filterAddress_sorted tail (by simp_all only [isTimestampSorted,
-      List.sorted_cons]) addr)) := by sorry
+      List.sorted_cons]) addr)) := by
+  intro hAll addr
+  simpa only [isTimestampSorted, List.sorted_cons] using
+    MemoryAccessList.isConsistentSingleAddress_filterAddress_of_cons head tail addr h_sorted (hAll addr)
+
 
 /--
   A memory access list is consistent if and only if, for each possible address, considering

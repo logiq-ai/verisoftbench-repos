@@ -136,6 +136,64 @@ lemma Eval.Indexed.toEval {n env e v} (h : env ⊢ e ↦(n) v) : env ⊢ e ↦ v
   case recur =>
     apply Eval.recur; assumption
 
-lemma Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by sorry
+lemma Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by
+  induction h with
+  | var hlookup =>
+      exact ⟨0, Eval.Indexed.var hlookup⟩
+  | var_rec hlookup _ ih =>
+      rcases ih with ⟨n, hidx⟩
+      exact ⟨n, Eval.Indexed.var_rec hlookup hidx⟩
+  | unit =>
+      exact ⟨0, Eval.Indexed.unit⟩
+  | const =>
+      exact ⟨0, Eval.Indexed.const⟩
+  | constr =>
+      exact ⟨0, Eval.Indexed.constr⟩
+  | app _ _ _ ihf iha ihb =>
+      rcases ihf with ⟨nf, hf⟩
+      rcases iha with ⟨na, ha⟩
+      rcases ihb with ⟨nb, hb⟩
+      refine ⟨max nf na + nb + 1, Eval.Indexed.app (n₁ := max nf na) (n₂ := nb) le_rfl ?_ ?_ hb⟩
+      · exact Eval.Indexed.monotone hf (Nat.le_max_left nf na)
+      · exact Eval.Indexed.monotone ha (by
+          calc
+            na ≤ max nf na := Nat.le_max_right nf na
+            _ ≤ max nf na + 1 := by
+              change max nf na ≤ Nat.succ (max nf na)
+              exact Nat.le_succ (max nf na))
+  | constr_app _ _ ihf iha =>
+      rcases ihf with ⟨nf, hf⟩
+      rcases iha with ⟨na, ha⟩
+      refine ⟨max nf (na + 1), Eval.Indexed.constr_app (n' := na) ?_ ?_ ha⟩
+      · exact lt_of_lt_of_le (by
+          change na < Nat.succ na
+          exact Nat.lt_succ_self na) (Nat.le_max_right nf (na + 1))
+      · exact Eval.Indexed.monotone hf (Nat.le_max_left nf (na + 1))
+  | binop _ _ ih1 ih2 =>
+      rcases ih1 with ⟨n1, h1⟩
+      rcases ih2 with ⟨n2, h2⟩
+      refine ⟨max n1 n2, Eval.Indexed.binop ?_ ?_⟩
+      · exact Eval.Indexed.monotone h1 (Nat.le_max_left n1 n2)
+      · exact Eval.Indexed.monotone h2 (Nat.le_max_right n1 n2)
+  | lambda =>
+      exact ⟨0, Eval.Indexed.lambda⟩
+  | save _ _ ih1 ih2 =>
+      rcases ih1 with ⟨n1, h1⟩
+      rcases ih2 with ⟨n2, h2⟩
+      exact ⟨n1 + n2, Eval.Indexed.save le_rfl h1 h2⟩
+  | branch_matches _ ih =>
+      rcases ih with ⟨n, hbody⟩
+      refine ⟨n + 1, Eval.Indexed.branch_matches (n' := n) ?_ hbody⟩
+      change n < Nat.succ n
+      exact Nat.lt_succ_self n
+  | branch_fails hneq _ ih =>
+      rcases ih with ⟨n, hnext⟩
+      exact ⟨n, Eval.Indexed.branch_fails hneq hnext⟩
+  | recur _ ih =>
+      rcases ih with ⟨n, hbody⟩
+      refine ⟨n + 1, Eval.Indexed.recur (n' := n) ?_ hbody⟩
+      change n < Nat.succ n
+      exact Nat.lt_succ_self n
+
 
 end Juvix.Core.Main

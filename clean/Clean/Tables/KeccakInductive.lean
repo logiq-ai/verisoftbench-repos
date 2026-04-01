@@ -46,8 +46,23 @@ lemma initialState_normalized : (initialState (p:=p)).Normalized := by
 def formalTable (output : KeccakState (F p)) := table.toFormal initialState output
 
 -- The table's statement implies that the output state is the result of keccak-hashing some list of input blocks
-theorem tableStatement (output : KeccakState (F p)) : ∀ n > 0, ∀ trace, ∃ blocks, blocks.length = n - 1 ∧
-  (formalTable output).statement n trace →
-    output.Normalized ∧ output.value = absorbBlocks blocks := by sorry
+theorem table_initialSpec: (initialState (p:=p)).Normalized ∧ (initialState (p:=p)).value = Specs.Keccak256.absorbBlocks ([] : List (Vector ℕ Specs.Keccak256.RATE)) := by
+  constructor
+  · exact initialState_normalized
+  · simpa [Specs.Keccak256.absorbBlocks, Specs.Keccak256.initialState] using (initialState_value (p:=p))
+
+theorem tableStatement (output : KeccakState (F p)) : ∀ n > 0, ∀ trace, ∃ blocks, (blocks.length = n - 1 ∧ (formalTable output).statement n trace) → output.Normalized ∧ output.value = absorbBlocks blocks := by
+  intro n hn trace
+  refine ⟨(InductiveTable.traceInputs trace.tail).map KeccakBlock.value, ?_⟩
+  rintro ⟨_, hstmt⟩
+  simp only [FormalTable.statement, formalTable, InductiveTable.toFormal, table] at hstmt
+  have h0 : (table (p:=p)).Spec (initialState (p:=p)) [] 0 rfl (initialState (p:=p)) := by
+    constructor
+    · exact initialState_normalized
+    · rw [initialState_value]
+      simp [absorbBlocks, Specs.Keccak256.initialState]
+  have hspec := hstmt ⟨hn, h0⟩
+  simpa [table] using hspec
+
 
 end Tables.KeccakInductive

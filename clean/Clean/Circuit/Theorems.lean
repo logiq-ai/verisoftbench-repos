@@ -191,11 +191,26 @@ The witness length from flat and nested operations is the same
 lemma localLength_toFlat {ops : Operations F} :
     localLength ops.toFlat = ops.localLength := by sorry
 
-/--
-The witnesses created from flat and nested operations are the same
--/
 lemma localWitnesses_toFlat {ops : Operations F} {env} :
-  (localWitnesses env ops.toFlat).toArray = (ops.localWitnesses env).toArray := by sorry
+  (localWitnesses env ops.toFlat).toArray = (ops.localWitnesses env).toArray := by
+  induction ops using Operations.induct with
+  | empty =>
+      simp only [Operations.toFlat, Operations.localWitnesses,
+        FlatOperation.localWitnesses, Vector.toArray_empty]
+  | witness m c ops ih =>
+      rw [Operations.toFlat, FlatOperation.localWitnesses, Operations.localWitnesses,
+        Vector.toArray_append, Vector.toArray_append, ih]
+  | assert e ops ih =>
+      simpa only [Operations.toFlat, FlatOperation.localWitnesses,
+        Operations.localWitnesses] using ih
+  | lookup l ops ih =>
+      simpa only [Operations.toFlat, FlatOperation.localWitnesses,
+        Operations.localWitnesses] using ih
+  | subcircuit s ops ih =>
+      rw [Operations.toFlat, FlatOperation.localWitnesses_append,
+        Operations.localWitnesses, Vector.toArray_append,
+        Subcircuit.witnesses, Vector.toArray_cast, ih]
+
 end FlatOperation
 
 namespace Environment

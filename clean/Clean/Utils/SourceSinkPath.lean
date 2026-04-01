@@ -7,6 +7,7 @@ import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Algebra.BigOperators.Group.Finset.Piecewise
 import Mathlib.Algebra.BigOperators.Ring.Finset
 
+import Mathlib.Data.List.Nodup
 /-!
 # State Transition with +1 Source and -1 Sink
 
@@ -319,12 +320,27 @@ lemma containsPath_drop_take (R : Run S) (path : List S) (n m : ℕ)
     containsPath_drop R path n h_contains
   exact containsPath_take R (path.drop n) m h_after_drop
 
-omit [Fintype S] in
-/-- If a run is acyclic and contains a path, the path has no duplicate vertices. -/
 lemma acyclic_containsPath_nodup (R : Run S) (path : List S)
     (h_acyclic : R.isAcyclic)
     (h_contains : R.containsPath path) :
-    path.Nodup := by sorry
+    path.Nodup := by
+  rw [List.nodup_iff_getElem?_ne_getElem?]
+  intro i j hij hj hEq
+  have hi : i < path.length := lt_trans hij hj
+  let n : Fin path.length := ⟨i, hi⟩
+  let m : Fin path.length := ⟨j, hj⟩
+  have hEq' : path[i] = path[j] := by
+    simpa [List.getElem?_eq_getElem hi, List.getElem?_eq_getElem hj] using hEq
+  let cycle := (path.drop i).take (j - i + 1)
+  have hlen : cycle.length ≥ 2 := by
+    simpa [cycle, n, m] using drop_take_length_ge_two path n m hij
+  have hend : cycle.head? = cycle.getLast? := by
+    simpa [cycle, n, m] using
+      drop_take_cycle_same_endpoints path path[i] n m hij rfl hEq'.symm
+  have hcontainsCycle : R.containsPath cycle := by
+    simpa [cycle] using containsPath_drop_take R path i (j - i + 1) h_contains
+  exact h_acyclic ⟨cycle, hlen, hend, hcontainsCycle⟩
+
 
 omit [Fintype S] in
 /-- Appending an element to a non-empty path adds exactly one transition from the last element. -/

@@ -231,9 +231,37 @@ lemma foldlAcc_cons_succ (i : Fin m) (x : α) [constant : ConstantLength (prod c
   rw [constant.localLength_eq (init, x), ←constant.localLength_eq (acc, _) 0]
   ac_rfl
 
-theorem operations_eq :
-  (Vector.foldlM circuit init xs).operations n =
-    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by sorry
+theorem operations_rhs_cons (x : α) :
+  (List.ofFn fun i =>
+      (circuit (foldlAcc n (Vector.cons x xs) circuit init i) (Vector.cons x xs)[i.val]).operations
+        (n + i * constant.localLength)).flatten =
+    (circuit init x).operations n ++
+      (List.ofFn fun i =>
+          (circuit
+              (foldlAcc (n + (circuit init x).localLength n) xs circuit ((circuit init x).output n) i)
+              xs[i.val]).operations
+            (n + (circuit init x).localLength n + i * constant.localLength)).flatten := by
+  rw [List.ofFn_succ, List.flatten_cons]
+  congr
+  · simp only [foldlAcc_zero, Fin.val_zero, zero_mul, add_zero, Vector.cons, Vector.getElem_mk,
+      List.getElem_toArray, List.getElem_cons_zero]
+  · funext i
+    rw [foldlAcc_cons_succ (constant := constant)]
+    simp only [Fin.val_succ, add_mul, one_mul, Vector.cons, Vector.getElem_mk,
+      List.getElem_toArray, constant.localLength_eq (init, x) n]
+    congr 1
+    ac_rfl
+
+theorem operations_eq: (Vector.foldlM circuit init xs).operations n =
+    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by
+  induction xs using Vector.induct generalizing init n
+  case nil =>
+    rfl
+  case cons x xs ih =>
+    rw [foldlM_cons, bind_operations_eq]
+    rw [ih (init := (circuit init x).output n) (n := n + (circuit init x).localLength n)]
+    rw [operations_rhs_cons (n := n) (xs := xs) (init := init) (circuit := circuit) (constant := constant) x]
+
 
 variable {prop : Condition F}
 

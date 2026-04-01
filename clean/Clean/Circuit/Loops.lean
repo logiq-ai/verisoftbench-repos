@@ -8,6 +8,7 @@ under `circuit_norm` in every way we need them to.
 import Clean.Circuit.Subcircuit
 import Clean.Utils.Misc
 
+import Mathlib.Data.List.OfFn
 variable {n m : ℕ} {F : Type} [Field F] {α β : Type}
 
 lemma Vector.forM_toList (xs : Vector α n) {m : Type → Type} [Monad m] (body : α → m Unit) :
@@ -231,9 +232,22 @@ lemma foldlAcc_cons_succ (i : Fin m) (x : α) [constant : ConstantLength (prod c
   rw [constant.localLength_eq (init, x), ←constant.localLength_eq (acc, _) 0]
   ac_rfl
 
-theorem operations_eq :
-  (Vector.foldlM circuit init xs).operations n =
-    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by sorry
+theorem ofFn_flatten_foldlAcc_cons (x : α) : (List.ofFn fun i => (circuit (foldlAcc n (Vector.cons x xs) circuit init i) (Vector.cons x xs)[i.val]).operations (n + i * constant.localLength)).flatten = (circuit init x).operations n ++ (List.ofFn fun i => (circuit (foldlAcc (n + constant.localLength) xs circuit ((circuit init x).output n) i) xs[i.val]).operations (n + constant.localLength + i * constant.localLength)).flatten := by
+  rw [List.ofFn_succ, List.flatten_cons]
+  congr
+  · simp [foldlAcc_zero]
+  · funext i
+    rw [foldlAcc_cons_succ, constant.localLength_eq (init, x) n]
+    simp [Vector.cons, add_mul, add_assoc, add_left_comm, add_comm]
+
+theorem operations_eq: (Vector.foldlM circuit init xs).operations n =
+    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by
+  induction xs using Vector.induct generalizing init n
+  case nil =>
+    rfl
+  case cons x xs ih =>
+    rw [foldlM_cons, bind_operations_eq, ih, constant.localLength_eq (init, x), ofFn_flatten_foldlAcc_cons]
+
 
 variable {prop : Condition F}
 

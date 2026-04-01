@@ -205,17 +205,49 @@ lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
     [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and `p` is an event such that outputs of `f` are in `p` iff the individual components
-lie in some other events `q1` and `q2`, then the probability of the event `p` is the
-product of the probabilites holding individually.
-NOTE: universe levels of `α`, `β`, `γ` -/
+theorem probEvent_seq_map_prod_mk_eq_mul_aux {ι : Type u} {spec : OracleSpec ι} {α β : Type v} [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (q1 : α → Prop) (q2 : β → Prop) : [fun z : α × β ↦ q1 z.1 ∧ q2 z.2 | Prod.mk <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  classical
+  rw [probEvent_eq_tsum_ite]
+  rw [ENNReal.tsum_prod']
+  calc
+    (∑' (x : α), ∑' (y : β), if q1 x ∧ q2 y then probOutput (Prod.mk <$> oa <*> ob) (x, y) else 0)
+        = (∑' (x : α), ∑' (y : β), if q1 x ∧ q2 y then probOutput oa x * probOutput ob y else 0) := by
+              refine tsum_congr (fun x => ?_)
+              refine tsum_congr (fun y => ?_)
+              rw [probOutput_seq_map_eq_mul_of_injective2 (oa := oa) (ob := ob)
+                (f := Prod.mk) Prod.mk.injective2 x y]
+    _ = (∑' (x : α), ∑' (y : β),
+          (if q1 x then probOutput oa x else 0) * (if q2 y then probOutput ob y else 0)) := by
+            refine tsum_congr (fun x => ?_)
+            refine tsum_congr (fun y => ?_)
+            by_cases h1 : q1 x <;> by_cases h2 : q2 y <;> simp [h1, h2]
+    _ = (∑' (x : α), (if q1 x then probOutput oa x else 0) *
+          ∑' (y : β), if q2 y then probOutput ob y else 0) := by
+          refine tsum_congr (fun x => ?_)
+          rw [ENNReal.tsum_mul_left]
+    _ = ((∑' (x : α), if q1 x then probOutput oa x else 0) *
+          ∑' (y : β), if q2 y then probOutput ob y else 0) := by
+          rw [ENNReal.tsum_mul_right]
+    _ = [q1 | oa] * [q2 | ob] := by
+          rw [← probEvent_eq_tsum_ite, ← probEvent_eq_tsum_ite]
+
 lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
     {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange]
     (oa : OracleComp spec α) (ob : OracleComp spec β)
     (p : γ → Prop) (q1 : α → Prop) (q2 : β → Prop)
     (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) :
-    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by sorry
+    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  rw [probEvent_seq_map_eq_probEvent]
+  have hpair : [fun z : α × β => p (f z.1 z.2) | Prod.mk <$> oa <*> ob] =
+      [fun z : α × β => q1 z.1 ∧ q2 z.2 | Prod.mk <$> oa <*> ob] := by
+    apply probEvent_ext
+    intro z hz
+    rcases (mem_support_seq_map_iff_of_injective2 (oa := oa) (ob := ob) (f := Prod.mk)
+      Prod.mk.injective2 z.1 z.2).1 hz with ⟨hz1, hz2⟩
+    simpa using h z.1 hz1 z.2 hz2
+  rw [hpair]
+  exact probEvent_seq_map_prod_mk_eq_mul_aux oa ob q1 q2
+
 
 end seq_map
 

@@ -571,13 +571,7 @@ lemma soundness_one {p : ℕ} [Fact p.Prime]
   · simp only [h_eval_eq]
     exact h_input0
 
-/-- Soundness for n = 2 case -/
-lemma soundness_two {p : ℕ} [Fact p.Prime]
-    (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields 2) (F p))
-    (input : fields 2 (F p)) (h_env : input = eval env input_var)
-    (h_assumptions : Assumptions 2 input)
-    (h_hold : Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset)) :
-    Spec 2 input (env ((main input_var).output offset)) := by sorry
+
 
 /-- Completeness for n = 0 case -/
 lemma completeness_zero {p : ℕ} [Fact p.Prime]

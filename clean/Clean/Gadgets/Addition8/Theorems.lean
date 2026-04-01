@@ -75,12 +75,6 @@ theorem soundness_one_carry (x y out carry_in : F p):
       apply Nat.lt_add_one_of_le
       assumption
 
-/--
-  Soundness of the 8-bit addition circuit: assuming that the constraints and assumptions
-  are satisfied, the output is correctly the sum of the inputs and the input
-  carry modulo 256. Additionally the output carry is exactly the integer division
-  of the aforementioned sum by 256.
--/
 theorem soundness (x y out carry_in carry_out : F p):
     x.val < 256 -> y.val < 256 ->
     out.val < 256 ->
@@ -88,7 +82,25 @@ theorem soundness (x y out carry_in carry_out : F p):
     IsBool carry_out ->
     (x + y + carry_in + -out + -(carry_out * 256) = 0) ->
     (out.val = (x.val + y.val + carry_in.val) % 256
-    ∧ carry_out.val = (x.val + y.val + carry_in.val) / 256):= by sorry
+    ∧ carry_out.val = (x.val + y.val + carry_in.val) / 256) := by
+  intro hx hy hout hcin hcout hsum
+  have hcin_lt2 : carry_in.val < 2 := IsBool.val_lt_two hcin
+  rcases hcout with hco0 | hco1
+  · rw [hco0] at hsum ⊢
+    have h0 : carry_in + x + y - out = 0 := by
+      simpa only [sub_eq_add_neg, zero_mul, neg_zero, add_zero, add_assoc, add_left_comm, add_comm] using hsum
+    have hz := soundness_zero_carry x y out carry_in hx hy hout hcin_lt2 h0
+    refine ⟨?_, ?_⟩
+    · simpa only [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hz.1
+    · simpa only [ZMod.val_zero, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hz.2.symm
+  · rw [hco1] at hsum ⊢
+    have h1 : carry_in + x + y - out - 256 = 0 := by
+      simpa only [sub_eq_add_neg, one_mul, add_assoc, add_left_comm, add_comm] using hsum
+    have ho := soundness_one_carry x y out carry_in hx hy hout hcin_lt2 h1
+    refine ⟨?_, ?_⟩
+    · simpa only [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using ho.1
+    · simpa only [ZMod.val_one, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using ho.2.symm
+
 
 /--
   Given the default witness generation, we show that the addition constraint is satisfied

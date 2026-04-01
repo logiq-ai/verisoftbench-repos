@@ -89,6 +89,12 @@ theorem intact_node_is_well_behaved : ∀ n I, intact (inst := inst) I → n ∈
   intro n S h ; apply intertwined_node_is_well_behaved ; apply intact_implies_intertwined _ h
 
 theorem slice_blocks_ne : ∀ n S I, intact (inst := inst) I → n ∈ I → blocks_slices S n →
-    S ∩ I ≠ ∅ := by sorry
+    S ∩ I ≠ ∅ := by
+  intro n S I hI hn hblocks
+  have hnW : n ∈ W := hI.well_behaved hn
+  rcases hI.q_avail n ⟨hn, hnW⟩ with ⟨Sl, hSl, hsub⟩
+  rcases Set.nonempty_iff_ne_empty.mpr (hblocks Sl hSl) with ⟨x, hx⟩
+  exact Set.nonempty_iff_ne_empty.mp ⟨x, ⟨hx.2, hsub hx.1⟩⟩
+
 
 end FBA

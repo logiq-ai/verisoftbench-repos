@@ -498,7 +498,33 @@ Note how it combines aspects of skip and conditionals:
 
 theorem hoare_while P b c :
     {* fun st => P st ∧ beval st b *} c {* P *}
-    → {* P *} c_while b c {* fun st => P st ∧ ¬(beval st b) *} := by sorry
+    → {* P *} c_while b c {* fun st => P st ∧ ¬(beval st b) *} := by
+  intro hbody st st' hPre hEval
+  revert hPre
+  generalize hcom : c_while b c = com at hEval
+  induction hEval with simp at *
+  | e_whileFalse =>
+      rename_i b' c' st hfalse
+      intro hPre
+      obtain ⟨hb', _⟩ := hcom
+      rw [← hb'] at hfalse
+      constructor
+      · exact hPre
+      · simp [hfalse]
+  | e_whileTrue =>
+      rename_i b' c' st st₁ st₂ hguard hbodyEval hwhileEval _ ihwhile
+      intro hPre
+      obtain ⟨hb', hc'⟩ := hcom
+      have hMid : P st₁ := by
+        apply hbody
+        · constructor
+          · exact hPre
+          · rw [hb']
+            exact hguard
+        · rw [← hc'] at hbodyEval
+          exact hbodyEval
+      exact ihwhile hb' hc' hMid
+
 
 /-
 We call `P` a _loop invariant_ of `while b do c` if

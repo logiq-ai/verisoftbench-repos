@@ -500,7 +500,104 @@ example : atrans_sound fold_constants_aexp := by
 Here's the proof for boolean expressions:
 -/
 
-theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by sorry
+theorem fold_constants_aexp_sound_aux: atrans_sound fold_constants_aexp := by
+  unfold atrans_sound aequiv
+  intro a st
+  induction a with
+  | a_num n =>
+      rfl
+  | a_id x =>
+      rfl
+  | a_plus a1 a2 ih1 ih2 =>
+      cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2 <;>
+        simp [fold_constants_aexp, aeval, h1, h2, ih1, ih2] at *
+  | a_minus a1 a2 ih1 ih2 =>
+      cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2 <;>
+        simp [fold_constants_aexp, aeval, h1, h2, ih1, ih2] at *
+  | a_mult a1 a2 ih1 ih2 =>
+      cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2 <;>
+        simp [fold_constants_aexp, aeval, h1, h2, ih1, ih2] at *
+
+theorem fold_constants_bexp_and_sound_aux (b1 b2 : BExp) : bequiv b1 (fold_constants_bexp b1) → bequiv b2 (fold_constants_bexp b2) → bequiv (b_and b1 b2) (fold_constants_bexp (b_and b1 b2)) := by
+  intro hb1 hb2
+  unfold bequiv at hb1 hb2 ⊢
+  intro st
+  specialize hb1 st
+  specialize hb2 st
+  cases h1 : fold_constants_bexp b1 <;> cases h2 : fold_constants_bexp b2 <;> simp [fold_constants_bexp, beval, h1, h2, hb1, hb2] at *
+
+theorem fold_constants_bexp_eq_sound_aux (a1 a2 : AExp) : bequiv (b_eq a1 a2) (fold_constants_bexp (b_eq a1 a2)) := by
+  unfold bequiv
+  intro st
+  have ha1 := fold_constants_aexp_sound_aux a1 st
+  have ha2 := fold_constants_aexp_sound_aux a2 st
+  cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2
+  case a_num.a_num n1 n2 =>
+    simp [fold_constants_bexp, beval, h1, h2, ha1, ha2]
+    by_cases h : n1 = n2 <;> simp [beval, aeval, h]
+  all_goals
+    simp [fold_constants_bexp, beval, h1, h2, ha1, ha2] at *
+
+theorem fold_constants_bexp_le_sound_aux (a1 a2 : AExp) : bequiv (b_le a1 a2) (fold_constants_bexp (b_le a1 a2)) := by
+  intro st
+  simp only [bequiv, beval]
+  rw [fold_constants_aexp_sound_aux a1 st, fold_constants_aexp_sound_aux a2 st]
+  cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2 <;> simp [fold_constants_bexp, beval, h1, h2]
+  case a_num.a_num n1 n2 =>
+    by_cases h : n1 ≤ n2
+    · simp [fold_constants_bexp, beval, aeval, h]
+    · have hlt : n2 < n1 := Nat.lt_of_not_ge h
+      simp [fold_constants_bexp, beval, aeval, h, hlt]
+
+theorem fold_constants_bexp_neq_sound_aux (a1 a2 : AExp) : bequiv (b_neq a1 a2) (fold_constants_bexp (b_neq a1 a2)) := by
+  unfold bequiv
+  intro st
+  simp [beval]
+  rw [fold_constants_aexp_sound_aux a1 st, fold_constants_aexp_sound_aux a2 st]
+  cases h1 : fold_constants_aexp a1 <;> cases h2 : fold_constants_aexp a2 <;> simp [fold_constants_bexp, beval, h1, h2]
+  case a_num.a_num n1 n2 =>
+    by_cases h : n1 = n2
+    · simp [h, beval]
+    · simp [h, beval]
+
+theorem fold_constants_bexp_not_sound_aux (b : BExp) : bequiv b (fold_constants_bexp b) → bequiv (b_not b) (fold_constants_bexp (b_not b)) := by
+  intro hb
+  unfold bequiv at hb ⊢
+  intro st
+  specialize hb st
+  cases h : fold_constants_bexp b <;> simp [fold_constants_bexp, beval, h, hb] at *
+
+theorem fold_constants_bexp_or_sound_aux (b1 b2 : BExp) : bequiv b1 (fold_constants_bexp b1) → bequiv b2 (fold_constants_bexp b2) → bequiv (b_or b1 b2) (fold_constants_bexp (b_or b1 b2)) := by
+  intro hb1 hb2
+  unfold bequiv at hb1 hb2 ⊢
+  intro st
+  specialize hb1 st
+  specialize hb2 st
+  cases h1 : fold_constants_bexp b1 <;> cases h2 : fold_constants_bexp b2 <;> simp [fold_constants_bexp, beval, h1, h2, hb1, hb2] at *
+
+theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by
+  unfold btrans_sound
+  intro b
+  induction b with
+  | b_true =>
+      intro st
+      rfl
+  | b_false =>
+      intro st
+      rfl
+  | b_eq a1 a2 =>
+      exact fold_constants_bexp_eq_sound_aux a1 a2
+  | b_neq a1 a2 =>
+      exact fold_constants_bexp_neq_sound_aux a1 a2
+  | b_le a1 a2 =>
+      exact fold_constants_bexp_le_sound_aux a1 a2
+  | b_not b ih =>
+      exact fold_constants_bexp_not_sound_aux b ih
+  | b_and b1 b2 ih1 ih2 =>
+      exact fold_constants_bexp_and_sound_aux b1 b2 ih1 ih2
+  | b_or b1 b2 ih1 ih2 =>
+      exact fold_constants_bexp_or_sound_aux b1 b2 ih1 ih2
+
 
 /-
 We see that after doing each split, we need to focus on the last hypothesis and simplify it for further use.

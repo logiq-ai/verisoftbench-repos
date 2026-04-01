@@ -257,10 +257,10 @@ theorem sumMap_id :
     Lens.sumMap (Lens.id P) (Lens.id Q) = Lens.id.{max uA₁ uA₂, uB₁} (P + Q) := by
   ext a <;> rcases a <;> rfl
 
-@[simp]
 theorem sumPair_inl_inr :
     Lens.sumPair Lens.inl Lens.inr = Lens.id.{max uA₁ uA₂, uB₁} (P + Q) := by
   ext a <;> rcases a <;> rfl
+
 
 namespace Equiv
 

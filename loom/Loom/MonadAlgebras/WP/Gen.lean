@@ -181,6 +181,63 @@ def WPGen.spec_wp wp' (x : m α) (trp : wp x = wp') : WPGen x where
     subst trp
     simp
 
+noncomputable def triple_forIn_deacreasing_inv {β} (measure : β → ℕ) (inv : β → l) (init : β) (i : ℕ) (b : β) : l :=
+  inv b ⊓ ⌜measure b + i ≤ measure init⌝
+
+theorem triple_forIn_deacreasing_final {β} {measure : β → ℕ} {init : β} (inv : β → l) (b : β) :
+  triple_forIn_deacreasing_inv measure inv init (measure init) b ≤ inv b ⊓ ⌜measure b = 0⌝ := by
+  by_cases h : measure b + measure init ≤ measure init
+  · have h0 : measure b + measure init ≤ 0 + measure init := by
+      simpa [Nat.zero_add] using h
+    have hb0 : measure b ≤ 0 := by
+      exact (Nat.add_le_add_iff_right).mp h0
+    have hb : measure b = 0 := Nat.eq_zero_of_le_zero hb0
+    simp [triple_forIn_deacreasing_inv, h, hb]
+  · simp [triple_forIn_deacreasing_inv, h]
+
+theorem triple_forIn_deacreasing_step {β} {measure : β → ℕ}
+  {init : β} {f : β → m (ForInStep β)}
+  (inv : β → l)
+  (hstep : ∀ b,
+    measure b <= measure init ->
+    triple
+      (inv b)
+      (f b)
+      (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b'))
+  (i : ℕ) (b : β) :
+  triple
+    (triple_forIn_deacreasing_inv measure inv init i b)
+    (f b)
+    (fun | .yield b' => triple_forIn_deacreasing_inv measure inv init (i + 1) b'
+         | .done b' => triple_forIn_deacreasing_inv measure inv init (measure init) b') := by
+  by_cases hbi : measure b + i ≤ measure init
+  · have hb : measure b ≤ measure init := le_trans (Nat.le_add_right _ _) hbi
+    apply triple_cons (x := f b) (pre := inv b)
+      (post := fun
+        | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝
+        | .done b' => ⌜measure b' = 0⌝ ⊓ inv b')
+    · simp [triple_forIn_deacreasing_inv, hbi]
+    · intro y
+      cases y with
+      | yield b' =>
+          have hpure : ⌜measure b' < measure b⌝ ≤ (⌜measure b' + (i + 1) ≤ measure init⌝ : l) :=
+            LE.pure_imp _ _ (by
+              intro hlt
+              omega)
+          simpa [triple_forIn_deacreasing_inv] using
+            (inf_le_inf le_rfl hpure :
+              inv b' ⊓ ⌜measure b' < measure b⌝ ≤ inv b' ⊓ ⌜measure b' + (i + 1) ≤ measure init⌝)
+      | done b' =>
+          have hpure : ⌜measure b' = 0⌝ ≤ (⌜measure b' + measure init ≤ measure init⌝ : l) :=
+            LE.pure_imp _ _ (by
+              intro h0
+              omega)
+          simpa [triple_forIn_deacreasing_inv, inf_comm] using
+            (inf_le_inf le_rfl hpure :
+              inv b' ⊓ ⌜measure b' = 0⌝ ≤ inv b' ⊓ ⌜measure b' + measure init ≤ measure init⌝)
+    · exact hstep b hb
+  · simp [triple, triple_forIn_deacreasing_inv, hbi]
+
 theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
   {init : β} {f : β → m (ForInStep β)}
   (inv : β → l)
@@ -190,7 +247,23 @@ theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
       (inv b)
       (f b)
       (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
-  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by sorry
+  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by
+  let I : ℕ → β → l := triple_forIn_deacreasing_inv measure inv init
+  have hrange0 :
+      triple (I 0 init) (forIn [0:measure init] init (fun _ => f)) (I (measure init)) := by
+    refine triple_forIn_range_step1 (xs := [0:measure init]) (init := init) (f := fun _ => f) I ?_ rfl ?_
+    · intro i b
+      simpa [I] using
+        (triple_forIn_deacreasing_step (measure := measure) (init := init) (f := f) inv hstep i b)
+    · simp
+  have hrange :
+      triple (inv init) (forIn [0:measure init] init (fun _ => f)) (I (measure init)) := by
+    simpa [I, triple_forIn_deacreasing_inv] using hrange0
+  refine triple_cons (x := forIn [0:measure init] init (fun _ => f)) ?_ ?_ hrange
+  · rfl
+  · intro b
+    exact triple_forIn_deacreasing_final (measure := measure) (init := init) inv b
+
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

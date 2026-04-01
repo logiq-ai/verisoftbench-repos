@@ -468,12 +468,38 @@ def MemoryAccessList.isConsistentOffline (accesses : MemoryAccessList) (h_sorted
     (if addr1 = addr2 then readValue2 = writeValue1 else readValue2 = 0) ∧
     MemoryAccessList.isConsistentOffline ((t1, addr1, readValue1, writeValue1) :: rest) (List.Sorted.of_cons h_sorted)
 
-theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted
-    (accesses : MemoryAccessList)
+theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted (accesses : MemoryAccessList)
     (h_sorted : accesses.isAddressTimestampSorted)
     (h_nodup : accesses.Notimestampdup)
     (addr : ℕ) :
-    (accesses.filterAddress addr).isTimestampSorted := by sorry
+    (accesses.filterAddress addr).isTimestampSorted := by
+  have h_strict :=
+    MemoryAccessList.addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup
+      accesses h_sorted h_nodup
+  have h_filtered :
+      List.Sorted timestamp_ordering
+        (List.filterMap (Option.guard (fun (_t, addr', _r, _w) => addr' = addr)) accesses) := by
+    refine List.Sorted.filterMap
+        (p := Option.guard (fun (_t, addr', _r, _w) => addr' = addr))
+        (r := address_strict_timestamp_ordering)
+        (r' := timestamp_ordering)
+        h_strict ?_
+    intro a b c d ha hb hab
+    rcases a with ⟨ta, aa, ra, wa⟩
+    rcases b with ⟨tb, ab, rb, wb⟩
+    rw [Option.guard_def] at ha hb
+    dsimp at ha hb hab ⊢
+    by_cases haa : aa = addr
+    · simp [haa] at ha
+      subst c
+      by_cases hba : ab = addr
+      · simp [hba] at hb
+        subst d
+        simpa [address_strict_timestamp_ordering, timestamp_ordering, haa, hba] using hab
+      · simp [hba] at hb
+    · simp [haa] at ha
+  simpa [MemoryAccessList.filterAddress, MemoryAccessList.isTimestampSorted] using h_filtered
+
 
 theorem MemoryAccessList.isConsistentSingleAddress_filterAddress_forall_of_cons
     (head : MemoryAccess) (tail : MemoryAccessList)

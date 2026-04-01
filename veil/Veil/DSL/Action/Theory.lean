@@ -597,14 +597,75 @@ instance : GenBigStep σ ρ (Wp.spec req ens) (BigStep.spec req ens) where
 
 instance [inst : GenBigStep σ ρ act actTr] : LawfulAction act := inst.lawful
 
-/-- A specialized version of `lift_transition_big_step`, applied to
-`LawfulAction`s. -/
+theorem substate_eq_setIn_iff {σ σ' : Type} [IsSubStateOf σ σ'] (st st' : σ') (s : σ) : st' = (@setIn σ σ' _ s st) ↔ @getFrom σ σ' _ st' = s ∧ st' = (@setIn σ σ' _ (@getFrom σ σ' _ st') st) := by
+  constructor
+  · intro h
+    constructor
+    · have h' := congrArg (@getFrom σ σ' _) h
+      simpa [IsSubStateOf.getFrom_setIn_idempotent] using h'
+    · rw [h, IsSubStateOf.getFrom_setIn_idempotent]
+  · rintro ⟨hs, hcanon⟩
+    rw [hs] at hcanon
+    exact hcanon
+
 theorem lift_transition_big_step' {σ σ'} [IsSubStateOf σ σ'] (m : Mode) (r : Wp m σ ρ) [LawfulAction r] (st : σ') :
   r.alwaysSuccessfullyTerminates (· = getFrom st) →
   (@Wp.lift _  m σ σ' _ r).toBigStep st =
   fun r' st' =>
     r.toBigStep (getFrom st) r' (getFrom st') ∧
-    st' = (setIn (@getFrom σ σ' _ st') st) := by sorry
+    st' = (setIn (@getFrom σ σ' _ st') st) := by
+  intro hterm
+  funext r'
+  funext st'
+  unfold Wp.toBigStep Wp.toWlp Wp.lift
+  by_cases hcanon : st' = (@setIn σ σ' _ (@getFrom σ σ' _ st') st)
+  · have hpost :
+      (fun rr s => ¬ (r' = rr ∧ st' = (@setIn σ σ' _ s st))) =
+        (fun rr s => ¬ (r' = rr ∧ (@getFrom σ σ' _ st') = s)) := by
+        funext rr s
+        apply propext
+        constructor
+        · intro hbad hpair
+          apply hbad
+          rcases hpair with ⟨hr, hgs⟩
+          constructor
+          · exact hr
+          · calc
+              st' = (@setIn σ σ' _ (@getFrom σ σ' _ st') st) := hcanon
+              _ = (@setIn σ σ' _ s st) := by rw [hgs]
+        · intro hbad hpair
+          apply hbad
+          rcases hpair with ⟨hr, hst⟩
+          have hsub : (@getFrom σ σ' _ st') = s ∧ st' = (@setIn σ σ' _ (@getFrom σ σ' _ st') st) :=
+            (substate_eq_setIn_iff st st' s).1 hst
+          exact ⟨hr, hsub.1⟩
+    rw [hpost]
+    apply propext
+    constructor
+    · intro hp
+      exact ⟨hp, hcanon⟩
+    · intro hp
+      exact hp.1
+  · have htrue :
+      (fun rr s => ¬ (r' = rr ∧ st' = (@setIn σ σ' _ s st))) = fun _ _ => True := by
+        funext rr s
+        apply propext
+        constructor
+        · intro _
+          trivial
+        · intro _ hpair
+          have hcanon' : st' = (@setIn σ σ' _ (@getFrom σ σ' _ st') st) :=
+            ((substate_eq_setIn_iff st st' s).1 hpair.2).2
+          exact hcanon hcanon'
+    have hterm0 : r (getFrom st) (fun _ _ => True) := hterm (getFrom st) rfl
+    rw [htrue]
+    apply propext
+    constructor
+    · intro hbad
+      exact False.elim (hbad hterm0)
+    · intro hbad
+      exact False.elim (hcanon hbad.2)
+
 
 instance {σ σ'} [IsSubStateOf σ σ'] (act : Wp .external σ ρ) (actTr : BigStep σ ρ) [inst:GenBigStep σ ρ act actTr]
   : GenBigStep σ' ρ (Wp.lift (σ' := σ') act) (BigStep.lift (σ := σ) actTr) where

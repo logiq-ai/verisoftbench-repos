@@ -205,17 +205,73 @@ lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
     [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and `p` is an event such that outputs of `f` are in `p` iff the individual components
-lie in some other events `q1` and `q2`, then the probability of the event `p` is the
-product of the probabilites holding individually.
-NOTE: universe levels of `α`, `β`, `γ` -/
+theorem probEvent_map_eq_if_of_support {ι : Type u} {spec : OracleSpec ι} {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (p : γ → Prop) (q1 : α → Prop) [DecidablePred q1] (q2 : β → Prop) (x : α) (hx : x ∈ oa.support) (hxy : ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) : [p | f x <$> ob] = if q1 x then [q2 | ob] else 0 := by
+  classical
+  rw [probEvent_map]
+  by_cases hq1 : q1 x
+  · simp only [hq1, if_true]
+    apply probEvent_ext
+    intro y hy
+    have h := hxy y hy
+    constructor
+    · intro hp
+      exact (h.mp hp).2
+    · intro hq2
+      exact h.mpr ⟨hq1, hq2⟩
+  · simp only [hq1, if_false]
+    have hfalse : [fun _ : β => False | ob] = 0 := by
+      simp [probEvent_eq_tsum_ite]
+    rw [← hfalse]
+    apply probEvent_ext
+    intro y hy
+    have h := hxy y hy
+    constructor
+    · intro hp
+      exact False.elim (hq1 ((h.mp hp).1))
+    · intro hF
+      exact False.elim hF
+
+theorem probEvent_seq_map_eq_tsum_bind {ι : Type u} {spec : OracleSpec ι} {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (p : γ → Prop) : [p | f <$> oa <*> ob] = ∑' x : α, [= x | oa] * [p | f x <$> ob] := by
+  calc
+    [p | f <$> oa <*> ob] = [p | oa >>= fun x => f x <$> ob] := by
+      simp only [map_eq_bind_pure_comp, Function.comp, seq_eq_bind, bind_assoc, pure_bind]
+    _ = ∑' x : α, [= x | oa] * [p | f x <$> ob] := by
+      simpa using (probEvent_bind_eq_tsum (oa := oa) (ob := fun x => f x <$> ob) (q := p))
+
+theorem probEvent_seq_map_eq_tsum_if {ι : Type u} {spec : OracleSpec ι} {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (p : γ → Prop) (q1 : α → Prop) [DecidablePred q1] (q2 : β → Prop) (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) : [p | f <$> oa <*> ob] = ∑' x : α, if q1 x then [= x | oa] * [q2 | ob] else 0 := by
+  trans ∑' x : α, [= x | oa] * [p | f x <$> ob]
+  · simpa only [map_eq_bind_pure_comp, Function.comp, seq_eq_bind, bind_assoc, pure_bind,
+      probEvent_bind_eq_tsum]
+  · refine tsum_congr ?_
+    intro x
+    by_cases hx : x ∈ oa.support
+    · have hxy : [p | f x <$> ob] = if q1 x then [q2 | ob] else 0 := by
+        exact probEvent_map_eq_if_of_support (f := f) (oa := oa) (ob := ob) (p := p) (q1 := q1)
+          (q2 := q2) (x := x) hx (by
+            intro y hy
+            exact h x hx y hy)
+      rw [hxy]
+      by_cases hq : q1 x <;> simp [hq]
+    · have hpx : [= x | oa] = 0 := by
+        simpa [probOutput_eq_zero_iff, hx]
+      simp [hpx, hx]
+
 lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
     {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange]
     (oa : OracleComp spec α) (ob : OracleComp spec β)
     (p : γ → Prop) (q1 : α → Prop) (q2 : β → Prop)
     (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) :
-    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by sorry
+    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  classical
+  rw [probEvent_seq_map_eq_tsum_if (f := f) (oa := oa) (ob := ob) (p := p) (q1 := q1) (q2 := q2) h]
+  have htsum :
+      (∑' x : α, if q1 x then [= x | oa] * [q2 | ob] else 0) =
+      (∑' x : α, (if q1 x then [= x | oa] else 0) * [q2 | ob]) := by
+    refine tsum_congr ?_
+    intro x
+    by_cases hq : q1 x <;> simp [hq]
+  rw [htsum, ENNReal.tsum_mul_right, ← probEvent_eq_tsum_ite (oa := oa) (p := q1)]
+
 
 end seq_map
 

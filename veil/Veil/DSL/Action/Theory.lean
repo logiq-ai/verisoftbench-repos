@@ -622,7 +622,16 @@ theorem bind_terminates m (act : Wp m σ ρ) (act' : ρ -> Wp m σ ρ') s [Lawfu
   act.alwaysSuccessfullyTerminates pre →
   (act.bind act').alwaysSuccessfullyTerminates pre ->
   act.toBigStep s r' s' ->
-  (act' r').alwaysSuccessfullyTerminates (· = s') := by sorry
+  (act' r').alwaysSuccessfullyTerminates (· = s') := by
+  intro hs _ hbindTerm hbig
+  have htriple : act.toBigStep.triple pre (fun r st => act' r st (fun _ _ => True)) := by
+    apply big_step_sound' (act := act) (req := pre) (ens := fun r st => act' r st (fun _ _ => True))
+    intro t ht
+    simpa [Wp.alwaysSuccessfullyTerminates, Wp.bind] using hbindTerm t ht
+  intro t ht
+  subst t
+  exact htriple s r' s' hs hbig
+
 
 attribute [-simp] not_and in
 instance (act : Wp .external σ ρ) (act' : ρ -> Wp .external σ ρ')

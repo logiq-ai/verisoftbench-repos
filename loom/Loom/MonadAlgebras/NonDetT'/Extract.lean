@@ -359,8 +359,72 @@ def ExtractNonDet.prop {α : Type u} (s : NonDetT m α) :  ExtractNonDet WeakFin
 
 namespace DemonicChoice
 
+theorem find_iSup_eq_bot_of_none {τ : Type u} (p : τ → Prop) [Findable p] (h : Findable.find p () = none) :
+  (⨆ t, (⌜p t⌝ : l)) = (⊥ : l) := by
+  have hnone : (Findable.find p ()).isNone := by
+    simpa [h]
+  have hpnone : ∀ t, ¬ p t := Findable.find_none (p := p) hnone
+  apply bot_unique
+  refine iSup_le ?_
+  intro t
+  simp [hpnone t]
+
+theorem find_iSup_eq_top_of_some {τ : Type u} (p : τ → Prop) [Findable p] {x : τ} (h : Findable.find p () = some x) :
+  (⨆ t, (⌜p t⌝ : l)) = (⊤ : l) := by
+  have hpx : p x := Findable.find_some_p (p := p) (x := x) h
+  apply top_unique
+  exact le_iSup_of_le x (by simpa [hpx])
+
+theorem punit_pickCont_wp_prop_eq_if (p : PUnit → Prop) (f : PUnit → NonDetT m α) [Decidable (p .unit)] :
+  wp (NonDetT.pickCont PUnit p f) post ⊓ (NonDetT.pickCont PUnit p f).prop ⊤ =
+    (if p .unit then wp (f .unit) post ⊓ (f .unit).prop ⊤ else (⊥ : l)) := by
+  have hwpf : ∀ a, wp (f a) post = wp (f .unit) post := by
+    intro a
+    cases a
+    rfl
+  have hpropf : ∀ a, (f a).prop ⊤ = (f .unit).prop ⊤ := by
+    intro a
+    cases a
+    rfl
+  by_cases h : p .unit
+  · simp [NonDetT.wp_pickCont, NonDetT.prop, h, hwpf, hpropf, iInf_const, iSup_const, inf_assoc]
+  · simp [NonDetT.wp_pickCont, NonDetT.prop, h, hwpf, hpropf, iInf_const, iSup_const, inf_assoc]
+
 lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
-  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by sorry
+  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+  induction inst with
+  | pure =>
+      simp [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, wp_pure]
+  | vis =>
+      rename_i x f ex ih
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, monadLift_self, wp_bind, NonDetT.wp_vis]
+      rw [inf_comm, wlp_join_wp]
+      apply wp_cons
+      intro a
+      simpa [inf_comm] using ih a
+  | pickSuchThat =>
+      rename_i τ p f ex ih
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.wp_pickCont, NonDetT.prop]
+      split
+      · rename_i hfind
+        rw [find_iSup_eq_bot_of_none τ hfind]
+        simp [inf_assoc]
+      · rename_i x hfind
+        rw [find_iSup_eq_top_of_some τ hfind]
+        simp only [inf_top_eq]
+        have hp : τ x := Findable.find_some_p (p := τ) (x := x) hfind
+        apply le_trans
+        · apply inf_le_inf
+          · exact iInf_le_of_le x (show (⌜τ x⌝ : l) ⇨ wp (p x) post ≤ wp (p x) post by simp [hp])
+          · exact iInf_le_of_le x (show (⌜τ x⌝ : l) ⇨ (p x).prop ⊤ ≤ (p x).prop ⊤ by simp [hp])
+        · simpa [inf_comm] using ih x
+  | assume =>
+      rename_i p f dec ex ih
+      rw [punit_pickCont_wp_prop_eq_if (p := p) (f := f)]
+      by_cases h : p .unit
+      · simpa [NonDetT.extract, NonDetT.extractGen, h] using ih .unit
+      · simp [NonDetT.extract, NonDetT.extractGen, h]
+
 
 lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
   triple pre s post ->

@@ -205,17 +205,45 @@ lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
     [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and `p` is an event such that outputs of `f` are in `p` iff the individual components
-lie in some other events `q1` and `q2`, then the probability of the event `p` is the
-product of the probabilites holding individually.
-NOTE: universe levels of `α`, `β`, `γ` -/
+theorem probEvent_seq_map_eq_mul_fixed_x_aux {ι : Type u} {spec : OracleSpec ι} {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (p : γ → Prop) (q1 : α → Prop) [DecidablePred q1] (q2 : β → Prop) (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) (x : α) (hx : x ∈ oa.support) : [p | f x <$> ob] = if q1 x then [q2 | ob] else 0 := by
+  have hcongr : [fun y => p (f x y) | ob] = [fun y => q1 x ∧ q2 y | ob] := by
+    apply probEvent_ext
+    intro y hy
+    simpa only [Function.comp] using h x hx y hy
+  by_cases hq : q1 x
+  · simpa only [probEvent_map, Function.comp, hq, true_and] using hcongr
+  · have hfalse : [fun y => q1 x ∧ q2 y | ob] = 0 := by
+      rw [probEvent_eq_zero_iff]
+      intro y hy hyq
+      exact hq hyq.1
+    simpa only [probEvent_map, Function.comp, hq] using hcongr.trans hfalse
+
 lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
     {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange]
     (oa : OracleComp spec α) (ob : OracleComp spec β)
     (p : γ → Prop) (q1 : α → Prop) (q2 : β → Prop)
     (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) :
-    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by sorry
+    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  classical
+  have hseq : f <$> oa <*> ob = oa >>= fun x => f x <$> ob := by
+    simp only [map_eq_bind_pure_comp, seq_eq_bind, bind_assoc, Function.comp, pure_bind]
+  rw [hseq, probEvent_bind_eq_tsum]
+  calc
+    ∑' x, [= x | oa] * [p | f x <$> ob]
+        = ∑' x, [= x | oa] * (if q1 x then [q2 | ob] else 0) := by
+          refine tsum_congr (fun x => ?_)
+          by_cases hx : x ∈ oa.support
+          · rw [probEvent_seq_map_eq_mul_fixed_x_aux f oa ob p q1 q2 h x hx]
+          · rw [probOutput_eq_zero _ _ hx]
+            simp
+    _ = ∑' x, (if q1 x then [= x | oa] else 0) * [q2 | ob] := by
+          refine tsum_congr (fun x => ?_)
+          by_cases hq1 : q1 x <;> simp [hq1, mul_assoc, mul_comm, mul_left_comm]
+    _ = (∑' x, if q1 x then [= x | oa] else 0) * [q2 | ob] := by
+          rw [ENNReal.tsum_mul_right]
+    _ = [q1 | oa] * [q2 | ob] := by
+          rw [← probEvent_eq_tsum_ite]
+
 
 end seq_map
 

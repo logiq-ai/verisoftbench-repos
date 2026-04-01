@@ -185,11 +185,20 @@ lemma localWitnesses_append {F} {a b: List (FlatOperation F)} {env} :
   | case3 _ _ ih | case4 _ _ ih =>
     simp only [List.cons_append, localLength, localWitnesses, ih]
 
-/--
-The witness length from flat and nested operations is the same
--/
 lemma localLength_toFlat {ops : Operations F} :
-    localLength ops.toFlat = ops.localLength := by sorry
+    localLength ops.toFlat = ops.localLength := by
+  induction ops using Operations.induct with
+  | empty =>
+      rfl
+  | witness m x ops ih =>
+      simp [Operations.toFlat, FlatOperation.localLength, Operations.localLength, ih]
+  | assert p ops ih =>
+      simp [Operations.toFlat, FlatOperation.localLength, Operations.localLength, ih]
+  | lookup x ops ih =>
+      simp [Operations.toFlat, FlatOperation.localLength, Operations.localLength, ih]
+  | subcircuit s ops ih =>
+      rw [Operations.toFlat, Operations.localLength, FlatOperation.localLength_append, ih, s.localLength_eq]
+
 
 /--
 The witnesses created from flat and nested operations are the same

@@ -950,34 +950,15 @@ lemma getBit_eq_pred_getBit_of_div_two {n k : ℕ} (h_k: k > 0) :
   exact Eq.symm (getBit_of_shiftRight (k - 1))
 
 -- TODO: uniqueness of this representation?
+
+
 theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by sorry
+  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
+  sorry
 
 theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
   j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by
-  intro j h_j
-  have h_repr_Icc := getBit_repr (ℓ:=ℓ) (j:=j) (by omega)
-  rw [h_repr_Icc]
-  if h_ℓ_eq_0: ℓ = 0 then
-    subst h_ℓ_eq_0
-    have h_j_eq_0: j = 0 := by omega
-    subst h_j_eq_0
-    rfl
-  else
-    apply Finset.sum_bij' (s:=Finset.Icc 0 (ℓ-1)) (t:=Finset.univ (α:=Fin ℓ))
-      (i:=fun a ha => by exact ⟨a, by
-        simp only [Finset.mem_Icc, _root_.zero_le, true_and] at ha; omega
-      ⟩) (j := fun a ha => by exact a.val)
-    · intro a ha; rfl
-    · intro a ha; rfl
-    · intro a ha
-      rw [←h_repr_Icc]
-    · intro a ha
-      simp only [Finset.mem_univ]
-    · intro a ha
-      simp only [Finset.mem_Icc, _root_.zero_le, true_and]
-      have h_a_lt_ℓ: a < ℓ := by exact a.isLt
-      omega
+  sorry
 
 lemma getLowBits_succ {n: ℕ} (numLowBits: ℕ) :
     getLowBits (numLowBits + 1) n = getLowBits numLowBits n

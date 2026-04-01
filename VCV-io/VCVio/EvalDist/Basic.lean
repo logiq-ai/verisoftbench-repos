@@ -273,7 +273,17 @@ variable (p : PMF α) (x : α)
 
 @[simp] lemma evalDist_eq : evalDist p = liftM p := rfl
 
-@[simp] lemma probOutput_eq : probOutput p = p := by sorry
+theorem probOutput_eq: probOutput p = p := by
+  classical
+  funext y
+  rw [probOutput_def, PMF.evalDist_eq, OptionT.run_monadLift]
+  rw [PMF.monad_map_eq_map, PMF.map_apply]
+  rw [tsum_eq_single y]
+  · simp
+  · intro a ha
+    have hy : y ≠ a := fun h => ha h.symm
+    simp [Option.some_inj, hy]
+
 
 @[simp] lemma probEvent_eq : probEvent p = p.toOuterMeasure := by
   refine funext fun x => ?_

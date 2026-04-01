@@ -66,7 +66,19 @@ lemma findNat_some_p (p : Nat -> Prop) [DecidablePred p] (i : Nat) :
   apply findNat.aux.partial_correctness; aesop
 
 lemma p_findNat_some (p : Nat -> Prop) [DecidablePred p] (i : Nat) :
-  p i -> ∃ j, p j ∧ j <= i ∧ findNat p = some j := by sorry
+  p i -> ∃ j, p j ∧ j <= i ∧ findNat p = some j := by
+  intro pi
+  have hisSome : (findNat p).isSome := (exists_findNat p).mp ⟨i, pi⟩
+  rcases Option.isSome_iff_exists.mp hisSome with ⟨x, hx⟩
+  have hpx : p x := findNat_some_p p x hx
+  have hxAux : findNat.aux p 0 = some x := by
+    simpa [findNat] using hx
+  refine ⟨x, hpx, ?_, hx⟩
+  by_contra hle
+  have hi_lt_x : i < x := Nat.lt_of_not_ge hle
+  have hnot : ¬ p i := findNat_aux_some_le p 0 hxAux i (by omega) hi_lt_x
+  exact hnot pi
+
 
 def find [Encodable α] (p : α -> Prop) [DecidablePred p] : Option α :=
   findNat (fun x => (Encodable.decode x).any (p ·)) |>.bind Encodable.decode

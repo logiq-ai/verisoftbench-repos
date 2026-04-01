@@ -979,9 +979,40 @@ theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
       have h_a_lt_ℓ: a < ℓ := by exact a.isLt
       omega
 
+
+
 lemma getLowBits_succ {n: ℕ} (numLowBits: ℕ) :
     getLowBits (numLowBits + 1) n = getLowBits numLowBits n
-    + (getBit numLowBits n) <<< numLowBits := by sorry
+    + (getBit numLowBits n) <<< numLowBits := by
+  have h_and_zero :
+      getLowBits numLowBits n &&& (getBit numLowBits n <<< numLowBits) = 0 := by
+    apply and_eq_zero_iff_and_each_getBit_eq_zero.mpr
+    intro k
+    rw [getBit_of_lowBits, getBit_of_shiftLeft]
+    by_cases hk : k < numLowBits
+    · simp [hk]
+    · simp [hk, Nat.zero_and]
+  apply (eq_iff_eq_all_getBits).2
+  intro k
+  rw [getBit_of_lowBits, getBit_of_add_distrib h_and_zero, getBit_of_lowBits, getBit_of_shiftLeft]
+  by_cases hk : k < numLowBits
+  · have hk_succ : k < numLowBits + 1 := by omega
+    simp [hk, hk_succ]
+  · by_cases hk_eq : k = numLowBits
+    · subst hk_eq
+      simp [hk]
+      rw [getBit_zero_eq_self getBit_lt_2]
+    · have hk_succ : ¬ k < numLowBits + 1 := by omega
+      have hk_sub : k - numLowBits = (k - (numLowBits + 1)) + 1 := by omega
+      have h_shift_bit :
+          getBit (k - numLowBits) (getBit numLowBits n) = 0 := by
+        rw [hk_sub]
+        obtain h_bit | h_bit := getBit_eq_zero_or_one (k := numLowBits) (n := n)
+        · rw [h_bit, getBit_zero_eq_zero]
+        · rw [h_bit]
+          rw [getBit_eq_succ_getBit_of_mul_two_add_one (n := 0) (k := k - (numLowBits + 1))]
+          exact getBit_zero_eq_zero
+      simp [hk, hk_succ, h_shift_bit]
 
 /-- This takes a argument for the number of lowBitss to remove from the number -/
 def getHighBits_no_shl (numLowBits : ℕ) (n : ℕ) : ℕ := n >>> numLowBits

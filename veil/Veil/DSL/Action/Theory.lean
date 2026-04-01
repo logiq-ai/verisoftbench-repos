@@ -597,14 +597,118 @@ instance : GenBigStep σ ρ (Wp.spec req ens) (BigStep.spec req ens) where
 
 instance [inst : GenBigStep σ ρ act actTr] : LawfulAction act := inst.lawful
 
-/-- A specialized version of `lift_transition_big_step`, applied to
-`LawfulAction`s. -/
+theorem getFrom_eq_of_setIn_eq {σ σ' : Type} [IsSubStateOf σ σ'] {st' st : σ'} {s : σ} : st' = (setIn s st) → getFrom st' = s := by
+  intro h
+  exact Eq.trans (congrArg getFrom h) (IsSubStateOf.getFrom_setIn_idempotent s st)
+
+theorem lawfulAction_post_iff {σ ρ : Type} {m : Mode} (r : Wp m σ ρ) [LawfulAction r] (s : σ) (post post' : RProp σ ρ) : (∀ r' s', post r' s' ↔ post' r' s') → (r s post ↔ r s post') := by
+  intro hiff
+  constructor
+  · intro h
+    exact LawfulAction.impl (act := r) post post' s (fun r' s' => (hiff r' s').mp) h
+  · intro h
+    exact LawfulAction.impl (act := r) post' post s (fun r' s' => (hiff r' s').mpr) h
+
+theorem lift_transition_big_step_shape {σ ρ σ' : Type} [IsSubStateOf σ σ'] {m : Mode} (r : Wp m σ ρ) [LawfulAction r] (st : σ') : r.alwaysSuccessfullyTerminates (· = getFrom st) → ∀ r' st', (@Wp.lift _ m σ σ' _ r).toBigStep st r' st' → st' = (setIn (@getFrom σ σ' _ st') st) := by
+  intro hterm r' st' hbs
+  unfold Wp.toBigStep Wp.toWlp Wp.lift at hbs
+  by_cases hshape : st' = setIn (@getFrom σ σ' _ st') st
+  · exact hshape
+  · exfalso
+    apply hbs
+    let P : RProp σ ρ := fun rr s => ¬ (r' = rr ∧ st' = setIn s st)
+    have hpost : ∀ (rr : ρ) (s : σ), P rr s ↔ True := by
+      intro rr s
+      constructor
+      · intro _
+        trivial
+      · intro _
+        intro hEq
+        rcases hEq with ⟨hrr, hst⟩
+        have hs : getFrom st' = s := getFrom_eq_of_setIn_eq hst
+        apply hshape
+        calc
+          st' = setIn s st := hst
+          _ = setIn (getFrom st') st := by rw [hs]
+    have hiff : r (getFrom st) P ↔ r (getFrom st) (fun _ _ => True) :=
+      lawfulAction_post_iff r (getFrom st) P (fun _ _ => True) hpost
+    exact hiff.mpr (hterm (getFrom st) rfl)
+
 theorem lift_transition_big_step' {σ σ'} [IsSubStateOf σ σ'] (m : Mode) (r : Wp m σ ρ) [LawfulAction r] (st : σ') :
   r.alwaysSuccessfullyTerminates (· = getFrom st) →
   (@Wp.lift _  m σ σ' _ r).toBigStep st =
   fun r' st' =>
     r.toBigStep (getFrom st) r' (getFrom st') ∧
-    st' = (setIn (@getFrom σ σ' _ st') st) := by sorry
+    st' = (setIn (@getFrom σ σ' _ st') st) := by
+  intro hterm
+  funext r'
+  funext st'
+  apply propext
+  constructor
+  · intro hleft
+    have hshape : st' = setIn (@getFrom σ σ' _ st') st := by
+      exact lift_transition_big_step_shape (r := r) (st := st) hterm r' st' hleft
+    unfold Wp.toBigStep Wp.toWlp Wp.lift at hleft
+    refine ⟨?_, hshape⟩
+    unfold Wp.toBigStep Wp.toWlp
+    intro hbase
+    have hpost :
+        ∀ (rr : ρ) (s : σ),
+          (¬ (r' = rr ∧ getFrom st' = s)) ↔
+          (¬ (r' = rr ∧ st' = setIn s st)) := by
+      intro rr s
+      constructor
+      · intro hq
+        intro hp
+        rcases hp with ⟨hrr, hst⟩
+        have hget : getFrom st' = s := getFrom_eq_of_setIn_eq hst
+        exact hq ⟨hrr, hget⟩
+      · intro hp
+        intro hq
+        rcases hq with ⟨hrr, hs⟩
+        apply hp
+        refine ⟨hrr, ?_⟩
+        calc
+          st' = setIn (@getFrom σ σ' _ st') st := hshape
+          _ = setIn s st := by rw [hs]
+    have hiff :
+        r (getFrom st) (fun rr s => ¬ (r' = rr ∧ getFrom st' = s)) ↔
+        r (getFrom st) (fun rr s => ¬ (r' = rr ∧ st' = setIn s st)) := by
+      exact lawfulAction_post_iff r (getFrom st)
+        (fun rr s => ¬ (r' = rr ∧ getFrom st' = s))
+        (fun rr s => ¬ (r' = rr ∧ st' = setIn s st)) hpost
+    exact hleft (hiff.mp hbase)
+  · rintro ⟨hbase, hshape⟩
+    unfold Wp.toBigStep Wp.toWlp at hbase
+    unfold Wp.toBigStep Wp.toWlp Wp.lift
+    intro hlift
+    have hpost :
+        ∀ (rr : ρ) (s : σ),
+          (¬ (r' = rr ∧ getFrom st' = s)) ↔
+          (¬ (r' = rr ∧ st' = setIn s st)) := by
+      intro rr s
+      constructor
+      · intro hq
+        intro hp
+        rcases hp with ⟨hrr, hst⟩
+        have hget : getFrom st' = s := getFrom_eq_of_setIn_eq hst
+        exact hq ⟨hrr, hget⟩
+      · intro hp
+        intro hq
+        rcases hq with ⟨hrr, hs⟩
+        apply hp
+        refine ⟨hrr, ?_⟩
+        calc
+          st' = setIn (@getFrom σ σ' _ st') st := hshape
+          _ = setIn s st := by rw [hs]
+    have hiff :
+        r (getFrom st) (fun rr s => ¬ (r' = rr ∧ getFrom st' = s)) ↔
+        r (getFrom st) (fun rr s => ¬ (r' = rr ∧ st' = setIn s st)) := by
+      exact lawfulAction_post_iff r (getFrom st)
+        (fun rr s => ¬ (r' = rr ∧ getFrom st' = s))
+        (fun rr s => ¬ (r' = rr ∧ st' = setIn s st)) hpost
+    exact hbase (hiff.mpr hlift)
+
 
 instance {σ σ'} [IsSubStateOf σ σ'] (act : Wp .external σ ρ) (actTr : BigStep σ ρ) [inst:GenBigStep σ ρ act actTr]
   : GenBigStep σ' ρ (Wp.lift (σ' := σ') act) (BigStep.lift (σ := σ) actTr) where

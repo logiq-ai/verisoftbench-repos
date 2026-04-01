@@ -401,7 +401,36 @@ theorem par_body_n n st
 
 theorem par_loop_any_x n
     : ∃ st', Multi CStep (par_loop, empty) (c_skip, st')
-        ∧ st' x = n := by sorry
+        ∧ st' x = n := by
+  have h0 : empty x = 0 ∧ empty y = 0 := by
+    simp [empty]
+  obtain ⟨st, hbody, hx, hy⟩ := par_body_n n empty h0
+  refine ⟨y !-> 1; st, ?_, ?_⟩
+  · apply multi_trans
+    · exact hbody
+    · apply multi_step
+      · apply cs_par1
+        apply cs_asgn
+      · apply multi_step
+        · apply cs_par2
+          apply cs_while
+        · apply multi_step
+          · apply cs_par2
+            apply cs_ifStep
+            apply bs_eq1
+            apply as_id
+          · apply multi_step
+            · apply cs_par2
+              apply cs_ifStep
+              apply bs_eq
+            · simp [hy, update]
+              apply multi_step
+              · apply cs_par2
+                apply cs_ifFalse
+              · apply multi_R
+                apply cs_parDone
+  · simpa [update, x, y] using hx
+
 
 end CImp
 

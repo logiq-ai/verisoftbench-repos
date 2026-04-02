@@ -133,9 +133,15 @@ instance : Coe (BindEquiv m n) (BindHom m n) where
 lemma map_bind (f : BindEquiv m n) {α β : Type u} (x : m α) (y : α → m β) :
     f.toFun (x >>= y) = f.toFun x >>= (fun a => f.toFun (y a)) := f.map_bind' x y
 
-@[simp]
 lemma map_bind_inv (f : BindEquiv m n) {α β : Type u} (x : n α) (y : α → n β) :
-    f.invFun (x >>= y) = f.invFun x >>= (fun a => f.invFun (y a)) := by sorry
+    f.invFun (x >>= y) = f.invFun x >>= (fun a => f.invFun (y a)) := by
+  apply (Function.LeftInverse.injective (@f.left_inv β))
+  rw [f.right_inv, f.map_bind, f.right_inv]
+  have hy : (fun a => f.toFun (f.invFun (y a))) = y := by
+    funext a
+    exact f.right_inv (y a)
+  rw [hy]
+
 
 instance : Coe (BindEquiv m n) (BindHom n m) where
   coe f := ⟨f.toNatEquiv, f.map_bind_inv⟩

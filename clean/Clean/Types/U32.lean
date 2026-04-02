@@ -6,6 +6,7 @@ import Clean.Utils.Primes
 import Clean.Circuit.Subcircuit
 import Clean.Gadgets.Equality
 
+import Mathlib.Data.Nat.Digits.Defs
 section
 variable {p : ℕ} [Fact p.Prime] [p_large_enough: Fact (p > 512)]
 
@@ -182,10 +183,33 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
   rw [FieldUtils.val_lt_p x]
   repeat linarith [x.is_lt, p_large_enough.elim]
 
-omit p_large_enough in
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
-    x.value = y.value → x = y := by sorry
+    x.value = y.value → x = y := by
+  intro hxy
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  rcases hy with ⟨hy0, hy1, hy2, hy3⟩
+  rw [value_horner, value_horner] at hxy
+  norm_num at hxy
+  have h0v : x.x0.val = y.x0.val := by
+    omega
+  have hrest1 : x.x1.val + 256 * (x.x2.val + 256 * x.x3.val) =
+      y.x1.val + 256 * (y.x2.val + 256 * y.x3.val) := by
+    omega
+  have h1v : x.x1.val = y.x1.val := by
+    omega
+  have hrest2 : x.x2.val + 256 * x.x3.val = y.x2.val + 256 * y.x3.val := by
+    omega
+  have h2v : x.x2.val = y.x2.val := by
+    omega
+  have h3v : x.x3.val = y.x3.val := by
+    omega
+  have h0 : x.x0 = y.x0 := (ZMod.val_injective p) h0v
+  have h1 : x.x1 = y.x1 := (ZMod.val_injective p) h1v
+  have h2 : x.x2 = y.x2 := (ZMod.val_injective p) h2v
+  have h3 : x.x3 = y.x3 := (ZMod.val_injective p) h3v
+  exact U32.ext h0 h1 h2 h3
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]
@@ -232,14 +256,12 @@ omit p_large_enough in
 @[circuit_norm]
 lemma value_zero_iff_zero {x : U32 (F p)} (hx : x.Normalized) :
     x.value = 0 ↔ x = U32.mk 0 0 0 0 := by
-  have := U32.value_injective_on_normalized (x:=x) (y:=U32.mk 0 0 0 0) hx (by
-    simp only [U32.Normalized, ZMod.val_zero]
-    norm_num)
   constructor
-  · intro h_val_zero
-    simp only [h_val_zero, circuit_norm, ZMod.val_zero] at this
-    specialize this (by trivial)
-    assumption
+  · intro h_zero
+    rw [value_horner] at h_zero
+    norm_num at h_zero
+    rcases h_zero with ⟨h0, h1, h2, h3⟩
+    exact U32.ext h0 h1 h2 h3
   · intro h_zero
     simp only [h_zero, circuit_norm, ZMod.val_zero]
     ring

@@ -245,8 +245,65 @@ _Proof_: By induction on a derivation of `⊢ t ∈ T`.
 exercise (3-star)
 Complete the formal proof of the `progress` property.
 -/
+theorem bool_value_canonical (t : Tm) : HasType t bool → value t → BValue t := by
+  intro ht hv
+  cases hv with
+  | inl hb =>
+      exact hb
+  | inr hn =>
+      cases hn <;> cases ht
+
+theorem nat_value_canonical (t : Tm) : HasType t nat → value t → NValue t := by
+  intro ht hv
+  cases hv with
+  | inl hb =>
+      cases hb <;> cases ht
+  | inr hn =>
+      exact hn
+
 theorem progress t T
-    : HasType t T → value t ∨ ∃ t', Step t t' := by sorry
+    : HasType t T → value t ∨ ∃ t', Step t t' := by
+  intro hT
+  induction hT with
+  | t_true =>
+      exact Or.inl (Or.inl bv_true)
+  | t_false =>
+      exact Or.inl (Or.inl bv_false)
+  | t_if t₁ t₂ t₃ T hcond hthen helse ihcond _ _ =>
+      rcases ihcond with hv | ⟨u, hs⟩
+      · have hb : BValue t₁ := bool_value_canonical t₁ hcond hv
+        cases hb with
+        | bv_true =>
+            exact Or.inr ⟨t₂, st_ifTrue _ _⟩
+        | bv_false =>
+            exact Or.inr ⟨t₃, st_ifFalse _ _⟩
+      · exact Or.inr ⟨ite u t₂ t₃, st_if _ _ _ _ hs⟩
+  | t_0 =>
+      exact Or.inl (Or.inr nv_0)
+  | t_succ t₁ ht ih =>
+      rcases ih with hv | ⟨u, hs⟩
+      · have hn : NValue t₁ := nat_value_canonical t₁ ht hv
+        exact Or.inl (Or.inr (nv_succ _ hn))
+      · exact Or.inr ⟨scc u, st_succ _ _ hs⟩
+  | t_pred t₁ ht ih =>
+      rcases ih with hv | ⟨u, hs⟩
+      · have hn : NValue t₁ := nat_value_canonical t₁ ht hv
+        cases hn with
+        | nv_0 =>
+            exact Or.inr ⟨zro, st_pred0⟩
+        | nv_succ v hnv =>
+            exact Or.inr ⟨v, st_predSucc _ hnv⟩
+      · exact Or.inr ⟨prd u, st_pred _ _ hs⟩
+  | t_iszero t₁ ht ih =>
+      rcases ih with hv | ⟨u, hs⟩
+      · have hn : NValue t₁ := nat_value_canonical t₁ ht hv
+        cases hn with
+        | nv_0 =>
+            exact Or.inr ⟨tru, st_iszero0⟩
+        | nv_succ v hnv =>
+            exact Or.inr ⟨fls, st_iszeroSucc _ hnv⟩
+      · exact Or.inr ⟨iszero u, st_iszero _ _ hs⟩
+
 
 /-
 exercise (2-star)

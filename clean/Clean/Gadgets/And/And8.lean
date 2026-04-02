@@ -80,7 +80,33 @@ instance elaborated : ElaboratedCircuit (F p) Inputs field where
   localLength _ := 1
   output _ i := var ⟨i⟩
 
-theorem soundness : Soundness (F p) elaborated Assumptions Spec := by sorry
+theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
+  intro i env ⟨ x_var, y_var ⟩ ⟨ x, y ⟩ h_input h_assumptions h_constraint
+  simp_all only [circuit_norm, main, Assumptions, Spec, ByteXorTable, Inputs.mk.injEq]
+  have ⟨ hx_byte, hy_byte ⟩ := h_assumptions
+  set w := env.get i
+  set xor := x + y + -(2 * w)
+  have h_xor : xor.val = x.val ^^^ y.val := h_constraint
+  have value_goal : w.val = x.val &&& y.val := by
+    have x_y_val : (x + y).val = x.val + y.val := by field_to_nat
+    have h_le : xor.val ≤ (x + y).val := by
+      rw [x_y_val, h_xor]
+      exact xor_le_add hx_byte hy_byte
+    have x_y_sub_xor_val : (x + y - xor).val = x.val + y.val - (x.val ^^^ y.val) := by
+      rw [ZMod.val_sub h_le, x_y_val, h_xor]
+    have two_and_field : 2 * w = x + y - xor := by
+      dsimp [xor]
+      ring
+    have two_and : (2 * w).val = 2 * (x.val &&& y.val) := by
+      rw [two_and_field, x_y_sub_xor_val]
+      have h := and_times_two_add_xor hx_byte hy_byte
+      omega
+    have two_mul_val : (2 * w).val = 2 * w.val := FieldUtils.mul_nat_val_of_dvd 2
+      (by linarith [p_large_enough.elim]) two_and
+    rw [two_mul_val] at two_and
+    omega
+  exact value_goal
+
 
 theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
 

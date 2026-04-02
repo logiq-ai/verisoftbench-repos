@@ -182,10 +182,46 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
   rw [FieldUtils.val_lt_p x]
   repeat linarith [x.is_lt, p_large_enough.elim]
 
-omit p_large_enough in
+theorem value_div_256_div_256_div_256_eq_x3 (x : U32 (F p)) (hx : x.Normalized) : x.value / 256 / 256 / 256 = x.x3.val := by
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  rw [value_horner]
+  omega
+
+theorem value_div_256_div_256_mod_256_eq_x2 (x : U32 (F p)) (hx : x.Normalized) : (x.value / 256 / 256) % 256 = x.x2.val := by
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  have h256 : 0 < 256 := by norm_num
+  rw [value_horner]
+  norm_num
+  rw [Nat.add_mul_div_left _ _ h256, Nat.div_eq_of_lt hx0]
+  simp only [Nat.zero_add]
+  rw [Nat.add_mul_div_left _ _ h256, Nat.div_eq_of_lt hx1]
+  simp only [Nat.zero_add]
+  rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hx2]
+
+theorem value_div_256_mod_256_eq_x1 (x : U32 (F p)) (hx : x.Normalized) : (x.value / 256) % 256 = x.x1.val := by
+  rcases hx with ⟨hx0, hx1, _, _⟩
+  rw [value_horner]
+  norm_num
+  rw [Nat.add_mul_div_left _ _ (y := 256) (by decide)]
+  rw [Nat.div_eq_of_lt hx0, zero_add]
+  rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hx1]
+
+theorem value_mod_256_eq_x0 (x : U32 (F p)) (hx : x.Normalized) : x.value % 256 = x.x0.val := by
+  rcases hx with ⟨hx0, _, _, _⟩
+  have h256 : (2 : ℕ) ^ 8 = 256 := rfl
+  rw [value_horner, h256]
+  rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hx0]
+
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
-    x.value = y.value → x = y := by sorry
+    x.value = y.value → x = y := by
+  intro hval
+  ext <;> apply (ZMod.val_injective p) <;> first
+    | rw [← value_mod_256_eq_x0 x hx, hval, value_mod_256_eq_x0 y hy]
+    | rw [← value_div_256_mod_256_eq_x1 x hx, hval, value_div_256_mod_256_eq_x1 y hy]
+    | rw [← value_div_256_div_256_mod_256_eq_x2 x hx, hval, value_div_256_div_256_mod_256_eq_x2 y hy]
+    | rw [← value_div_256_div_256_div_256_eq_x3 x hx, hval, value_div_256_div_256_div_256_eq_x3 y hy]
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]
@@ -228,7 +264,6 @@ lemma value_zero :
     (0 : U32 (F p)) = U32.mk 0 0 0 0 := by
   aesop
 
-omit p_large_enough in
 @[circuit_norm]
 lemma value_zero_iff_zero {x : U32 (F p)} (hx : x.Normalized) :
     x.value = 0 ↔ x = U32.mk 0 0 0 0 := by

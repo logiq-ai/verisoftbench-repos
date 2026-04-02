@@ -205,17 +205,44 @@ lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
     [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and `p` is an event such that outputs of `f` are in `p` iff the individual components
-lie in some other events `q1` and `q2`, then the probability of the event `p` is the
-product of the probabilites holding individually.
-NOTE: universe levels of `α`, `β`, `γ` -/
+theorem probEvent_prod_mk_seq_eq_mul_helper {ι : Type u} {spec : OracleSpec ι} {α β : Type v} [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (q1 : α → Prop) (q2 : β → Prop) : [(fun z : α × β => q1 z.1 ∧ q2 z.2) | Prod.mk <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  classical
+  rw [probEvent_eq_tsum_ite, ENNReal.tsum_prod']
+  simp_rw [probOutput_seq_map_eq_mul_of_injective2 (oa := oa) (ob := ob) (f := Prod.mk)
+    Prod.mk.injective2]
+  have hq2 : (∑' y, if q2 y then [= y | ob] else 0) = [q2 | ob] := by
+    simpa using (probEvent_eq_tsum_ite (oa := ob) q2).symm
+  have hq1 : (∑' x, if q1 x then [= x | oa] else 0) = [q1 | oa] := by
+    simpa using (probEvent_eq_tsum_ite (oa := oa) q1).symm
+  simp_rw [← ite_zero_mul_ite_zero]
+  simp_rw [ENNReal.tsum_mul_left, hq2]
+  rw [ENNReal.tsum_mul_right, hq1]
+
+theorem probEvent_seq_map_eq_probEvent_comp_uncurry_helper {ι : Type u} {spec : OracleSpec ι} {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange] (oa : OracleComp spec α) (ob : OracleComp spec β) (p : γ → Prop) : [p | f <$> oa <*> ob] = [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] := by
+  simpa [map_seq, Function.comp, Function.uncurry] using
+    (probEvent_map (oa := Prod.mk <$> oa <*> ob) (f := f.uncurry) (q := p))
+
 lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
     {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange]
     (oa : OracleComp spec α) (ob : OracleComp spec β)
     (p : γ → Prop) (q1 : α → Prop) (q2 : β → Prop)
     (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) :
-    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by sorry
+    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  calc
+    [p | f <$> oa <*> ob] = [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] :=
+      probEvent_seq_map_eq_probEvent_comp_uncurry_helper f oa ob p
+    _ = [(fun z : α × β => q1 z.1 ∧ q2 z.2) | Prod.mk <$> oa <*> ob] := by
+      refine probEvent_ext (oa := Prod.mk <$> oa <*> ob) ?_
+      intro z hz
+      have hz' : z.1 ∈ oa.support ∧ z.2 ∈ ob.support := by
+        have hz'' :=
+          (mem_support_seq_map_iff_of_injective2 (oa := oa) (ob := ob)
+            (f := Prod.mk) Prod.mk.injective2 z.1 z.2).1
+        exact hz'' (by simpa using hz)
+      simpa [Function.uncurry] using h z.1 hz'.1 z.2 hz'.2
+    _ = [q1 | oa] * [q2 | ob] :=
+      probEvent_prod_mk_seq_eq_mul_helper oa ob q1 q2
+
 
 end seq_map
 

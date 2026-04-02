@@ -491,15 +491,37 @@ lemma Environment.agreesBelow_of_le {F} {n m : ℕ} {env env' : Environment F} :
   fun h_same hi i hi' => h_same i (Nat.lt_of_lt_of_le hi' hi)
 
 namespace FlatOperation
-/--
-If all witness generators only access the environment below the current offset, then
-the entire circuit only accesses the environment below `n + localLength`.
-
-This is not currently used, but seemed like a nice result to have.
--/
 theorem onlyAccessedBelow_all {ops : List (FlatOperation F)} (n : ℕ) :
   forAll n { witness n _ := Environment.OnlyAccessedBelow n } ops →
-    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by sorry
+    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by
+  intro h_forall env env' hAgree
+  induction ops generalizing n with
+  | nil =>
+      rfl
+  | cons op ops ih =>
+      cases op with
+      | witness m compute =>
+          simp only [FlatOperation.forAll] at h_forall
+          rcases h_forall with ⟨hcompute, htail⟩
+          have hAgree_n : env.AgreesBelow n env' := by
+            apply Environment.agreesBelow_of_le hAgree
+            simp [FlatOperation.localLength]
+          have hcompute_eq : compute env = compute env' := by
+            exact hcompute env env' hAgree_n
+          have hAgree_tail : env.AgreesBelow (m + n + localLength ops) env' := by
+            simpa [FlatOperation.localLength, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hAgree
+          have htail_eq : localWitnesses env ops = localWitnesses env' ops := by
+            exact ih (n := m + n) htail hAgree_tail
+          simp only [FlatOperation.localWitnesses, hcompute_eq, htail_eq]
+      | assert e =>
+          have htail := h_forall.2
+          simpa only [FlatOperation.localWitnesses, FlatOperation.localLength] using
+            ih (n := n) htail hAgree
+      | lookup l =>
+          have htail := h_forall.2
+          simpa only [FlatOperation.localWitnesses, FlatOperation.localLength] using
+            ih (n := n) htail hAgree
+
 end FlatOperation
 
 -- theorem about relationship between FormalCircuit and GeneralFormalCircuit

@@ -214,9 +214,44 @@ variable {α : Type}
   · simp [hs, uniformSelectFinset_def]
   · simp [hs, uniformSelectFinset_def]
 
-@[simp] lemma evalDist_uniformSelectFinset [DecidableEq α] (s : Finset α) :
+lemma evalDist_uniformSelectFinset [DecidableEq α] (s : Finset α) :
     evalDist ($ s) = if hs : s.Nonempty then
-      OptionT.lift (PMF.uniformOfFinset s hs) else failure := by sorry
+      OptionT.lift (PMF.uniformOfFinset s hs) else failure := by
+  refine OptionT.ext ?_
+  refine PMF.ext fun o => ?_
+  cases o with
+  | none =>
+      by_cases hs : s.Nonempty
+      · rw [apply_dite (fun z : OptionT PMF α => z.run none), dif_pos hs]
+        rw [evalDist_apply_none, probFailure_uniformSelectFinset, if_pos hs,
+          OptionT.run_lift, PMF.monad_bind_eq_bind, PMF.bind_apply]
+        symm
+        refine ENNReal.tsum_eq_zero.2 ?_
+        intro a
+        simp [PMF.monad_pure_eq_pure, PMF.pure_apply]
+      · rw [apply_dite (fun z : OptionT PMF α => z.run none), dif_neg hs]
+        rw [evalDist_apply_none, probFailure_uniformSelectFinset, if_neg hs,
+          OptionT.run_failure, PMF.monad_pure_eq_pure, PMF.pure_apply]
+        simp
+  | some x =>
+      by_cases hs : s.Nonempty
+      · rw [apply_dite (fun z : OptionT PMF α => z.run (some x)), dif_pos hs]
+        rw [evalDist_apply_some, probOutput_uniformSelectFinset]
+        have hux : (if x ∈ s then (↑s.card : ℝ≥0∞)⁻¹ else 0) = (PMF.uniformOfFinset s hs) x := by
+          simpa using (PMF.uniformOfFinset_apply (s := s) (hs := hs) x).symm
+        rw [hux]
+        rw [OptionT.run_lift, PMF.monad_bind_eq_bind, PMF.bind_apply]
+        symm
+        refine (tsum_eq_single x ?_).trans ?_
+        · intro a ha
+          simp [PMF.monad_pure_eq_pure, PMF.pure_apply, ha.symm]
+        · simp [PMF.monad_pure_eq_pure, PMF.pure_apply]
+      · rw [apply_dite (fun z : OptionT PMF α => z.run (some x)), dif_neg hs]
+        have hempty : s = ∅ := Finset.not_nonempty_iff_eq_empty.mp hs
+        rw [evalDist_apply_some, probOutput_uniformSelectFinset, hempty,
+          OptionT.run_failure, PMF.monad_pure_eq_pure, PMF.pure_apply]
+        simp
+
 
 end uniformSelectFinset
 

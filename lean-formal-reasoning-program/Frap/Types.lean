@@ -245,8 +245,77 @@ _Proof_: By induction on a derivation of `⊢ t ∈ T`.
 exercise (3-star)
 Complete the formal proof of the `progress` property.
 -/
+theorem bool_value_canonical (t : Tm) : value t → HasType t bool → BValue t := by
+  intro hv ht
+  cases hv with
+  | inl hb =>
+      exact hb
+  | inr hn =>
+      cases ht <;> cases hn
+
+theorem nat_value_canonical (t : Tm) : value t → HasType t nat → NValue t := by
+  intro hv ht
+  cases hv with
+  | inl hb =>
+      cases ht <;> cases hb
+  | inr hn =>
+      exact hn
+
 theorem progress t T
-    : HasType t T → value t ∨ ∃ t', Step t t' := by sorry
+    : HasType t T → value t ∨ ∃ t', Step t t' := by
+  intro hT
+  induction hT with
+  | t_true =>
+      exact Or.inl (Or.inl bv_true)
+  | t_false =>
+      exact Or.inl (Or.inl bv_false)
+  | t_if t₁ t₂ t₃ T hcond hthen helse ihcond ihthen ihelse =>
+      cases ihcond with
+      | inl hval =>
+          have hb : BValue t₁ := bool_value_canonical t₁ hval hcond
+          cases hb with
+          | bv_true =>
+              exact Or.inr ⟨t₂, st_ifTrue _ _⟩
+          | bv_false =>
+              exact Or.inr ⟨t₃, st_ifFalse _ _⟩
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          exact Or.inr ⟨ite t₁' t₂ t₃, st_if _ _ _ _ hs⟩
+  | t_0 =>
+      exact Or.inl (Or.inr nv_0)
+  | t_succ t₁ hty ih =>
+      cases ih with
+      | inl hval =>
+          have hn : NValue t₁ := nat_value_canonical t₁ hval hty
+          exact Or.inl (Or.inr (nv_succ _ hn))
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          exact Or.inr ⟨scc t₁', st_succ _ _ hs⟩
+  | t_pred t₁ hty ih =>
+      cases ih with
+      | inl hval =>
+          have hn : NValue t₁ := nat_value_canonical t₁ hval hty
+          cases hn with
+          | nv_0 =>
+              exact Or.inr ⟨zro, st_pred0⟩
+          | nv_succ v hv =>
+              exact Or.inr ⟨v, st_predSucc _ hv⟩
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          exact Or.inr ⟨prd t₁', st_pred _ _ hs⟩
+  | t_iszero t₁ hty ih =>
+      cases ih with
+      | inl hval =>
+          have hn : NValue t₁ := nat_value_canonical t₁ hval hty
+          cases hn with
+          | nv_0 =>
+              exact Or.inr ⟨tru, st_iszero0⟩
+          | nv_succ v hv =>
+              exact Or.inr ⟨fls, st_iszeroSucc _ hv⟩
+      | inr hstep =>
+          rcases hstep with ⟨t₁', hs⟩
+          exact Or.inr ⟨iszero t₁', st_iszero _ _ hs⟩
+
 
 /-
 exercise (2-star)

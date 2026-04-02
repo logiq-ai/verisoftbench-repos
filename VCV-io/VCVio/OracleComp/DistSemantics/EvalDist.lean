@@ -692,7 +692,21 @@ section mul_le_probEvent_bind
 lemma mul_le_probEvent_bind {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     {p : α → Prop} {q : β → Prop} {r r' : ℝ≥0∞}
     (h : r ≤ [p | oa]) (h' : ∀ x ∈ oa.support, p x → r' ≤ [q | ob x]) :
-    r * r' ≤ [q | oa >>= ob] := by sorry
+    r * r' ≤ [q | oa >>= ob] := by
+  calc
+    r * r' ≤ [p | oa] * r' := mul_le_mul_right' h r'
+    _ = ∑' x : {x ∈ oa.support | p x}, [= x | oa] * r' := by
+      rw [probEvent_eq_tsum_subtype_mem_support, ← ENNReal.tsum_mul_right]
+    _ ≤ ∑' x : {x ∈ oa.support | p x}, [= x | oa] * [q | ob x] := by
+      refine ENNReal.tsum_le_tsum ?_
+      intro x
+      exact mul_le_mul_left' (h' x x.2.1 x.2.2) _
+    _ ≤ ∑' x : oa.support, [= x | oa] * [q | ob x] := by
+      exact ENNReal.tsum_mono_subtype (f := fun x : α => [= x | oa] * [q | ob x])
+        (fun x hx => hx.1)
+    _ = [q | oa >>= ob] := by
+      rw [probEvent_bind_eq_tsum_subtype]
+
 
 end mul_le_probEvent_bind
 

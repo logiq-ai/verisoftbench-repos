@@ -491,15 +491,34 @@ lemma Environment.agreesBelow_of_le {F} {n m : ℕ} {env env' : Environment F} :
   fun h_same hi i hi' => h_same i (Nat.lt_of_lt_of_le hi' hi)
 
 namespace FlatOperation
-/--
-If all witness generators only access the environment below the current offset, then
-the entire circuit only accesses the environment below `n + localLength`.
-
-This is not currently used, but seemed like a nice result to have.
--/
 theorem onlyAccessedBelow_all {ops : List (FlatOperation F)} (n : ℕ) :
   forAll n { witness n _ := Environment.OnlyAccessedBelow n } ops →
-    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by sorry
+    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by
+  induction ops generalizing n with
+  | nil =>
+      intro _
+      intro env env' _
+      rfl
+  | cons op ops ih =>
+      cases op with
+      | witness m c =>
+          intro h
+          simp only [FlatOperation.forAll] at h
+          simp only [FlatOperation.localLength, Environment.OnlyAccessedBelow]
+          intro env env' hsame
+          dsimp [FlatOperation.localWitnesses]
+          have hc : c env = c env' :=
+            h.1 env env' (Environment.agreesBelow_of_le hsame (by omega))
+          have htail : localWitnesses env ops = localWitnesses env' ops :=
+            ih (n := m + n) h.2 env env' (Environment.agreesBelow_of_le hsame (by omega))
+          simpa [hc, htail]
+      | assert e =>
+          intro h
+          exact ih (n := n) h.2
+      | lookup l =>
+          intro h
+          exact ih (n := n) h.2
+
 end FlatOperation
 
 -- theorem about relationship between FormalCircuit and GeneralFormalCircuit

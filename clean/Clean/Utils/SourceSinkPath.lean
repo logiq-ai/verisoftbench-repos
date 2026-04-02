@@ -319,12 +319,27 @@ lemma containsPath_drop_take (R : Run S) (path : List S) (n m : ℕ)
     containsPath_drop R path n h_contains
   exact containsPath_take R (path.drop n) m h_after_drop
 
-omit [Fintype S] in
-/-- If a run is acyclic and contains a path, the path has no duplicate vertices. -/
 lemma acyclic_containsPath_nodup (R : Run S) (path : List S)
     (h_acyclic : R.isAcyclic)
     (h_contains : R.containsPath path) :
-    path.Nodup := by sorry
+    path.Nodup := by
+  by_contra h_dup
+  rw [← List.exists_duplicate_iff_not_nodup] at h_dup
+  rcases h_dup with ⟨x, h_duplicate⟩
+  rw [List.duplicate_iff_exists_distinct_get] at h_duplicate
+  rcases h_duplicate with ⟨n, m, h_n_lt_m, h_x_at_n, h_x_at_m⟩
+  let cycle := (path.drop n.1).take (m.1 - n.1 + 1)
+  have h_length : cycle.length ≥ 2 := by
+    simpa [cycle] using drop_take_length_ge_two path n m h_n_lt_m
+  have h_endpoints : cycle.head? = cycle.getLast? := by
+    simpa [cycle] using
+      drop_take_cycle_same_endpoints path x n m h_n_lt_m h_x_at_n.symm h_x_at_m.symm
+  have h_cycle_contains : R.containsPath cycle := by
+    simpa [cycle] using containsPath_drop_take R path n.1 (m.1 - n.1 + 1) h_contains
+  unfold Run.isAcyclic Run.hasCycle at h_acyclic
+  push_neg at h_acyclic
+  exact h_acyclic cycle h_length h_endpoints h_cycle_contains
+
 
 omit [Fintype S] in
 /-- Appending an element to a non-empty path adds exactly one transition from the last element. -/

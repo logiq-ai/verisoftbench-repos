@@ -383,17 +383,64 @@ lemma wp_bot [∀ α, CCPO (m α)] [MAlgPartial m]:
   refine le_iInf₂ ?_
   intro; erw [Set.mem_empty_iff_false]; simp
 
-omit [MAlgDet m l] in
 lemma ExtractNonDet.extract_refines_wp_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
-  wp s post <= wp s.extractWeak post := by sorry
+  wp s post <= wp s.extractWeak post := by
+  induction inst with
+  | pure x =>
+      simp [wp_pure, NonDetT.extractWeak]
+  | vis x f ex ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind, NonDetT.wp_vis]
+      apply wp_cons
+      intro y
+      exact ih y
+  | pickSuchThat τ p f _ ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+      split
+      · simp [CCPOBotLawful.prop, wp_bot]
+      · rename_i y h
+        have hp : p y := by
+          exact WeakFindable.find_some_p (p := p) h
+        refine (iInf_le _ y).trans ?_
+        simpa [hp, top_himp] using (ih y)
+  | assume p f _ ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+      by_cases hp : p .unit
+      · refine (iInf_le _ PUnit.unit).trans ?_
+        simpa [hp, top_himp] using (ih PUnit.unit)
+      · simp [hp, CCPOBotLawful.prop, wp_bot]
+
 
 
 omit [MAlgDet m l] in
 lemma ExtractNonDet.extract_refines_triple_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (pre : l) (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
   triple pre s post ->
   triple pre s.extractWeak post := by
-  intro tr; apply le_trans'; apply ExtractNonDet.extract_refines_wp_weak
-  solve_by_elim
+  intro tr
+  refine le_trans tr ?_
+  clear tr
+  induction inst with
+  | pure x =>
+      simp [wp_pure, NonDetT.extractWeak]
+  | vis x f ex ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind, NonDetT.wp_vis]
+      apply wp_cons
+      intro y
+      exact ih y
+  | pickSuchThat τ p f _ ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+      split
+      · simp [CCPOBotLawful.prop, wp_bot]
+      · rename_i y h
+        have hp : p y := by
+          exact WeakFindable.find_some_p (p := p) h
+        refine (iInf_le _ y).trans ?_
+        simpa [hp, top_himp] using (ih y)
+  | assume p f _ ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+      by_cases hp : p .unit
+      · refine (iInf_le _ PUnit.unit).trans ?_
+        simpa [hp, top_himp] using (ih PUnit.unit)
+      · simp [hp, CCPOBotLawful.prop, wp_bot]
 
 end DemonicChoice
 

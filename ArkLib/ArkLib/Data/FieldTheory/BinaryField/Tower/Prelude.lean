@@ -1186,14 +1186,63 @@ lemma lifted_trace_map_eval_at_roots_prev_BTField
       rw [Nat.sub_one_add_one (two_pow_ne_zero k)]
     _ = 1 := by rw [trace_map_at_prev_root]
 
-theorem rsum_eq_t1_square_aux
-  {curBTField : Type*} [Field curBTField] -- curBTField ≃ 𝔽_{2^{2^k}}
+theorem rsum_eq_t1_square_aux_inverse_shift_sum {curBTField : Type*} [Field curBTField] (u : curBTField) (k : ℕ) (x_pow_card : ∀ (x : curBTField), x ^ (2 ^ (2 ^ k)) = x) (trace_map_prop : TraceMapProperty curBTField u k) : ∑ j ∈ Finset.Icc 1 (2 ^ k), (u⁻¹) ^ (2 ^ j) = 1 := by
+  set n : ℕ := 2 ^ k
+  set f : ℕ → curBTField := fun i => (u⁻¹) ^ (2 ^ i)
+  have hIcc : Finset.Icc 1 n = Finset.Ico 1 (n + 1) := by
+    simpa using (Finset.Ico_succ_right_eq_Icc (a := 1) (b := n)).symm
+  have hsum : ∑ j ∈ Finset.Icc 1 n, f j = ∑ i ∈ Finset.range n, f (i + 1) := by
+    rw [hIcc]
+    calc
+      ∑ j ∈ Finset.Ico 1 (n + 1), f j = ∑ i ∈ Finset.range ((n + 1) - 1), f (1 + i) := by
+        simpa using (Finset.sum_Ico_eq_sum_range (f := f) 1 (n + 1))
+      _ = ∑ i ∈ Finset.range n, f (i + 1) := by
+        simp [Nat.add_comm]
+  have hf : f n = f 0 := by
+    simpa [f, n, pow_one] using x_pow_card (u⁻¹)
+  have h1 : (∑ i ∈ Finset.range (n + 1), f i) = (∑ i ∈ Finset.range n, f (i + 1)) + f 0 := by
+    simpa using Finset.sum_range_succ' f n
+  have h2 : (∑ i ∈ Finset.range (n + 1), f i) = (∑ i ∈ Finset.range n, f i) + f n := by
+    simpa using Finset.sum_range_succ f n
+  have hcycle : ∑ i ∈ Finset.range n, f (i + 1) = ∑ i ∈ Finset.range n, f i := by
+    have htmp : (∑ i ∈ Finset.range n, f (i + 1)) + f 0 = (∑ i ∈ Finset.range n, f i) + f 0 := by
+      calc
+        (∑ i ∈ Finset.range n, f (i + 1)) + f 0 = ∑ i ∈ Finset.range (n + 1), f i := by
+          symm
+          exact h1
+        _ = (∑ i ∈ Finset.range n, f i) + f n := h2
+        _ = (∑ i ∈ Finset.range n, f i) + f 0 := by rw [hf]
+    exact add_right_cancel htmp
+  rw [hsum, hcycle]
+  simpa [f, n] using trace_map_prop.inverse_trace
+
+theorem rsum_eq_t1_square_aux {curBTField : Type*} [Field curBTField] -- curBTField ≃ 𝔽_{2^{2^k}}
   (u : curBTField) -- here u is already lifted to curBTField
   (k : ℕ)
   (x_pow_card : ∀ (x : curBTField), x ^ (2 ^ (2 ^ (k))) = x)
   (u_ne_zero : u ≠ 0)
   (trace_map_prop : TraceMapProperty curBTField u k):
-   ∑ j ∈ Finset.Icc 1 (2 ^ (k)), u ^ (2 ^ 2 ^ (k) - 2 ^ j) = u := by sorry
+   ∑ j ∈ Finset.Icc 1 (2 ^ (k)), u ^ (2 ^ 2 ^ (k) - 2 ^ j) = u := by
+  have hterm : ∀ j ∈ Finset.Icc 1 (2 ^ k),
+      u ^ (2 ^ 2 ^ k - 2 ^ j) = u ^ (2 ^ 2 ^ k) * (u⁻¹) ^ (2 ^ j) := by
+    intro j hj
+    have hjle : j ≤ 2 ^ k := (Finset.mem_Icc.mp hj).2
+    have hpow : 2 ^ j ≤ 2 ^ (2 ^ k) := by
+      exact Nat.pow_le_pow_right (by decide) hjle
+    rw [pow_sub₀ u u_ne_zero hpow, inv_pow]
+  calc
+    ∑ j ∈ Finset.Icc 1 (2 ^ k), u ^ (2 ^ 2 ^ k - 2 ^ j)
+        = ∑ j ∈ Finset.Icc 1 (2 ^ k), u ^ (2 ^ 2 ^ k) * (u⁻¹) ^ (2 ^ j) := by
+            refine Finset.sum_congr rfl ?_
+            intro j hj
+            exact hterm j hj
+    _ = u ^ (2 ^ 2 ^ k) * ∑ j ∈ Finset.Icc 1 (2 ^ k), (u⁻¹) ^ (2 ^ j) := by
+          rw [← Finset.mul_sum]
+    _ = u ^ (2 ^ 2 ^ k) * 1 := by
+          rw [rsum_eq_t1_square_aux_inverse_shift_sum u k x_pow_card trace_map_prop]
+    _ = u := by
+          rw [mul_one, x_pow_card u]
+
 
 instance charP_eq_2_of_add_self_eq_zero {F : Type*} [Field F]
     (sumZeroIffEq : ∀ (x y : F), x + y = 0 ↔ x = y) : CharP F 2 :=

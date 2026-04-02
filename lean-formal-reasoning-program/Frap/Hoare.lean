@@ -500,6 +500,7 @@ theorem hoare_while P b c :
     {* fun st => P st ∧ beval st b *} c {* P *}
     → {* P *} c_while b c {* fun st => P st ∧ ¬(beval st b) *} := by sorry
 
+
 /-
 We call `P` a _loop invariant_ of `while b do c` if
   `{P ∧ b} c {P}`

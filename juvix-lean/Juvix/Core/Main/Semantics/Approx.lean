@@ -36,7 +36,7 @@ notation:40 e₁:40 " ≲ " e₂:40 => Expr.Approx e₁ e₂
 @[refl]
 lemma Value.Approx.refl v : v ≲ᵥ v := by
   intro n
-  rfl
+  exact Value.Approx.Indexed.refl v
 
 @[simp]
 lemma Value.Approx.unit_left {v} : v ≲ᵥ Value.unit ↔ v = Value.unit := by

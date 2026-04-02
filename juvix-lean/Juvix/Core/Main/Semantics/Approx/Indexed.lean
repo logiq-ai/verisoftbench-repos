@@ -334,8 +334,49 @@ mutual
       exact Env.Approx.Indexed'.refl' h
 end
 
-@[refl]
-lemma Value.Approx.Indexed.refl {n} v : v ≲ᵥ(n) v := by sorry
+lemma Value.Approx.Indexed.refl {n} v : v ≲ᵥ(n) v := by
+  induction n generalizing v with
+  | zero =>
+      cases v with
+      | unit =>
+          exact Value.Approx.Indexed.unit
+      | const c =>
+          exact Value.Approx.Indexed.const
+      | constr_app ctr args_rev =>
+          apply Value.Approx.Indexed.constr_app
+          intro k hk
+          exact False.elim ((Nat.not_lt_zero k) hk)
+      | closure env body =>
+          apply Value.Approx.Indexed.closure
+          intro n₁ n₂ hlt a₁ a₂ r₁ happrox heval
+          exact False.elim ((Nat.not_lt_zero (n₁ + n₂)) hlt)
+  | succ n ih =>
+      cases v with
+      | unit =>
+          exact Value.Approx.Indexed.unit
+      | const c =>
+          exact Value.Approx.Indexed.const
+      | constr_app ctr args_rev =>
+          apply Value.Approx.Indexed.constr_app
+          intro k hk
+          exact (List.forall₂_same).2 (fun x hx =>
+            Value.Approx.Indexed.anti_monotone (ih x) (Nat.le_of_lt_succ hk))
+      | closure env body =>
+          apply Value.Approx.Indexed.closure
+          intro n₁ n₂ hlt a₁ a₂ r₁ happrox heval
+          have hle : n₂ + n₁ ≤ n := by
+            simpa only [Nat.add_comm] using Nat.le_of_lt_succ hlt
+          have harg : a₁ ≲ᵥ(n₂ + n₁) a₂ := by
+            simpa only [Nat.add_comm] using happrox
+          have href : ∀ v : Value, v ≲ᵥ(n₂ + n₁) v := fun v =>
+            Value.Approx.Indexed.anti_monotone (ih v) hle
+          have henv : env ≲ₑ'(n₂ + n₁) env :=
+            Env.Approx.Indexed'.refl' href
+          have hcons : a₁ ∷ env ≲ₑ'(n₂ + n₁) a₂ ∷ env :=
+            Env.Approx.Indexed'.cons (Object.Approx.Indexed'.value harg) henv
+          exact Value.Approx.Indexed.preserved (m := n₂) (n := n₁)
+            (env := a₁ ∷ env) (env' := a₂ ∷ env) (e := body) (v := r₁) hcons heval
+
 
 @[refl]
 lemma Env.Approx.Indexed'.refl {n env} : env ≲ₑ'(n) env :=

@@ -597,14 +597,29 @@ instance : GenBigStep σ ρ (Wp.spec req ens) (BigStep.spec req ens) where
 
 instance [inst : GenBigStep σ ρ act actTr] : LawfulAction act := inst.lawful
 
-/-- A specialized version of `lift_transition_big_step`, applied to
-`LawfulAction`s. -/
 theorem lift_transition_big_step' {σ σ'} [IsSubStateOf σ σ'] (m : Mode) (r : Wp m σ ρ) [LawfulAction r] (st : σ') :
   r.alwaysSuccessfullyTerminates (· = getFrom st) →
   (@Wp.lift _  m σ σ' _ r).toBigStep st =
   fun r' st' =>
     r.toBigStep (getFrom st) r' (getFrom st') ∧
-    st' = (setIn (@getFrom σ σ' _ st') st) := by sorry
+    st' = (setIn (@getFrom σ σ' _ st') st) := by
+  intro hterm
+  have hr_eq : r (getFrom st) = r.toBigStep.toWp (getFrom st) :=
+    big_step_to_wp (act := r) (req := (· = getFrom st)) hterm rfl
+  ext r' st'
+  change ¬ (@Wp.lift _ m σ σ' _ r) st (fun r₀ s₀ => ¬ (r' = r₀ ∧ st' = s₀)) ↔
+      (r.toBigStep (getFrom st) r' (getFrom st') ∧
+        st' = setIn (@getFrom σ σ' _ st') st)
+  change ¬ r (getFrom st) (fun r₀ s₀ => ¬ (r' = r₀ ∧ st' = setIn s₀ st)) ↔
+      (r.toBigStep (getFrom st) r' (getFrom st') ∧
+        st' = setIn (@getFrom σ σ' _ st') st)
+  rw [hr_eq]
+  change ((@Wp.lift _ m σ σ' _ r.toBigStep.toWp).toBigStep st r' st') ↔
+      (r.toBigStep (getFrom st) r' (getFrom st') ∧
+        st' = setIn (@getFrom σ σ' _ st') st)
+  simpa using
+    congrFun (congrFun (congrFun (lift_transition_big_step (σ := σ) (σ' := σ') m r.toBigStep) st) r') st'
+
 
 instance {σ σ'} [IsSubStateOf σ σ'] (act : Wp .external σ ρ) (actTr : BigStep σ ρ) [inst:GenBigStep σ ρ act actTr]
   : GenBigStep σ' ρ (Wp.lift (σ' := σ') act) (BigStep.lift (σ := σ) actTr) where

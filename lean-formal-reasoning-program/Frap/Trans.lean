@@ -551,7 +551,254 @@ example : btrans_sound fold_constants_bexp := by
 Finally, here's the proof for commands:
 -/
 
-theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by sorry
+theorem cequiv_asgn_congruence_aux (x : String) (a a' : AExp) : aequiv a a' → cequiv (c_asgn x a) (c_asgn x a') := by
+  intro ha st st'
+  constructor
+  · intro h
+    cases h
+    apply e_asgn
+    rw [← ha]
+    assumption
+  · intro h
+    cases h
+    apply e_asgn
+    rw [ha]
+    assumption
+
+theorem cequiv_if_congruence_aux (b b' : BExp) (c₁ c₁' c₂ c₂' : Com) : bequiv b b' → cequiv c₁ c₁' → cequiv c₂ c₂' → cequiv (c_if b c₁ c₂) (c_if b' c₁' c₂') := by
+  intro hb hc1 hc2 st st'
+  unfold bequiv at hb
+  constructor
+  · intro h
+    cases h with
+    | e_ifTrue =>
+        rename_i hbt h1
+        apply e_ifTrue
+        · rw [← hb st]
+          exact hbt
+        · exact (hc1 st st').1 h1
+    | e_ifFalse =>
+        rename_i hbf h2
+        apply e_ifFalse
+        · rw [← hb st]
+          exact hbf
+        · exact (hc2 st st').1 h2
+  · intro h
+    cases h with
+    | e_ifTrue =>
+        rename_i hbt h1
+        apply e_ifTrue
+        · rw [hb st]
+          exact hbt
+        · exact (hc1 st st').2 h1
+    | e_ifFalse =>
+        rename_i hbf h2
+        apply e_ifFalse
+        · rw [hb st]
+          exact hbf
+        · exact (hc2 st st').2 h2
+
+theorem cequiv_seq_congruence_aux (c₁ c₁' c₂ c₂' : Com) : cequiv c₁ c₁' → cequiv c₂ c₂' → cequiv (c_seq c₁ c₂) (c_seq c₁' c₂') := by
+  intro h₁₂ h₂₂
+  unfold cequiv at *
+  intro st st'
+  constructor
+  · intro h
+    cases h
+    rename_i hleft hright
+    apply e_seq
+    · exact (h₁₂ _ _).1 hleft
+    · exact (h₂₂ _ _).1 hright
+  · intro h
+    cases h
+    rename_i hleft hright
+    apply e_seq
+    · exact (h₁₂ _ _).2 hleft
+    · exact (h₂₂ _ _).2 hright
+
+theorem cequiv_transitive (c₁ c₂ c₃ : Com) : cequiv c₁ c₂ → cequiv c₂ c₃ → cequiv c₁ c₃ := by
+  intro h₁₂ h₂₃
+  intro st st'
+  exact Iff.trans (h₁₂ st st') (h₂₃ st st')
+
+theorem cequiv_while_congruence_aux (b b' : BExp) (c c' : Com) : bequiv b b' → cequiv c c' → cequiv (c_while b c) (c_while b' c') := by
+  exact c_while_congruence b b' c c'
+
+theorem fold_constants_aexp_sound_aux: atrans_sound fold_constants_aexp := by
+  simpa using fold_constants_aexp_sound
+
+theorem fold_constants_bexp_eq_const_case_aux (st : State) (n₁ n₂ : Nat) : (n₁ == n₂) = beval st (if n₁ = n₂ then b_true else b_false) := by
+  by_cases h : n₁ = n₂
+  · simp [beval, h, Bool.beq_eq_decide_eq]
+  · simp [beval, h, Bool.beq_eq_decide_eq]
+
+theorem fold_constants_bexp_eq_sound_case_aux (a₁ a₂ : AExp) : bequiv (b_eq a₁ a₂) (fold_constants_bexp (b_eq a₁ a₂)) := by
+  unfold bequiv
+  intro st
+  have ha1 := fold_constants_aexp_sound_aux a₁ st
+  have ha2 := fold_constants_aexp_sound_aux a₂ st
+  cases h1 : fold_constants_aexp a₁ <;> cases h2 : fold_constants_aexp a₂ <;>
+    simp [fold_constants_bexp, beval, aeval, h1, h2, ha1, ha2]
+  · simpa [fold_constants_bexp, beval, aeval, h1, h2, ha1, ha2] using
+      (fold_constants_bexp_eq_const_case_aux st _ _)
+
+theorem fold_constants_bexp_le_const_case_aux (st : State) (n₁ n₂ : Nat) : decide (n₁ ≤ n₂) = beval st (if n₁ ≤ n₂ then b_true else b_false) := by
+  by_cases h : n₁ ≤ n₂ <;> simp [beval, h]
+
+theorem fold_constants_bexp_le_sound_case_aux (a₁ a₂ : AExp) : bequiv (b_le a₁ a₂) (fold_constants_bexp (b_le a₁ a₂)) := by
+  unfold bequiv
+  intro st
+  have ha1 := fold_constants_aexp_sound_aux a₁ st
+  have ha2 := fold_constants_aexp_sound_aux a₂ st
+  cases h1 : fold_constants_aexp a₁ <;> cases h2 : fold_constants_aexp a₂ <;>
+    first
+    | simpa [fold_constants_bexp, beval, aeval, h1, h2, ha1, ha2] using
+        (fold_constants_bexp_le_const_case_aux st _ _)
+    | simp [fold_constants_bexp, beval, aeval, h1, h2, ha1, ha2]
+
+theorem fold_constants_bexp_neq_const_case_aux (st : State) (n₁ n₂ : Nat) : (n₁ != n₂) = beval st (if n₁ = n₂ then b_false else b_true) := by
+  by_cases h : n₁ = n₂
+  · simp [h, beval, Bool.beq_eq_decide_eq]
+  · simp [h, beval, Bool.beq_eq_decide_eq]
+
+theorem fold_constants_bexp_neq_sound_case_aux (a₁ a₂ : AExp) : bequiv (b_neq a₁ a₂) (fold_constants_bexp (b_neq a₁ a₂)) := by
+  unfold bequiv
+  intro st
+  have ha1 := fold_constants_aexp_sound_aux a₁ st
+  have ha2 := fold_constants_aexp_sound_aux a₂ st
+  cases h1 : fold_constants_aexp a₁ <;> cases h2 : fold_constants_aexp a₂ <;>
+    simp [fold_constants_bexp, beval, aeval, h1, h2, ha1, ha2]
+  case a_num.a_num n1 n2 =>
+    simpa [fold_constants_bexp, beval, aeval, h1, h2, ha1, ha2] using
+      (fold_constants_bexp_neq_const_case_aux st n1 n2)
+
+theorem fold_constants_bexp_sound_aux: btrans_sound fold_constants_bexp := by
+  intro b
+  induction b with
+  | b_true =>
+      intro st
+      simp [fold_constants_bexp, beval]
+  | b_false =>
+      intro st
+      simp [fold_constants_bexp, beval]
+  | b_eq a₁ a₂ =>
+      exact fold_constants_bexp_eq_sound_case_aux a₁ a₂
+  | b_neq a₁ a₂ =>
+      exact fold_constants_bexp_neq_sound_case_aux a₁ a₂
+  | b_le a₁ a₂ =>
+      exact fold_constants_bexp_le_sound_case_aux a₁ a₂
+  | b_not b ih =>
+      intro st
+      cases h : fold_constants_bexp b <;> simpa [fold_constants_bexp, beval, h, ih st]
+  | b_and b₁ b₂ ih₁ ih₂ =>
+      intro st
+      cases h₁ : fold_constants_bexp b₁ <;> cases h₂ : fold_constants_bexp b₂ <;> simpa [fold_constants_bexp, beval, h₁, h₂, ih₁ st, ih₂ st]
+  | b_or b₁ b₂ ih₁ ih₂ =>
+      intro st
+      cases h₁ : fold_constants_bexp b₁ <;> cases h₂ : fold_constants_bexp b₂ <;> simpa [fold_constants_bexp, beval, h₁, h₂, ih₁ st, ih₂ st]
+
+theorem while_true_nonterminating_aux (b : BExp) (c : Com) (st st' : State) : bequiv b b_true → ¬ CEval (c_while b c) st st' := by
+  intro hb contra
+  generalize heq : c_while b c = com at contra
+  induction contra with simp at *
+  | e_whileFalse =>
+    rename_i st'' hbf
+    have h : beval st'' b = true := by apply hb st''
+    simp [*] at *
+  | e_whileTrue =>
+    rename_i ihwhile
+    apply ihwhile <;> simp [*]
+
+
+theorem while_true_equiv_loop_aux (b : BExp) (c : Com) : bequiv b b_true → cequiv (c_while b c) loop := by
+  intro hb
+  intro st st'
+  constructor
+  · intro h
+    exfalso
+    exact while_true_nonterminating_aux b c st st' hb h
+  · intro h
+    exfalso
+    exact while_true_nonterminating_aux b_true c_skip st st' (by
+      intro s
+      rfl) h
+
+theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by
+  intro c
+  induction c with
+  | c_skip =>
+      simpa [fold_constants_com] using (refl_cequiv c_skip)
+  | c_asgn x a =>
+      simpa [fold_constants_com] using
+        (cequiv_asgn_congruence_aux x a (fold_constants_aexp a) (fold_constants_aexp_sound_aux a))
+  | c_seq c₁ c₂ ih₁ ih₂ =>
+      simpa [fold_constants_com] using
+        (cequiv_seq_congruence_aux c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) ih₁ ih₂)
+  | c_if b c₁ c₂ ih₁ ih₂ =>
+      have hb : bequiv b (fold_constants_bexp b) := fold_constants_bexp_sound_aux b
+      cases hfb : fold_constants_bexp b with
+      | b_true =>
+          have hb' : bequiv b b_true := by
+            rw [hfb] at hb
+            exact hb
+          simpa [fold_constants_com, hfb] using
+            (cequiv_transitive (c_if b c₁ c₂) c₁ (fold_constants_com c₁) (Imp.if_true b c₁ c₂ hb') ih₁)
+      | b_false =>
+          have hb' : bequiv b b_false := by
+            rw [hfb] at hb
+            exact hb
+          simpa [fold_constants_com, hfb] using
+            (cequiv_transitive (c_if b c₁ c₂) c₂ (fold_constants_com c₂) (Imp.if_false b c₁ c₂ hb') ih₂)
+      | b_eq a1 a2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_if_congruence_aux b (fold_constants_bexp b) c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) hb ih₁ ih₂)
+      | b_neq a1 a2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_if_congruence_aux b (fold_constants_bexp b) c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) hb ih₁ ih₂)
+      | b_le a1 a2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_if_congruence_aux b (fold_constants_bexp b) c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) hb ih₁ ih₂)
+      | b_not b1 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_if_congruence_aux b (fold_constants_bexp b) c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) hb ih₁ ih₂)
+      | b_and b1 b2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_if_congruence_aux b (fold_constants_bexp b) c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) hb ih₁ ih₂)
+      | b_or b1 b2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_if_congruence_aux b (fold_constants_bexp b) c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) hb ih₁ ih₂)
+  | c_while b c ih =>
+      have hb : bequiv b (fold_constants_bexp b) := fold_constants_bexp_sound_aux b
+      cases hfb : fold_constants_bexp b with
+      | b_true =>
+          have hb' : bequiv b b_true := by
+            rw [hfb] at hb
+            exact hb
+          simpa [fold_constants_com, hfb] using (while_true_equiv_loop_aux b c hb')
+      | b_false =>
+          have hb' : bequiv b b_false := by
+            rw [hfb] at hb
+            exact hb
+          simpa [fold_constants_com, hfb] using (Imp.while_false b c hb')
+      | b_eq a1 a2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_while_congruence_aux b (fold_constants_bexp b) c (fold_constants_com c) hb ih)
+      | b_neq a1 a2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_while_congruence_aux b (fold_constants_bexp b) c (fold_constants_com c) hb ih)
+      | b_le a1 a2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_while_congruence_aux b (fold_constants_bexp b) c (fold_constants_com c) hb ih)
+      | b_not b1 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_while_congruence_aux b (fold_constants_bexp b) c (fold_constants_com c) hb ih)
+      | b_and b1 b2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_while_congruence_aux b (fold_constants_bexp b) c (fold_constants_com c) hb ih)
+      | b_or b1 b2 =>
+          simpa [fold_constants_com, hfb] using
+            (cequiv_while_congruence_aux b (fold_constants_bexp b) c (fold_constants_com c) hb ih)
+
 
 /-
 ## references

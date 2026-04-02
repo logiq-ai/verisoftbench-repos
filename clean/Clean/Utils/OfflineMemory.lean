@@ -409,13 +409,37 @@ theorem MemoryAccessList.lastWriteValue_filter (accesses : MemoryAccessList)
       simp only [h_addr, ↓reduceIte, ih]
 
 
-/--
-  If a memory access list is online consistent, then the filtered list for a specific address is
-  online consistent as well.
--/
 theorem MemoryAccessList.isConsistentOnline_filter_of_consistentOnline (accesses : MemoryAccessList) (h_sorted : accesses.isTimestampSorted)
     (h_consistent : MemoryAccessList.isConsistentOnline accesses h_sorted) (addr : ℕ) :
-    MemoryAccessList.isConsistentOnline (MemoryAccessList.filterAddress accesses addr) (MemoryAccessList.filterAddress_sorted accesses h_sorted addr) := by sorry
+    MemoryAccessList.isConsistentOnline (MemoryAccessList.filterAddress accesses addr) (MemoryAccessList.filterAddress_sorted accesses h_sorted addr) := by
+  revert h_sorted h_consistent addr
+  induction accesses with
+  | nil =>
+      intro h_sorted h_consistent addr
+      simp [MemoryAccessList.filterAddress, MemoryAccessList.isConsistentOnline]
+  | cons head tail ih =>
+      intro h_sorted h_consistent addr
+      obtain ⟨t, a, r, w⟩ := head
+      have h_sorted_tail : MemoryAccessList.isTimestampSorted tail := by
+        exact List.Sorted.of_cons h_sorted
+      have h_cons :
+          r = MemoryAccessList.lastWriteValue tail h_sorted_tail a ∧
+          MemoryAccessList.isConsistentOnline tail h_sorted_tail := by
+        simpa [MemoryAccessList.isConsistentOnline] using h_consistent
+      obtain ⟨h_read, h_tail⟩ := h_cons
+      have h_ih := ih h_sorted_tail h_tail addr
+      by_cases h_addr : a = addr
+      · have h_read' :
+            r = MemoryAccessList.lastWriteValue (MemoryAccessList.filterAddress tail addr)
+                  (MemoryAccessList.filterAddress_sorted tail h_sorted_tail addr) a := by
+          have h_last :=
+            MemoryAccessList.lastWriteValue_filter tail h_sorted_tail a
+              (MemoryAccessList.filterAddress_sorted tail h_sorted_tail a)
+          simpa [h_addr] using h_read.trans h_last
+        simpa [MemoryAccessList.filterAddress, List.filter_cons,
+          MemoryAccessList.isConsistentOnline, h_addr] using And.intro h_read' h_ih
+      · simpa [MemoryAccessList.filterAddress, List.filter_cons, h_addr] using h_ih
+
 
 theorem MemoryAccessList.isTimestampSorted_cons (head : MemoryAccess) (tail : MemoryAccessList) :
     isTimestampSorted (head :: tail) → isTimestampSorted tail := by

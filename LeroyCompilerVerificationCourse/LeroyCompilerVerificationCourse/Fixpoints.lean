@@ -212,8 +212,6 @@ def Eq'_sym : ∀ S1 S2, Eq' S1 S2 → Eq' S2 S1 := by
   simp at *
   grind [Equiv.getElem?_eq]
 
-@[grind] theorem Le_trans : ∀ S1 S2 S3, Le S1 S2 → Le S2 S3 → Le S1 S3 := by grind
-
 @[grind] def Gt (S1 S2 : Store) := Le S2 S1 ∧ ¬ Eq' S2 S1
 
 /-

@@ -248,12 +248,85 @@ To recursively destruct an inductively defined object, we can use the `rcases` t
 We can give names to parameters in each case, so that we can refer to them later.
 -/
 
+theorem bst_recolor_aux {α : Type _} {c1 c2 : Color} {l : Tree α} {k : Nat} {v : α} {r : Tree α} : BST (Tree.tree c1 l k v r) → BST (Tree.tree c2 l k v r) := by
+  intro h
+  cases h
+  constructor <;> assumption
+
+theorem forallTree_mono_aux {α : Type _} {p q : Nat → α → Prop} {t : Tree α} : (∀ x v, p x v → q x v) → ForallTree p t → ForallTree q t := by
+  intro hpq h
+  induction h with
+  | empty =>
+      exact ForallTree.empty
+  | tree c l k v r hk hl hr ihl ihr =>
+      exact ForallTree.tree c l k v r (hpq k v hk) ihl ihr
+
+theorem forallTree_recolor_aux {α : Type _} {p : Nat → α → Prop} {c1 c2 : Color} {l : Tree α} {k : Nat} {v : α} {r : Tree α} : ForallTree p (Tree.tree c1 l k v r) → ForallTree p (Tree.tree c2 l k v r) := by
+  intro h
+  cases h
+  constructor <;> assumption
+
+theorem balance_BST_left_left_aux {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < z) (Tree.tree red (Tree.tree red a x vx b) y vy c) → ForallTree (fun n _ => n > z) d → BST (Tree.tree red (Tree.tree red a x vx b) y vy c) → BST d → BST (Tree.tree red (Tree.tree black a x vx b) y vy (Tree.tree black c z vz d)) := by
+  intro hall hd hbst hbstd
+  cases hall with
+  | tree _ _ _ _ _ hyz hltz_left hltz_c =>
+    cases hbst with
+    | tree _ _ _ _ _ hlty_left hgty_c hbst_left hbst_c =>
+      constructor
+      · exact forallTree_recolor_aux hlty_left
+      · constructor
+        · exact hyz
+        · exact hgty_c
+        · exact forallTree_gt d z y hd hyz
+      · exact bst_recolor_aux hbst_left
+      · constructor
+        · exact hltz_c
+        · exact hd
+        · exact hbst_c
+        · exact hbstd
+
+theorem balance_BST_left_right_aux {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < z) (Tree.tree red a x vx (Tree.tree red b y vy c)) → ForallTree (fun n _ => n > z) d → BST (Tree.tree red a x vx (Tree.tree red b y vy c)) → BST d → BST (Tree.tree red (Tree.tree black a x vx b) y vy (Tree.tree black c z vz d)) := by
+  intro hltz hdgtz hbst hbstd
+  cases hltz
+  rename_i h1 h2 h3
+  guard_hyp h1 : ForallTree (fun n _ => n < z) a
+  guard_hyp h2 : x < z
+  guard_hyp h3 : ForallTree (fun n _ => n < z) (Tree.tree red b y vy c)
+  sorry
+
+theorem balance_BST_right_left_aux {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < x) a → ForallTree (fun n _ => n > x) (Tree.tree red (Tree.tree red b y vy c) z vz d) → BST a → BST (Tree.tree red (Tree.tree red b y vy c) z vz d) → BST (Tree.tree red (Tree.tree black a x vx b) y vy (Tree.tree black c z vz d)) := by
+  sorry
+
+theorem balance_BST_right_right_aux {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < x) a → ForallTree (fun n _ => n > x) (Tree.tree red b y vy (Tree.tree red c z vz d)) → BST a → BST (Tree.tree red b y vy (Tree.tree red c z vz d)) → BST (Tree.tree red (Tree.tree black a x vx b) y vy (Tree.tree black c z vz d)) := by
+  intro hax hright hba hbst
+  cases hright with
+  | tree _ _ _ _ _ hxy hb_gtx hcd_gtx =>
+    cases hbst with
+    | tree _ _ _ _ _ hb_lty hcd_gty hbb hbstcd =>
+      constructor
+      · constructor
+        · omega
+        · exact forallTree_mono_aux (p := fun n _ => n < x) (q := fun n _ => n < y) (t := a) (by intro n v hn; omega) hax
+        · exact hb_lty
+      · exact forallTree_recolor_aux hcd_gty
+      · constructor
+        · exact hax
+        · exact hb_gtx
+        · exact hba
+        · exact hbb
+      · exact bst_recolor_aux hbstcd
+
 theorem balance_BST {α : Type u} c (l : Tree α) k vk (r : Tree α)
     : ForallTree (fun x _ => x < k) l
       -> ForallTree (fun x _ => x > k) r
       -> BST l
       -> BST r
-      -> BST (balance c l k vk r) := by sorry
+      -> BST (balance c l k vk r) := by
+  intro hl hr hbl hbr
+  simp only [balance]
+  repeat' split
+  all_goals sorry
+
 
 /-
 exercise (2-star)

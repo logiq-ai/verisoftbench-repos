@@ -426,7 +426,16 @@ theorem big_step_sound' [LawfulAction act] (req : SProp σ) (ens : RProp σ ρ) 
 
 theorem big_step_always_terminating_sound [LawfulAction act] (req : SProp σ) (ens : RProp σ ρ) :
   act.alwaysSuccessfullyTerminates req ->
-  act.toBigStep.triple req ens -> act.triple req ens := by sorry
+  act.toBigStep.triple req ens -> act.triple req ens := by
+  intro hterm htriple st hreq
+  by_cases hens : ∀ r s, ens r s
+  · exact LawfulAction.impl (act := act) (post := fun _ _ => True) (post' := ens) st
+      (by
+        intro r s _
+        exact hens r s)
+      (hterm st hreq)
+  · exact big_step_sound (act := act) (req := req) (ens := ens) hens htriple st hreq
+
 
 theorem big_step_to_wp (act : Wp m σ ρ) [LawfulAction act] (req : SProp σ) :
   act.alwaysSuccessfullyTerminates req ->
@@ -436,7 +445,7 @@ theorem big_step_to_wp (act : Wp m σ ρ) [LawfulAction act] (req : SProp σ) :
   { simp [BigStep.toWp]; intro _ _ _
     solve_by_elim [big_step_sound'] }
   simp [BigStep.toWp]
-  intro h; apply big_step_always_terminating_sound (req := (s = ·)) <;> try simp
+  intro h; apply big_step_always_terminating_sound (act := act) (req := (s = ·)) <;> try simp
   { solve_by_elim }
   intro; simp_all
 

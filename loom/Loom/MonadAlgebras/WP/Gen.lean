@@ -181,6 +181,41 @@ def WPGen.spec_wp wp' (x : m α) (trp : wp x = wp') : WPGen x where
     subst trp
     simp
 
+theorem triple_forIn_deacreasing_step {β} {measure : β → ℕ} {init : β} {f : β → m (ForInStep β)}
+  (inv : β → l)
+  (hstep : ∀ b,
+    measure b <= measure init ->
+    triple
+      (inv b)
+      (f b)
+      (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b'))
+  (i : ℕ) (b : β) :
+  triple
+    (inv b ⊓ ⌜measure b + i ≤ measure init⌝)
+    (f b)
+    (fun | .yield b' => inv b' ⊓ ⌜measure b' + (i + 1) ≤ measure init⌝
+         | .done b' => inv b' ⊓ ⌜measure b' + measure init ≤ measure init⌝) := by
+  by_cases hbound : measure b + i ≤ measure init
+  · have hmeasure : measure b ≤ measure init := by
+      exact le_trans (Nat.le_add_right _ _) hbound
+    refine triple_cons (x := f b) ?_ ?_ (hstep b hmeasure)
+    · simpa [LE.pure, hbound]
+    · intro r
+      cases r with
+      | yield b' =>
+          change inv b' ⊓ ⌜measure b' < measure b⌝ ≤ inv b' ⊓ ⌜measure b' + (i + 1) ≤ measure init⌝
+          exact inf_le_inf_left _ (LE.pure_imp _ _ (by
+            intro hlt
+            omega))
+      | done b' =>
+          change ⌜measure b' = 0⌝ ⊓ inv b' ≤ inv b' ⊓ ⌜measure b' + measure init ≤ measure init⌝
+          rw [inf_comm]
+          exact inf_le_inf_left _ (LE.pure_imp _ _ (by
+            intro hzero
+            omega))
+  · unfold triple
+    simp [LE.pure, hbound]
+
 theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
   {init : β} {f : β → m (ForInStep β)}
   (inv : β → l)
@@ -190,7 +225,24 @@ theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
       (inv b)
       (f b)
       (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
-  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by sorry
+  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by
+  let I : ℕ → β → l := fun i b => inv b ⊓ ⌜measure b + i ≤ measure init⌝
+  apply (triple_cons (x := forIn [0:measure init] init (fun _ => f))
+    (pre := I 0 init) (pre' := inv init)
+    (post := I (measure init)) (post' := fun b => inv b ⊓ ⌜measure b = 0⌝))
+  · simp [I]
+  · intro b
+    apply inf_le_inf_left
+    exact LE.pure_imp _ _ (by
+      intro h
+      omega)
+  · apply triple_forIn_range_step1 (xs := [0:measure init]) (f := fun _ => f) (inv := I)
+    · intro i b
+      simpa [I] using
+        (triple_forIn_deacreasing_step (measure := measure) (init := init) (f := f) inv hstep i b)
+    · simp
+    · simp
+
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

@@ -55,6 +55,39 @@ lemma h_x0_const32 {o : ℕ} (ho : o < 8) :
   rw [show 256 = 2^8 by rfl, ←Nat.pow_mul, ←Nat.pow_add, pow_right_inj₀ (by norm_num) (by norm_num)]
   omega
 
+theorem rotation32_recombine_x1 (offset a z : ℕ) : a % 2 ^ offset * 2 ^ (8 - offset) + (2 ^ offset * (a / 2 ^ offset) * 2 ^ (8 - offset) + z) = a * 2 ^ (8 - offset) + z := by
+  rw [← add_assoc]
+  rw [soundness_simp']
+
+theorem rotation32_recombine_x2 (offset a z : ℕ) : a % 2 ^ offset * 256 * 2 ^ (8 - offset) + (2 ^ offset * (a / 2 ^ offset) * 2 ^ (8 - offset) * 256 + z) = a * 256 * 2 ^ (8 - offset) + z := by
+  calc
+    a % 2 ^ offset * 256 * 2 ^ (8 - offset)
+        + (2 ^ offset * (a / 2 ^ offset) * 2 ^ (8 - offset) * 256 + z)
+        = a % 2 ^ offset * 2 ^ (8 - offset) * 256
+            + (2 ^ offset * (a / 2 ^ offset) * 2 ^ (8 - offset) * 256 + z) := by
+              ac_rfl
+    _ = a * 256 * 2 ^ (8 - offset) + z := by
+          rw [← add_assoc]
+          rw [soundness_simp]
+
+theorem rotation32_recombine_x3 (offset a z : ℕ) : a % 2 ^ offset * 2 ^ (8 - offset) * 256 ^ 2 + (2 ^ offset * (a / 2 ^ offset) * 2 ^ (8 - offset) * 256 ^ 2 + z) = a * 256 ^ 2 * 2 ^ (8 - offset) + z := by
+  rw [← add_assoc]
+  rw [soundness_simp]
+
 theorem rotation32_bits_soundness {o : ℕ} (ho : o < 8) {x : U32 ℕ} :
-    (rotRight32_u32 x o).valueNat = rotRight32 x.valueNat o := by sorry
+    (rotRight32_u32 x o).valueNat = rotRight32 x.valueNat o := by
+  simp only [rotRight32, rotRight32_u32, U32.valueNat]
+  have offset_mod_32 : o % 32 = o := Nat.mod_eq_of_lt (by linarith)
+  simp only [offset_mod_32]
+  rw [h_mod32 ho, h_div32 ho]
+  rw [shifted_decomposition_eq ho]
+  rw [shifted_decomposition_eq'' ho (by simp only [gt_iff_lt, Nat.ofNat_pos])]
+  rw [shifted_decomposition_eq'' ho (by simp only [gt_iff_lt, Nat.ofNat_pos])]
+  simp only [Nat.add_one_sub_one, pow_one, add_mul, add_assoc]
+  rw [rotation32_recombine_x1 (offset := o) (a := x.x1)]
+  rw [rotation32_recombine_x2 (offset := o) (a := x.x2)]
+  rw [rotation32_recombine_x3 (offset := o) (a := x.x3)]
+  rw [← h_x0_const32 ho]
+  ac_rfl
+
 end Gadgets.Rotation32.Theorems

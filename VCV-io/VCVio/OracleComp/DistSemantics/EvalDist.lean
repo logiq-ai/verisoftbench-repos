@@ -661,9 +661,56 @@ lemma probOutput_bind_of_const (y : β) (r : ℝ≥0∞) (h : ∀ x, [= y | ob x
 lemma probFailure_bind_of_const [Nonempty α] (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
     [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by sorry
 
+theorem ennreal_sub_mul_compl_eq_add_mul_aux (a r : ℝ≥0∞) (ha : a ≤ 1) (hr : r ≤ 1) : 1 - (1 - a) * (1 - r) = a + (1 - a) * r := by
+  have hmul : (1 - a) * (1 - r) = (1 - a) - (1 - a) * r := by
+    rw [ENNReal.mul_sub]
+    · simp only [mul_one]
+    · intro h0 hlt
+      exact ENNReal.sub_ne_top one_ne_top
+  have hmul_le : (1 - a) * r ≤ 1 - a := by
+    simpa only [mul_one] using (mul_le_mul' le_rfl hr)
+  have hsub_ne_top : 1 - a ≠ ∞ := ENNReal.sub_ne_top one_ne_top
+  have hd_ne_top : (1 - a) - (1 - a) * r ≠ ∞ := ENNReal.sub_ne_top hsub_ne_top
+  have hone : (1 - a) + a = 1 := by
+    simpa only [add_comm] using (tsub_add_cancel_of_le ha)
+  have hmid : (1 - a) - ((1 - a) - (1 - a) * r) + a = 1 - ((1 - a) - (1 - a) * r) := by
+    calc
+      (1 - a) - ((1 - a) - (1 - a) * r) + a = (1 - a) + a - ((1 - a) - (1 - a) * r) := by
+        rw [ENNReal.sub_add_eq_add_sub (tsub_le_self : (1 - a) - (1 - a) * r ≤ 1 - a) hd_ne_top]
+      _ = 1 - ((1 - a) - (1 - a) * r) := by
+        rw [hone]
+  calc
+    1 - (1 - a) * (1 - r) = 1 - ((1 - a) - (1 - a) * r) := by rw [hmul]
+    _ = (1 - a) - ((1 - a) - (1 - a) * r) + a := by
+      exact hmid.symm
+    _ = (1 - a) * r + a := by
+      rw [ENNReal.sub_sub_cancel hsub_ne_top hmul_le]
+    _ = a + (1 - a) * r := by
+      rw [add_comm]
+
+theorem probFailure_bind_eq_add_mul_const_aux {oa : OracleComp spec α} {ob : α → OracleComp spec β} (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) : [⊥ | oa >>= ob] = [⊥ | oa] + (1 - [⊥ | oa]) * r := by
+  rw [probFailure_bind_eq_tsum (oa := oa) (ob := ob)]
+  simp_rw [h]
+  rw [ENNReal.tsum_mul_right]
+  rw [tsum_probOutput_eq_sub (oa := oa)]
+
 lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
-    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by sorry
+    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by
+  classical
+  by_cases hα : Nonempty α
+  · obtain ⟨x⟩ := hα
+    have ha : [⊥ | oa] ≤ 1 := probFailure_le_one (oa := oa)
+    have hr : r ≤ 1 := by
+      simpa only [h x] using (probFailure_le_one (oa := ob x))
+    rw [probFailure_bind_eq_add_mul_const_aux r h]
+    exact (ennreal_sub_mul_compl_eq_add_mul_aux ([⊥ | oa]) r ha hr).symm
+  · haveI : IsEmpty α := not_nonempty_iff.mp hα
+    have hoa : [⊥ | oa] = 1 := by
+      simpa using (probFailure_add_tsum_probOutput (oa := oa))
+    rw [probFailure_bind_eq_add_mul_const_aux r h, hoa]
+    simp
+
 
 lemma probFailure_bind_le_of_forall {oa : OracleComp spec α} {s : ℝ≥0∞}
     -- TODO: this should be a general type of `uniformOutput` computations

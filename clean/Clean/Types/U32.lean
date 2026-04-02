@@ -6,6 +6,7 @@ import Clean.Utils.Primes
 import Clean.Circuit.Subcircuit
 import Clean.Gadgets.Equality
 
+import Mathlib.Data.Nat.Digits.Defs
 section
 variable {p : ℕ} [Fact p.Prime] [p_large_enough: Fact (p > 512)]
 
@@ -183,9 +184,57 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
   repeat linarith [x.is_lt, p_large_enough.elim]
 
 omit p_large_enough in
+theorem value_eq_ofDigits (x : U32 (F p)) : x.value = Nat.ofDigits 256 [x.x0.val, x.x1.val, x.x2.val, x.x3.val] := by
+  rw [U32.value_horner]
+  simp [Nat.ofDigits]
+
+omit p_large_enough in
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
-    x.value = y.value → x = y := by sorry
+    x.value = y.value → x = y := by
+  intro hval
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  rcases hy with ⟨hy0, hy1, hy2, hy3⟩
+  have hdigits :
+      [x.x0.val, x.x1.val, x.x2.val, x.x3.val] =
+        [y.x0.val, y.x1.val, y.x2.val, y.x3.val] := by
+    apply Nat.ofDigits_inj_of_len_eq (b := 256)
+    · decide
+    · rfl
+    · intro l hl
+      simp only [List.mem_cons, List.mem_singleton] at hl
+      rcases hl with rfl | hl
+      · exact hx0
+      rcases hl with rfl | hl
+      · exact hx1
+      rcases hl with rfl | hl
+      · exact hx2
+      rcases hl with rfl | hl
+      · exact hx3
+      · cases hl
+    · intro l hl
+      simp only [List.mem_cons, List.mem_singleton] at hl
+      rcases hl with rfl | hl
+      · exact hy0
+      rcases hl with rfl | hl
+      · exact hy1
+      rcases hl with rfl | hl
+      · exact hy2
+      rcases hl with rfl | hl
+      · exact hy3
+      · cases hl
+    · simpa [value_eq_ofDigits x, value_eq_ofDigits y] using hval
+  injection hdigits with h0 hrest
+  injection hrest with h1 hrest
+  injection hrest with h2 hrest
+  have h3 : x.x3.val = y.x3.val := by
+    simpa using hrest
+  apply U32.ext
+  · exact (ZMod.val_injective p) h0
+  · exact (ZMod.val_injective p) h1
+  · exact (ZMod.val_injective p) h2
+  · exact (ZMod.val_injective p) h3
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]

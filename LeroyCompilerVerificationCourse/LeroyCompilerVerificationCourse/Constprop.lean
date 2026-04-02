@@ -599,6 +599,94 @@ theorem cp_bexp_sound :
   This pattern follows closely the structure of the abstract interpreter
   `Cexec`: structural induction on the command + local fixpoint for loops.
 -/
+theorem StoreLe_trans (S1 S2 S3 : Store) : Le S1 S2 -> Le S2 S3 -> Le S1 S3 := by
+  intro h12 h23 x n hS3
+  exact h12 x n (h23 x n hS3)
+
+theorem Cexec_while_invariant (S : Store) (b : bexp) (c : com) : Le S (Cexec S (.WHILE b c)) ∧ Le (Cexec (Cexec S (.WHILE b c)) c) (Cexec S (.WHILE b c)) := by
+  let sfix := Cexec S (.WHILE b c)
+  let F : Store → Store := fun x => Join S (Cexec x c)
+  have hfix : Le (F sfix) sfix := by
+    dsimp [sfix, F]
+    exact fixpoint_sound F S rfl
+  have hS : Le S (F sfix) := by
+    dsimp [F]
+    exact Le_Join_l S (Cexec sfix c)
+  have hc : Le (Cexec sfix c) (F sfix) := by
+    dsimp [F]
+    exact Le_Join_r S (Cexec sfix c)
+  constructor
+  · exact StoreLe_trans S (F sfix) sfix hS hfix
+  · exact StoreLe_trans (Cexec sfix c) (F sfix) sfix hc hfix
+
+theorem cp_com_correct_while_inner (S : Store) (b : bexp) (c : com) (IH : ∀ s1 s2 S1, cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2) : ∀ s1 c0 s2, cexec s1 c0 s2 -> c0 = .WHILE b c -> matches' s1 (Cexec S (.WHILE b c)) -> cexec s1 (mk_WHILE (cp_bexp (Cexec S (.WHILE b c)) b) (cp_com (Cexec S (.WHILE b c)) c)) s2 := by
+  intro s1 c0 s2 EXEC EQ MATCH
+  induction EXEC
+  case cexec_skip =>
+    cases EQ
+  case cexec_assign =>
+    cases EQ
+  case cexec_seq =>
+    cases EQ
+  case cexec_ifthenelse =>
+    cases EQ
+  case cexec_while_done s b' c' hdone =>
+    cases EQ
+    apply cexec_mk_WHILE_done
+    simpa only [cp_bexp_sound s (Cexec S (.WHILE b c)) MATCH b] using hdone
+  case cexec_while_loop s b' c' s' s'' htrue EXECbody EXECtail ihBody ihTail =>
+    cases EQ
+    apply cexec_mk_WHILE_loop
+    · simpa only [cp_bexp_sound s (Cexec S (.WHILE b c)) MATCH b] using htrue
+    · exact IH s s' (Cexec S (.WHILE b c)) EXECbody MATCH
+    · apply ihTail
+      · rfl
+      · apply matches_Le
+        · exact (Cexec_while_invariant S b c).2
+        · exact Cexec_sound c s s' (Cexec S (.WHILE b c)) EXECbody MATCH
+
+theorem cp_com_correct_while_of_body (S : Store) (b : bexp) (c : com) (IH : ∀ s1 s2 S1, cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2) : ∀ s1 s2, cexec s1 (.WHILE b c) s2 -> matches' s1 (Cexec S (.WHILE b c)) -> cexec s1 (mk_WHILE (cp_bexp (Cexec S (.WHILE b c)) b) (cp_com (Cexec S (.WHILE b c)) c)) s2 := by
+  intro s1 s2 EXEC MATCH
+  exact cp_com_correct_while_inner S b c IH s1 (.WHILE b c) s2 EXEC rfl MATCH
+
 theorem cp_com_correct_terminating :
   ∀ c s1 s2 S1,
-  cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by sorry
+  cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by
+  intro c
+  induction c with
+  | SKIP =>
+      intro s1 s2 S1 hce hm
+      cases hce
+      exact cexec.cexec_skip
+  | ASSIGN x a =>
+      intro s1 s2 S1 hce hm
+      cases hce
+      simpa [cp_com, cp_aexp_sound s1 S1 hm a] using
+        (cexec.cexec_assign (s := s1) (x := x) (a := cp_aexp S1 a))
+  | SEQ c1 c2 ih1 ih2 =>
+      intro s1 s2 S1 hce hm
+      cases hce with
+      | cexec_seq h1 h2 =>
+          have hc1 : cexec s1 (cp_com S1 c1) _ := ih1 _ _ _ h1 hm
+          have hm' : matches' _ (Cexec S1 c1) := Cexec_sound c1 _ _ S1 h1 hm
+          have hc2 : cexec _ (cp_com (Cexec S1 c1) c2) s2 := ih2 _ _ _ h2 hm'
+          simpa [cp_com] using cexec.cexec_seq hc1 hc2
+  | IFTHENELSE b c1 c2 ih1 ih2 =>
+      intro s1 s2 S1 hce hm
+      cases hce with
+      | cexec_ifthenelse h =>
+          have hif : cexec s1 (if beval s1 (cp_bexp S1 b) then cp_com S1 c1 else cp_com S1 c2) s2 := by
+            rw [cp_bexp_sound s1 S1 hm b]
+            by_cases hb : beval s1 b
+            · simp only [hb]
+              exact ih1 s1 s2 S1 (by simpa only [hb] using h) hm
+            · simp only [hb]
+              exact ih2 s1 s2 S1 (by simpa only [hb] using h) hm
+          simpa [cp_com] using cexec_mk_IFTHENELSE s1 (cp_bexp S1 b) (cp_com S1 c1) (cp_com S1 c2) s2 hif
+  | WHILE b c ih =>
+      intro s1 s2 S1 hce hm
+      have hLe : Le S1 (Cexec S1 (.WHILE b c)) := (Cexec_while_invariant S1 b c).1
+      have hmfix : matches' s1 (Cexec S1 (.WHILE b c)) :=
+        matches_Le s1 S1 (Cexec S1 (.WHILE b c)) hLe hm
+      simpa [cp_com] using cp_com_correct_while_of_body S1 b c ih s1 s2 hce hmfix
+

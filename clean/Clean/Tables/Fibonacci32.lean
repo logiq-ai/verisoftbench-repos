@@ -116,15 +116,45 @@ lemma fib_vars (curr next : Row (F p) RowType) (aux_env : Environment (F p)) :
     Fin.isValue, List.getElem_toArray, List.getElem_cons_zero, List.getElem_cons_succ]
   and_intros <;> rfl
 
-/--
-  Main lemma that shows that if the constraints hold over the two-row window,
-  then the Spec of add32 and equality are satisfied
--/
+theorem recursiveRelation_operations: recursiveRelation.operations = [Operation.witness 8 (fun env => Vector.mapRange 8 fun i => env.get (0 + i)), Operation.witness 8 (fun env => Vector.mapRange 8 fun i => env.get (8 + i)), Operation.subcircuit ((Gadgets.Addition32.circuit (p:=p)).toSubcircuit 16 { x := varFromOffset U32 0, y := varFromOffset U32 4 }), Operation.subcircuit ((Gadgets.Equality.circuit (F:=F p) U32).toSubcircuit 24 (varFromOffset U32 4, varFromOffset U32 8))] := by
+  unfold TableConstraint.operations recursiveRelation
+  simp only [bind_def, table_norm, table_assignment_norm, circuit_norm]
+  let addInput : Var Gadgets.Addition32.Inputs (F p) :=
+    { x := varFromOffset U32 0, y := varFromOffset U32 (0 + 4) }
+  have hz : (Gadgets.Addition32.elaborated (p := p)).output addInput (8 + 8) =
+      U32.mk (var ⟨16⟩) (var ⟨18⟩) (var ⟨20⟩) (var ⟨22⟩) := rfl
+  have hz' : (Gadgets.Addition32.elaborated (p := p)).output
+      { x := varFromOffset U32 0, y := varFromOffset U32 (0 + 4) } (8 + 8) =
+      U32.mk (var ⟨16⟩) (var ⟨18⟩) (var ⟨20⟩) (var ⟨22⟩) := by
+    simpa [addInput] using hz
+  rw [hz']
+  simp only [assignU32, bind_def, table_norm, table_assignment_norm, circuit_norm]
+  constructor
+
 lemma fib_constraints (curr next : Row (F p) RowType) (aux_env : Environment (F p))
   : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env →
   curr.y = next.x ∧
   (curr.x.Normalized → curr.y.Normalized → next.y.value = (curr.x.value + curr.y.value) % 2^32 ∧ next.y.Normalized)
-   := by sorry
+   := by
+  intro h
+  set env := recursiveRelation.windowEnv ⟨<+> +> curr +> next, rfl⟩ aux_env
+  have hvars :
+      eval env (varFromOffset U32 0) = curr.x ∧
+      eval env (varFromOffset U32 4) = curr.y ∧
+      eval env (varFromOffset U32 8) = next.x ∧
+      eval env (U32.mk (var ⟨16⟩) (var ⟨18⟩) (var ⟨20⟩) (var ⟨22⟩)) = next.y := by
+    simpa [env] using (fib_vars (p := p) curr next aux_env)
+  rcases hvars with ⟨hx, hy, hnextx, hnexty⟩
+  have houtput :
+      eval env (((Gadgets.Addition32.elaborated (p := p)).output) { x := varFromOffset U32 0, y := varFromOffset U32 4 } 16) = next.y := by
+    simpa [Gadgets.Addition32.elaborated] using hnexty
+  have hs : Circuit.ConstraintsHold.Soundness env recursiveRelation.operations := by
+    simpa [env, TableConstraint.ConstraintsHoldOnWindow] using h
+  rw [recursiveRelation_operations] at hs
+  simp only [circuit_norm] at hs
+  rw [hx, hy, hnextx, houtput] at hs
+  exact ⟨hs.2, fun hxn hyn => hs.1 ⟨hxn, hyn⟩⟩
+
 
 lemma boundary_constraints (first_row : Row (F p) RowType) (aux_env : Environment (F p)) :
   Circuit.ConstraintsHold.Soundness (windowEnv boundary ⟨<+> +> first_row, rfl⟩ aux_env) boundary.operations →

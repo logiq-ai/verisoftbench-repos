@@ -1131,7 +1131,56 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
 
 lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
     ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by sorry
+      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
+  induction n with
+  | zero =>
+      intro k
+      change Nat.getBit k 0 = 0
+      rw [getBit_zero_eq_zero]
+  | succ n ih =>
+      let m' : Fin n → ℕ := fun j => m j.succ
+      have h_binary' : ∀ j : Fin n, m' j ≤ 1 := by
+        intro j
+        exact h_binary j.succ
+      have h_val :
+          (binaryFinMapToNat m h_binary).val =
+            m 0 + 2 * (binaryFinMapToNat m' h_binary').val := by
+        calc
+          (binaryFinMapToNat m h_binary).val
+              = m 0 + ∑ x : Fin n, (2 ^ x.succ.val) * m x.succ := by
+                  simp [binaryFinMapToNat, Fin.sum_univ_succ]
+          _ = m 0 + ∑ x : Fin n, 2 * (2 ^ x.val * m x.succ) := by
+                congr 1
+                apply Finset.sum_congr rfl
+                intro x hx
+                simp [Fin.val_succ, pow_succ', mul_left_comm, mul_comm]
+          _ = m 0 + 2 * ∑ x : Fin n, 2 ^ x.val * m x.succ := by
+                rw [Finset.mul_sum]
+      intro k
+      cases k with
+      | zero =>
+          have hm0_le : m 0 ≤ 1 := h_binary 0
+          interval_cases h_m0 : m 0
+          · rw [h_val, zero_add, getBit_zero_of_two_mul]
+            simp [h_m0]
+          · rw [h_val]
+            unfold Nat.getBit
+            rw [Nat.shiftRight_zero, Nat.and_one_is_mod, Nat.add_mod, Nat.mul_mod_right]
+            norm_num
+            simp [h_m0]
+      | succ k =>
+          have hm0_le : m 0 ≤ 1 := h_binary 0
+          interval_cases h_m0 : m 0
+          · rw [h_val, zero_add, getBit_eq_succ_getBit_of_mul_two]
+            simpa [m', Nat.succ_lt_succ_iff, Fin.eta] using ih m' h_binary' k
+          · have h_one_add :
+                1 + 2 * (binaryFinMapToNat m' h_binary').val =
+                  2 * (binaryFinMapToNat m' h_binary').val + 1 := by
+                omega
+            rw [h_val, h_one_add, getBit_eq_succ_getBit_of_mul_two_add_one]
+            simpa [m', Nat.succ_lt_succ_iff, Fin.eta] using ih m' h_binary' k
+
+
 
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=

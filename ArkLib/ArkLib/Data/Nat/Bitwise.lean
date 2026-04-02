@@ -950,8 +950,52 @@ lemma getBit_eq_pred_getBit_of_div_two {n k : ℕ} (h_k: k > 0) :
   exact Eq.symm (getBit_of_shiftRight (k - 1))
 
 -- TODO: uniqueness of this representation?
+theorem getBit_decomp_div_two (n : ℕ) : n = getBit 0 n + 2 * (n / 2) := by
+  simpa only [getBit, Nat.shiftRight_zero, Nat.and_one_is_mod, Nat.mul_comm, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using (Nat.div_add_mod n 2).symm
+
+theorem getBit_sum_range_succ (ℓ j : ℕ) : ∑ k ∈ Finset.range (ℓ + 1), (getBit k j) * 2^k = getBit 0 j + 2 * (∑ k ∈ Finset.range ℓ, (getBit k (j / 2)) * 2^k) := by
+  rw [Finset.sum_range_succ']
+  simp only [pow_zero, Nat.mul_one]
+  have htail :
+      ∑ k ∈ Finset.range ℓ, getBit (k + 1) j * 2 ^ (k + 1) =
+        2 * ∑ k ∈ Finset.range ℓ, getBit k (j / 2) * 2 ^ k := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl ?_
+    intro k hk
+    have hbit : getBit (k + 1) j = getBit k (j / 2) := by
+      simpa using (getBit_eq_pred_getBit_of_div_two (n := j) (k := k + 1) (h_k := by omega))
+    rw [hbit, Nat.pow_succ]
+    ring_nf
+  rw [htail]
+  rw [add_comm]
+
+theorem getBit_repr_range {ℓ : Nat} : ∀ j, j < 2^ℓ → j = ∑ k ∈ Finset.range ℓ, (getBit k j) * 2^k := by
+  induction ℓ with
+  | zero =>
+      intro j hj
+      have hj0 : j = 0 := by
+        omega
+      simp only [hj0, Finset.range_zero, Finset.sum_empty]
+  | succ ℓ ih =>
+      intro j hj
+      rw [getBit_sum_range_succ]
+      have hj' : j / 2 < 2 ^ ℓ := by
+        omega
+      rw [← ih (j / 2) hj']
+      exact getBit_decomp_div_two j
+
 theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by sorry
+  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
+  cases ℓ with
+  | zero =>
+      intro j h
+      have hj : j = 0 := by omega
+      subst hj
+      simp [getBit_zero_eq_zero]
+  | succ n =>
+      intro j h
+      simpa [Nat.range_succ_eq_Icc_zero] using getBit_repr_range (ℓ := n + 1) j h
+
 
 theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
   j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by

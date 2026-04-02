@@ -82,7 +82,52 @@ instance elaborated : ElaboratedCircuit (F p) Inputs field where
 
 theorem soundness : Soundness (F p) elaborated Assumptions Spec := by sorry
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem xor_val_of_and_witness (x y w : F p) : x.val < 256 → y.val < 256 → w.val = x.val &&& y.val → (x + y - 2 * w).val = x.val ^^^ y.val := by
+  intro hx hy hw
+  have hxy : (x + y).val = x.val + y.val := by
+    field_to_nat
+  have handlt : x.val &&& y.val < 256 := by
+    exact Nat.and_lt_two_pow (n := 8) x.val hy
+  have h2wlt : (2 : F p).val * w.val < p := by
+    rw [val_two, hw]
+    have hp : p > 512 := p_large_enough.elim
+    omega
+  have h2w : (2 * w).val = 2 * (x.val &&& y.val) := by
+    have hmul : (2 * w).val = (2 : F p).val * w.val := by
+      exact ZMod.val_mul_of_lt h2wlt
+    rw [hmul, val_two, hw]
+  have hle : (2 * w).val ≤ (x + y).val := by
+    rw [hxy, h2w]
+    exact two_and_le_add hx hy
+  rw [ZMod.val_sub hle, hxy, h2w]
+  have hmain := and_times_two_add_xor hx hy
+  omega
+
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro offset env input_var h_env input h_input h_assumptions
+  cases input with
+  | mk x y =>
+      simp only [circuit_norm, explicit_provable_type, main, Assumptions] at h_env h_input h_assumptions ⊢
+      simp only [Inputs.mk.injEq] at h_input
+      rcases h_input with ⟨hx_eq, hy_eq⟩
+      subst x
+      subst y
+      simp only [ByteXorTable, circuit_norm]
+      refine ⟨h_assumptions.1, h_assumptions.2, ?_⟩
+      have hx : (Expression.eval env input_var.x).val < 256 := h_assumptions.1
+      have hy : (Expression.eval env input_var.y).val < 256 := h_assumptions.2
+      have hwval : (env.get offset).val = (Expression.eval env input_var.x).val &&& (Expression.eval env input_var.y).val := by
+        have hwcast := h_env
+        apply congrArg ZMod.val at hwcast
+        have handlt : (Expression.eval env input_var.x).val &&& (Expression.eval env input_var.y).val < 256 := by
+          exact Nat.and_lt_two_pow (n := 8) (Expression.eval env input_var.x).val hy
+        have hp256 : 256 < p := by
+          linarith [p_large_enough.elim]
+        rw [FieldUtils.val_lt_p ((Expression.eval env input_var.x).val &&& (Expression.eval env input_var.y).val) (lt_trans handlt hp256)] at hwcast
+        exact hwcast
+      simpa [sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using
+        xor_val_of_and_witness (Expression.eval env input_var.x) (Expression.eval env input_var.y) (env.get offset) hx hy hwval
+
 
 def circuit : FormalCircuit (F p) Inputs field :=
   { Assumptions, Spec, soundness, completeness }

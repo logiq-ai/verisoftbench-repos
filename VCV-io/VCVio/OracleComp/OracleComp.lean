@@ -476,9 +476,10 @@ lemma bind_eq_pure_iff (oa : OracleComp spec α) (ob : α → OracleComp spec β
   | pure x => simp [← h]
   | _ => simp at h
 
-@[simp]
 lemma pure_eq_bind_iff (oa : OracleComp spec α) (ob : α → OracleComp spec β) (y : β) :
-    pure y = oa >>= ob ↔ ∃ x : α, oa = pure x ∧ ob x = pure y := by sorry
+    pure y = oa >>= ob ↔ ∃ x : α, oa = pure x ∧ ob x = pure y := by
+  exact eq_comm.trans (bind_eq_pure_iff oa ob y)
+
 
 alias ⟨_, bind_eq_pure⟩ := bind_eq_pure_iff
 alias ⟨_, pure_eq_bind⟩ := pure_eq_bind_iff

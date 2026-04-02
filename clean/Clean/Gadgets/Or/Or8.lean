@@ -130,7 +130,48 @@ theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
   show Nat.bitwise _ _ _ < 2 ^ 8
   exact Nat.bitwise_lt_two_pow hx_byte hy_byte
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem or_honest_lookup_complete (x y : F p) (hx : x.val < 256) (hy : y.val < 256) : ByteXorTable.Completeness (x, y, 2 * ((x.val ||| y.val : ℕ) : F p) - x - y) := by
+  dsimp [Gadgets.Xor.ByteXorTable, Table.fromStatic, StaticTable.toTable]
+  refine ⟨hx, hy, ?_⟩
+  let o : ℕ := x.val ||| y.val
+  have hx_cast : ((x.val : ℕ) : F p) = x := ZMod.natCast_zmod_val x
+  have hy_cast : ((y.val : ℕ) : F p) = y := ZMod.natCast_zmod_val y
+  have hsum : x.val + y.val ≤ 2 * o := two_or_ge_add hx hy
+  have hx_le : x.val ≤ 2 * o := by
+    omega
+  have hy_le : y.val ≤ 2 * o - x.val := by
+    omega
+  have hfield :
+      2 * ((o : ℕ) : F p) - x - y = (((x.val ^^^ y.val : ℕ)) : F p) := by
+    conv_lhs =>
+      rw [← hx_cast, ← hy_cast]
+      rw [← Nat.cast_two, ← Nat.cast_mul]
+      rw [← Nat.cast_sub hx_le, ← Nat.cast_sub hy_le]
+      rw [or_times_two_sub_xor' hx hy]
+  have hxor_lt_p : x.val ^^^ y.val < p := by
+    have hxor_lt_256 : x.val ^^^ y.val < 256 := Nat.xor_lt_two_pow (n := 8) hx hy
+    have hp := p_large_enough.elim
+    omega
+  have hval := congrArg ZMod.val hfield
+  simpa only [ZMod.val_cast_of_lt hxor_lt_p] using hval
+
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  unfold Completeness
+  intro i₀ env input_var h_env input h_input h_assumptions
+  rcases input_var with ⟨x_var, y_var⟩
+  rcases input with ⟨x, y⟩
+  dsimp only [Assumptions] at h_assumptions
+  dsimp only [elaborated] at h_env ⊢
+  dsimp only [main] at h_env ⊢
+  simp only [circuit_norm] at h_input
+  have h_input' : Expression.eval env x_var = x ∧ Expression.eval env y_var = y := by
+    simpa [Inputs.mk.injEq] using h_input
+  simp only [circuit_norm, h_input'.1, h_input'.2] at h_env ⊢
+  rcases h_assumptions with ⟨hx, hy⟩
+  rw [h_env]
+  simpa [sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using
+    or_honest_lookup_complete x y hx hy
+
 
 def circuit : FormalCircuit (F p) Inputs field :=
   { Assumptions, Spec, soundness, completeness }

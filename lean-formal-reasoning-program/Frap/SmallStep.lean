@@ -499,7 +499,61 @@ There are two cases to consider:
   Finally, `c (n₁ + n₂)` is a value, which is in turn a normal form by `nf_same_as_value`.
 -/
 
-theorem step_normalizing : normalizing Step := by sorry
+theorem multi_trans_bp {X : Type} (R : relation X) (x y z : X) : Multi R x y → Multi R y z → Multi R x z := by
+  intro hxy hyz
+  induction hxy generalizing z with
+  | multi_refl =>
+      exact hyz
+  | multi_step =>
+      rename_i xy _ ih
+      apply multi_step
+      · apply xy
+      · apply ih
+        apply hyz
+
+theorem multistep_congr_1_bp (t₁ t₁' t₂ : Tm) : Multi Step t₁ t₁' → Multi Step (p t₁ t₂) (p t₁' t₂) := by
+  exact multistep_congr_1 t₁ t₁' t₂
+
+theorem multistep_congr_2_value (v₁ t₂ t₂' : Tm) : Value v₁ → Multi Step t₂ t₂' → Multi Step (p v₁ t₂) (p v₁ t₂') := by
+  intro hv hm
+  induction hm with
+  | multi_refl =>
+      exact Multi.multi_refl _
+  | multi_step t₂ u t₂' hstep hm ih =>
+      apply Multi.multi_step
+      · exact Step.st_plus2 v₁ t₂ u hv hstep
+      · exact ih
+
+theorem step_normalizes_to_const (t : Tm) : ∃ n : Nat, Multi Step t (c n) := by
+  induction t with
+  | c n =>
+      exact ⟨n, Multi.multi_refl _⟩
+  | p t₁ t₂ ih₁ ih₂ =>
+      rcases ih₁ with ⟨n₁, hm₁⟩
+      rcases ih₂ with ⟨n₂, hm₂⟩
+      refine ⟨n₁ + n₂, ?_⟩
+      apply multi_trans_bp Step (p t₁ t₂) (p (c n₁) t₂) (c (n₁ + n₂))
+      · exact multistep_congr_1_bp t₁ (c n₁) t₂ hm₁
+      · apply multi_trans_bp Step (p (c n₁) t₂) (p (c n₁) (c n₂)) (c (n₁ + n₂))
+        · exact multistep_congr_2_value (c n₁) t₂ (c n₂) (Value.v_const n₁) hm₂
+        · exact Multi.multi_step _ _ _ (Step.st_plusConstConst n₁ n₂) (Multi.multi_refl _)
+
+theorem value_is_nf_bp (v : Tm) : Value v → normal_form Step v := by
+  intro hv
+  cases hv with
+  | v_const n =>
+      unfold normal_form
+      intro h
+      rcases h with ⟨t', hs⟩
+      cases hs
+
+theorem step_normalizing : normalizing Step := by
+  intro t
+  rcases step_normalizes_to_const t with ⟨n, hmulti⟩
+  refine ⟨c n, hmulti, ?_⟩
+  apply value_is_nf_bp
+  exact Value.v_const n
+
 
 /-
 ### Equivalence of big-step and small-step

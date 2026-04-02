@@ -227,7 +227,34 @@ lemma env_extends_witness {F} {n : ℕ} {ops : List (FlatOperation F)} {env : En
       omega
 
 theorem usesLocalWitnessesFlat_iff_extends {env : Environment F} (n : ℕ) {ops : List (FlatOperation F)}  :
-    env.UsesLocalWitnessesFlat n ops ↔ env.ExtendsVector (localWitnesses env ops) n := by sorry
+    env.UsesLocalWitnessesFlat n ops ↔ env.ExtendsVector (localWitnesses env ops) n := by
+  induction ops using FlatOperation.induct generalizing n with
+  | empty =>
+      simp only [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll, FlatOperation.localLength,
+        FlatOperation.localWitnesses, Environment.ExtendsVector]
+      constructor
+      · intro _
+        intro i
+        exact False.elim (Nat.not_lt_zero _ i.isLt)
+      · intro _
+        trivial
+  | assert op ops ih =>
+      simpa only [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll, FlatOperation.localLength,
+        FlatOperation.localWitnesses, Environment.ExtendsVector, true_and] using ih n
+  | lookup op ops ih =>
+      simpa only [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll, FlatOperation.localLength,
+        FlatOperation.localWitnesses, Environment.ExtendsVector, true_and] using ih n
+  | witness m c ops ih =>
+      constructor
+      · intro h
+        rw [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll] at h
+        rw [env_extends_witness]
+        exact ⟨h.1, (ih (m + n)).1 h.2⟩
+      · intro h
+        rw [env_extends_witness] at h
+        rw [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll]
+        exact ⟨h.1, (ih (m + n)).2 h.2⟩
+
 
 theorem can_replace_usesLocalWitnessesCompleteness {env : Environment F} {ops : Operations F} {n : ℕ} (h : ops.SubcircuitsConsistent n) :
   env.UsesLocalWitnesses n ops → env.UsesLocalWitnessesCompleteness n ops := by

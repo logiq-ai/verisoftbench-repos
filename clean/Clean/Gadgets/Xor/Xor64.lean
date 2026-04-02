@@ -95,7 +95,80 @@ lemma xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) :
   have h_byte : x.val ^^^ y.val < 256 := Nat.xor_lt_two_pow (n:=8) hx hy
   linarith [p_large_enough.elim]
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro offset env input_var hUses input hInput hAssumptions
+  rcases input_var with ⟨x_var, y_var⟩
+  rcases input with ⟨x, y⟩
+  rcases x_var with ⟨x0_var, x1_var, x2_var, x3_var, x4_var, x5_var, x6_var, x7_var⟩
+  rcases y_var with ⟨y0_var, y1_var, y2_var, y3_var, y4_var, y5_var, y6_var, y7_var⟩
+  rcases x with ⟨x0, x1, x2, x3, x4, x5, x6, x7⟩
+  rcases y with ⟨y0, y1, y2, y3, y4, y5, y6, y7⟩
+  simp only [circuit_norm, explicit_provable_type, Inputs.mk.injEq, U64.mk.injEq] at hInput
+  simp only [circuit_norm, Assumptions] at hAssumptions
+  rcases hAssumptions with ⟨hx, hy⟩
+  simp only [U64.Normalized] at hx hy
+  rcases hx with ⟨hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7⟩
+  rcases hy with ⟨hy0, hy1, hy2, hy3, hy4, hy5, hy6, hy7⟩
+  simp only [circuit_norm, main, ByteXorTable, varFromOffset, Vector.mapRange] at hUses
+  have hz0 : env.get (offset + 0) = ((x0.val ^^^ y0.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨0, by decide⟩
+  have hz1 : env.get (offset + 1) = ((x1.val ^^^ y1.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨1, by decide⟩
+  have hz2 : env.get (offset + 2) = ((x2.val ^^^ y2.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨2, by decide⟩
+  have hz3 : env.get (offset + 3) = ((x3.val ^^^ y3.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨3, by decide⟩
+  have hz4 : env.get (offset + 4) = ((x4.val ^^^ y4.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨4, by decide⟩
+  have hz5 : env.get (offset + 5) = ((x5.val ^^^ y5.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨5, by decide⟩
+  have hz6 : env.get (offset + 6) = ((x6.val ^^^ y6.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨6, by decide⟩
+  have hz7 : env.get (offset + 7) = ((x7.val ^^^ y7.val : ℕ) : F p) := by
+    simpa [hInput] using hUses ⟨7, by decide⟩
+  simp only [circuit_norm, main, ByteXorTable, varFromOffset, Vector.mapRange, hInput,
+    hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7,
+    hy0, hy1, hy2, hy3, hy4, hy5, hy6, hy7]
+  constructor
+  · calc
+      ZMod.val (env.get offset) = ZMod.val (((x0.val ^^^ y0.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz0
+      _ = x0.val ^^^ y0.val := xor_val hx0 hy0
+  constructor
+  · calc
+      ZMod.val (env.get (offset + 1)) = ZMod.val (((x1.val ^^^ y1.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz1
+      _ = x1.val ^^^ y1.val := xor_val hx1 hy1
+  constructor
+  · calc
+      ZMod.val (env.get (offset + 2)) = ZMod.val (((x2.val ^^^ y2.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz2
+      _ = x2.val ^^^ y2.val := xor_val hx2 hy2
+  constructor
+  · calc
+      ZMod.val (env.get (offset + 3)) = ZMod.val (((x3.val ^^^ y3.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz3
+      _ = x3.val ^^^ y3.val := xor_val hx3 hy3
+  constructor
+  · calc
+      ZMod.val (env.get (offset + 4)) = ZMod.val (((x4.val ^^^ y4.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz4
+      _ = x4.val ^^^ y4.val := xor_val hx4 hy4
+  constructor
+  · calc
+      ZMod.val (env.get (offset + 5)) = ZMod.val (((x5.val ^^^ y5.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz5
+      _ = x5.val ^^^ y5.val := xor_val hx5 hy5
+  constructor
+  · calc
+      ZMod.val (env.get (offset + 6)) = ZMod.val (((x6.val ^^^ y6.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz6
+      _ = x6.val ^^^ y6.val := xor_val hx6 hy6
+  · calc
+      ZMod.val (env.get (offset + 7)) = ZMod.val (((x7.val ^^^ y7.val : ℕ) : F p)) := by
+        simpa using congrArg ZMod.val hz7
+      _ = x7.val ^^^ y7.val := xor_val hx7 hy7
+
 
 def circuit : FormalCircuit (F p) Inputs U64 where
   Assumptions

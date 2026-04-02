@@ -821,15 +821,53 @@ lemma cycle_from_suffix_contains (R : Run S) (suffix : List S) (current y : S)
     exact h_contains_suffix t
 
 omit [Fintype S] in
-/-- If a run contains an acyclic path and has an edge from the end back into the path,
-    then the run has a cycle. -/
 lemma path_with_back_edge_creates_cycle (R : Run S) (path : List S) (current y : S)
     (h_acyclic : R.isAcyclic)
     (h_end : path.getLast? = some current)
     (h_contains : R.containsPath path)
     (h_y_in_path : y ∈ path)
     (h_edge : R (current, y) > 0) :
-    R.hasCycle := by sorry
+    R.hasCycle := by
+  rcases List.mem_iff_getElem.mp h_y_in_path with ⟨i, hi, hiy⟩
+  let suffix := path.drop i
+  have h_suffix_nonempty : suffix ≠ [] := by
+    dsimp [suffix]
+    exact drop_of_lt_length_nonempty path i hi
+  have h_suffix_head : suffix.head? = some y := by
+    dsimp [suffix]
+    rw [List.head?_drop]
+    simpa [hi] using congrArg some hiy
+  have h_suffix_last : suffix.getLast? = some current := by
+    dsimp [suffix]
+    rw [List.getLast?_drop]
+    simp [Nat.not_le_of_lt hi, h_end]
+  have h_contains_suffix : R.containsPath suffix := by
+    dsimp [suffix]
+    exact containsPath_drop R path i h_contains
+  have h_path_nodup : path.Nodup :=
+    acyclic_containsPath_nodup R path h_acyclic h_contains
+  have h_suffix_nodup : suffix.Nodup := by
+    dsimp [suffix]
+    exact List.Sublist.nodup (List.drop_sublist i path) h_path_nodup
+  cases hsuffix : suffix with
+  | nil =>
+      exact False.elim (h_suffix_nonempty hsuffix)
+  | cons z zs =>
+      simp only [hsuffix] at h_suffix_head
+      injection h_suffix_head with hz
+      subst z
+      let cycle := suffix ++ [y]
+      have h_cycle_head : cycle.head? = some y := by
+        simp [cycle, hsuffix]
+      have h_cycle_last : cycle.getLast? = some y := by
+        dsimp [cycle]
+        simpa using (List.getLast?_concat (l := suffix) (a := y))
+      refine ⟨cycle, ?_, ?_, ?_⟩
+      · simp [cycle, hsuffix]
+      · rw [h_cycle_head, h_cycle_last]
+      · dsimp [cycle]
+        exact cycle_from_suffix_contains R suffix current y h_suffix_nodup h_contains_suffix h_suffix_nonempty h_suffix_last h_edge
+
 
 omit [Fintype S] in
 /-- If there's an edge from current to y, and y is in the path from root to current,

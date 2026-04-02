@@ -132,9 +132,16 @@ lemma probOutput_seq_map_eq_tsum_ite [spec.FiniteRange] [DecidableEq γ]
 -- by simp_rw [seq_map_eq_bind_bind, prob_event_bind_eq_sum, finset.mul_sum,
 --   prob_event_return, mul_ite, mul_one, mul_zero]
 
+theorem seq_map_eq_map_uncurry_prod_mk (oa : OracleComp spec α) (ob : OracleComp spec β) (f : α → β → γ) : f <$> oa <*> ob = Function.uncurry f <$> (Prod.mk <$> oa <*> ob) := by
+  rw [map_seq, Functor.map_map]
+  rfl
+
 lemma probEvent_seq_map_eq_probEvent_comp_uncurry [spec.FiniteRange]
     (p : γ → Prop) : [p | f <$> oa <*> ob] =
-      [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] := by sorry
+      [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] := by
+  rw [probEvent_comp (oa := Prod.mk <$> oa <*> ob) (f := Function.uncurry f) (q := p)]
+  rw [← seq_map_eq_map_uncurry_prod_mk (oa := oa) (ob := ob) (f := f)]
+
 
 
 lemma probEvent_seq_map_eq_probEvent [spec.FiniteRange] (p : γ → Prop) :

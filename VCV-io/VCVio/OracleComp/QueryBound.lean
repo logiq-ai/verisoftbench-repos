@@ -42,9 +42,38 @@ lemma isQueryBound_mono {oa : OracleComp spec α} (qb : ι → ℕ) {qb' : ι �
     (h' : IsQueryBound oa qb) (h : qb ≤ qb') : IsQueryBound oa qb' :=
   λ qc hqc ↦ le_trans (h' qc hqc) h
 
+def countingOracle_queryCountComp (oa : OracleComp spec α) : OracleComp spec (QueryCount spec) :=
+  snd <$> (simulateQ countingOracle oa).run
+
+theorem support_le_iff_probEvent_orElse_zero_eq_one [spec.FiniteRange]
+    {ob : OracleComp spec (QueryCount spec)} {qb : ι → ℕ} :
+    (∀ qc ∈ ob.support, qc ≤ qb) ↔ [(· ≤ qb) | ob <|> return 0] = 1 := by
+  rw [probEvent_eq_one_iff]
+  constructor
+  · intro h
+    refine ⟨?_, ?_⟩
+    · simp [probFailure_orElse]
+    · by_cases hnf : ob.neverFails
+      · simpa [support_orElse, hnf] using h
+      · intro qc hqc
+        simp only [support_orElse, hnf, support_pure, Set.mem_union, Set.mem_singleton_iff] at hqc ⊢
+        rcases hqc with hqc | rfl
+        · exact h qc hqc
+        · exact zero_le _
+  · rintro ⟨_, h⟩ qc hqc
+    exact h qc <| by
+      by_cases hnf : ob.neverFails
+      · simpa [support_orElse, hnf] using hqc
+      · simp only [support_orElse, hnf, support_pure, Set.mem_union, Set.mem_singleton_iff]
+        exact Or.inl hqc
+
 lemma isQueryBound_iff_probEvent [spec.FiniteRange] {oa : OracleComp spec α} {qb : ι → ℕ} :
     IsQueryBound oa qb ↔
-      [(· ≤ qb) | snd <$> (simulateQ countingOracle oa).run <|> return 0] = 1 := by sorry
+      [(· ≤ qb) | snd <$> (simulateQ countingOracle oa).run <|> return 0] = 1 := by
+  simpa [IsQueryBound, countingOracle_queryCountComp] using
+    (support_le_iff_probEvent_orElse_zero_eq_one
+      (ob := countingOracle_queryCountComp oa) (qb := qb))
+
 
 @[simp]
 lemma isQueryBound_pure (a : α) (qb : ι → ℕ) : IsQueryBound (pure a : OracleComp spec α) qb := by

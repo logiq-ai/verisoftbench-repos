@@ -44,7 +44,27 @@ lemma isQueryBound_mono {oa : OracleComp spec α} (qb : ι → ℕ) {qb' : ι �
 
 lemma isQueryBound_iff_probEvent [spec.FiniteRange] {oa : OracleComp spec α} {qb : ι → ℕ} :
     IsQueryBound oa qb ↔
-      [(· ≤ qb) | snd <$> (simulateQ countingOracle oa).run <|> return 0] = 1 := by sorry
+      [(· ≤ qb) | snd <$> (simulateQ countingOracle oa).run <|> return 0] = 1 := by
+  rw [IsQueryBound, probEvent_eq_one_iff]
+  constructor
+  · intro h
+    refine ⟨by simp, ?_⟩
+    intro qc hqc
+    rw [support_orElse] at hqc
+    split_ifs at hqc
+    · exact h qc hqc
+    · simp only [support_pure, Set.mem_union, Set.mem_singleton_iff] at hqc
+      rcases hqc with hqc | rfl
+      · exact h qc hqc
+      · simpa using (zero_le qb)
+  · rintro ⟨_, h⟩ qc hqc
+    exact h qc <| by
+      rw [support_orElse]
+      split_ifs
+      · simpa using hqc
+      · simp only [support_pure, Set.mem_union, Set.mem_singleton_iff]
+        exact Or.inl (by simpa using hqc)
+
 
 @[simp]
 lemma isQueryBound_pure (a : α) (qb : ι → ℕ) : IsQueryBound (pure a : OracleComp spec α) qb := by

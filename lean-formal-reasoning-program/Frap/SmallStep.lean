@@ -499,7 +499,48 @@ There are two cases to consider:
   Finally, `c (n₁ + n₂)` is a value, which is in turn a normal form by `nf_same_as_value`.
 -/
 
-theorem step_normalizing : normalizing Step := by sorry
+theorem multistep_congr_2_const (n : Nat) (t₂ t₂' : Tm) : (Multi Step t₂ t₂') → (Multi Step (p (c n) t₂) (p (c n) t₂')) := by
+  intro h
+  induction h with
+  | multi_refl =>
+      apply multi_refl
+  | multi_step t₂ t₂' t₂'' hstep _ ih =>
+      apply multi_step
+      . apply st_plus2
+        . apply v_const
+        . exact hstep
+      . exact ih
+
+theorem normal_form_is_const (t : Tm) : normal_form Step t → ∃ n : Nat, t = c n := by
+  intro hnf
+  have hv : Value t := (nf_same_as_value t).mp hnf
+  cases hv with
+  | v_const n =>
+      exact ⟨n, rfl⟩
+
+theorem step_normalizing : normalizing Step := by
+  unfold normalizing
+  intro t
+  induction t with
+  | c n =>
+      refine ⟨c n, ?_, ?_⟩
+      · exact multi_refl _
+      · exact value_is_nf (c n) (v_const n)
+  | p t₁ t₂ ih₁ ih₂ =>
+      rcases ih₁ with ⟨t₁', h₁, hnf₁⟩
+      rcases ih₂ with ⟨t₂', h₂, hnf₂⟩
+      rcases normal_form_is_const t₁' hnf₁ with ⟨n₁, rfl⟩
+      rcases normal_form_is_const t₂' hnf₂ with ⟨n₂, rfl⟩
+      refine ⟨c (n₁ + n₂), ?_, ?_⟩
+      · have hleft : Multi Step (p t₁ t₂) (p (c n₁) t₂) :=
+          multistep_congr_1 t₁ (c n₁) t₂ h₁
+        have hright : Multi Step (p (c n₁) t₂) (p (c n₁) (c n₂)) :=
+          multistep_congr_2_const n₁ t₂ (c n₂) h₂
+        have hlast : Multi Step (p (c n₁) (c n₂)) (c (n₁ + n₂)) :=
+          multi_R _ _ _ _ (st_plusConstConst n₁ n₂)
+        exact multi_trans _ _ _ _ _ hleft (multi_trans _ _ _ _ _ hright hlast)
+      · exact value_is_nf (c (n₁ + n₂)) (v_const (n₁ + n₂))
+
 
 /-
 ### Equivalence of big-step and small-step

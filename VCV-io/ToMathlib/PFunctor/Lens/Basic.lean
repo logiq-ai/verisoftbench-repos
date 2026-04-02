@@ -371,12 +371,11 @@ theorem prodMap_id :
   · rfl
   · cases x <;> rfl
 
-@[simp]
-theorem prodPair_fst_snd :
-    Lens.prodPair Lens.fst Lens.snd = Lens.id.{max uA₁ uA₂, max uB₁ uB₂} (P * Q) := by
+theorem prodPair_fst_snd: Lens.prodPair Lens.fst Lens.snd = Lens.id.{max uA₁ uA₂, max uB₁ uB₂} (P * Q) := by
   ext a x
   · rfl
   · cases x <;> rfl
+
 
 namespace Equiv
 

@@ -622,7 +622,28 @@ theorem bind_terminates m (act : Wp m σ ρ) (act' : ρ -> Wp m σ ρ') s [Lawfu
   act.alwaysSuccessfullyTerminates pre →
   (act.bind act').alwaysSuccessfullyTerminates pre ->
   act.toBigStep s r' s' ->
-  (act' r').alwaysSuccessfullyTerminates (· = s') := by sorry
+  (act' r').alwaysSuccessfullyTerminates (· = s') := by
+  intro hs _ hbind hbig
+  intro t ht
+  cases ht
+  by_cases hgood : act' r' s' (fun _ _ => True)
+  · exact hgood
+  · have hbind' : act s (fun r t => act' r t (fun _ _ => True)) := by
+      exact hbind s hs
+    have hbadImp : ∀ r t, act' r t (fun _ _ => True) → ¬ (r' = r ∧ s' = t) := by
+      intro r t hpost hEq
+      rcases hEq with ⟨hr, hsEq⟩
+      cases hr
+      cases hsEq
+      exact hgood hpost
+    have hbad : act s (fun r t => ¬ (r' = r ∧ s' = t)) := by
+      exact LawfulAction.impl (act := act)
+        (post := fun r t => act' r t (fun _ _ => True))
+        (post' := fun r t => ¬ (r' = r ∧ s' = t))
+        s hbadImp hbind'
+    dsimp [Wp.toBigStep, Wp.toWlp] at hbig
+    exact False.elim (hbig hbad)
+
 
 attribute [-simp] not_and in
 instance (act : Wp .external σ ρ) (act' : ρ -> Wp .external σ ρ')
@@ -671,8 +692,13 @@ instance (act : Wp .external σ ρ) (act' : ρ -> Wp .external σ ρ')
       rw [(inst' ret').equiv (pre := (· = st'))] at h <;> try simp
       { unfold Wp.toBigStep Wp.toWlp at h; simp_all [not_and_iff_not_or_not] }
       have := (inst' ret').lawful
-      apply bind_terminates (act := act) (act' := fun ret => act' ret) (pre := pre) <;> try solve_by_elim
-      unfold Wp.toBigStep Wp.toWlp; simp [not_and_iff_not_or_not, *]
+      have hterm' : (act' ret').alwaysSuccessfullyTerminates (· = st') := by
+        refine bind_terminates (m := .external) (act := act) (act' := fun ret => act' ret)
+          (pre := pre) (s := s'') (s' := st') (r' := ret') hpre actTerm ?_ ?_
+        · simpa [Wp.bind] using term
+        · unfold Wp.toBigStep Wp.toWlp
+          simpa [not_and_iff_not_or_not]
+      exact hterm' _ rfl
 
 end GenBigStepInstances
 

@@ -222,11 +222,32 @@ namespace TotalCorrectness
 
 variable [∀ α, CCPO (m α)] [MonoBind m]
 
-lemma repeat_inv (f : Unit -> β -> m (ForInStep β))
+theorem repeat_inv (f : Unit -> β -> m (ForInStep β))
   (inv : ForInStep β -> l) (measure : β -> Nat)
   init :
    (∀ b, triple (inv (.yield b)) (f () b) (fun | .yield b' => inv (.yield b') ⊓ ⌜ measure b' < measure b ⌝ | .done b' => inv (.done b'))) ->
-   triple (inv (.yield init)) (Loop.forIn.loop f init) (fun b => inv (.done b)) := by sorry
+   triple (inv (.yield init)) (Loop.forIn.loop f init) (fun b => inv (.done b)) := by
+  intro hstep
+  let P : Nat → Prop := fun n =>
+    ∀ b, measure b = n →
+      triple (inv (.yield b)) (Loop.forIn.loop f b) (fun b' => inv (.done b'))
+  have hP : ∀ n, (∀ m < n, P m) → P n := by
+    intro n ih b hb
+    rw [triple, Loop.forIn.loop.eq_def, wp_bind]
+    apply le_trans
+    · exact hstep b
+    · apply wp_cons
+      intro r
+      cases r with
+      | done b' => simp [wp_pure]
+      | yield b' =>
+          rw [pure_intro_l]
+          intro hlt
+          exact ih (measure b') (by simpa [hb] using hlt) b' rfl
+  have hmain : P (measure init) := by
+    exact Nat.strong_induction_on (measure init) hP
+  exact hmain init rfl
+
 
 
 lemma repeat_inv_split (f : Unit -> β -> m (ForInStep β))

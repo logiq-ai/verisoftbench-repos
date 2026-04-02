@@ -81,6 +81,16 @@ lemma probEvent_seq_eq_tsum_ite [spec.FiniteRange] (p : β → Prop) [DecidableP
 --     evalDist (og <*> oa) = evalDist (og' <*> oa'):= by
 --   sorry
 
+-- TODO: should have a map lemmas file probably
+lemma probOutput_map_eq_single [spec.FiniteRange] {oa : OracleComp spec α} {f : α → β} {y : β}
+    (x : α) (h : ∀ x' ∈ oa.support, y = f x' → x = x') (h' : f x = y) :
+    [= y | f <$> oa] = [= x | oa] := by
+  rw [probOutput_map_eq_tsum]
+  refine (tsum_eq_single x (λ x' hx' ↦ ?_)).trans (by rw [h', probOutput_pure_self, mul_one])
+  specialize h x'
+  simp only [mul_eq_zero, probOutput_eq_zero_iff, support_pure, Set.mem_singleton_iff]
+  tauto
+
 section seq_map
 
 variable (oa : OracleComp spec α) (ob : OracleComp spec β) (f : α → β → γ)
@@ -197,13 +207,60 @@ lemma probOutput_seq_map_eq_mul_of_injective2 [spec.FiniteRange]
 
 end injective2
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and there exists unique `x` and `y` such that `f x y = z` (given as explicit arguments),
-then the probability of getting `z` as an output of `f <$> oa <*> ob`
-is the product of probabilities of getting `x` and `y` from `oa` and `ob` respectively. -/
+theorem probOutput_seq_map_eq_mul_of_mem_support [spec.FiniteRange] (x : α) (y : β) (z : γ)
+    (hx : x ∈ oa.support) (hy : y ∈ ob.support)
+    (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
+    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by
+  have hz : z = f x y := (h x hx y hy).2 ⟨rfl, rfl⟩
+  have hmap : Function.uncurry f <$> (Prod.mk <$> oa <*> ob) = f <$> oa <*> ob := by
+    simp only [map_seq, Functor.map_map, Function.comp_def]
+    rfl
+  have hsingle :
+      [= z | Function.uncurry f <$> (Prod.mk <$> oa <*> ob)] =
+        [= (x, y) | Prod.mk <$> oa <*> ob] := by
+    exact probOutput_map_eq_single (oa := Prod.mk <$> oa <*> ob) (f := Function.uncurry f)
+      (y := z) (x := (x, y))
+      (by
+        intro p hp hpz
+        simp only [support_seq_map_eq_image2, Set.mem_image2] at hp
+        rcases hp with ⟨x', hx', y', hy', rfl⟩
+        rcases (h x' hx' y' hy').1 (by simpa using hpz) with ⟨rfl, rfl⟩
+        rfl)
+      (by
+        simpa using hz.symm)
+  rw [← hmap, hsingle]
+  simpa using probOutput_seq_map_eq_mul_of_injective2 (oa := oa) (ob := ob)
+    (f := Prod.mk) Prod.mk.injective2 x y
+
+theorem probOutput_seq_map_eq_zero_of_not_mem_support [spec.FiniteRange] (x : α) (y : β) (z : γ)
+    (hxy : x ∉ oa.support ∨ y ∉ ob.support)
+    (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
+    [= z | f <$> oa <*> ob] = 0 := by
+  rw [probOutput_eq_zero_iff]
+  intro hz
+  rw [support_seq_map_eq_image2] at hz
+  rcases hz with ⟨x', hx', y', hy', hxyz⟩
+  have h' := (h x' hx' y' hy').mp hxyz.symm
+  rcases h' with ⟨rfl, rfl⟩
+  exact hxy.elim (fun hx => hx hx') (fun hy => hy hy')
+
 lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
-    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
+    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by
+  by_cases hx : x ∈ oa.support
+  · by_cases hy : y ∈ ob.support
+    · exact probOutput_seq_map_eq_mul_of_mem_support oa ob f x y z hx hy h
+    · have hz : [= z | f <$> oa <*> ob] = 0 :=
+        probOutput_seq_map_eq_zero_of_not_mem_support oa ob f x y z (Or.inr hy) h
+      have hy0 : [= y | ob] = 0 := by
+        simpa only [probOutput_eq_zero_iff] using hy
+      rw [hz, hy0, mul_zero]
+  · have hz : [= z | f <$> oa <*> ob] = 0 :=
+      probOutput_seq_map_eq_zero_of_not_mem_support oa ob f x y z (Or.inl hx) h
+    have hx0 : [= x | oa] = 0 := by
+      simpa only [probOutput_eq_zero_iff] using hx
+    rw [hz, hx0, zero_mul]
+
 
 /-- If the results of the computations `oa` and `ob` are combined with some function `f`,
 and `p` is an event such that outputs of `f` are in `p` iff the individual components
@@ -218,15 +275,5 @@ lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
     [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by sorry
 
 end seq_map
-
--- TODO: should have a map lemmas file probably
-lemma probOutput_map_eq_single [spec.FiniteRange] {oa : OracleComp spec α} {f : α → β} {y : β}
-    (x : α) (h : ∀ x' ∈ oa.support, y = f x' → x = x') (h' : f x = y) :
-    [= y | f <$> oa] = [= x | oa] := by
-  rw [probOutput_map_eq_tsum]
-  refine (tsum_eq_single x (λ x' hx' ↦ ?_)).trans (by rw [h', probOutput_pure_self, mul_one])
-  specialize h x'
-  simp only [mul_eq_zero, probOutput_eq_zero_iff, support_pure, Set.mem_singleton_iff]
-  tauto
 
 end OracleComp

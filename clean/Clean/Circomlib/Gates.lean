@@ -635,7 +635,9 @@ theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     input = eval env input_var →
     Assumptions n input →
     Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset) →
-    Spec n input (env ((main input_var).output offset)) := by sorry
+    Spec n input (env ((main input_var).output offset)) := by
+  sorry
+
 
 lemma main_output_binary (n : ℕ) (offset : ℕ) (env : Environment (F p))
     (input_var : Var (fields n) (F p)) (input : fields n (F p))

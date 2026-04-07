@@ -47,12 +47,21 @@ cd VeriSoftBench-eval
 docker build -t verisoftbench/lean:latest .
 docker run -d --name verisoftbench-lean verisoftbench/lean:latest
 
-# 3. Download patches
+# 3. Submit tasks to AlephProver (ALREADY DONE — skip this step for reproducing existing results)
+#    The 92 completed proof requests are tracked in successful_submissions.json.
+#    To submit NEW tasks, use:
+#      cd ../verisoftbench-repos
+#      export ALEPH_API_KEY=sk-aleph-...
+#      python3 submit.py <task_id> --env prod -o runs.json
+#    Then wait for completion and download patches with:
+#      python3 update_results.py --from-file runs.json
+
+# 4. Download patches (fetches .patch files from API using request IDs in successful_submissions.json)
 cd ../verisoftbench-repos
 export ALEPH_API_KEY=sk-aleph-...
 python3 download_patches.py
 
-# 4. Evaluate
+# 5. Evaluate
 cd ../VeriSoftBench-eval
 export OPENAI_API_KEY=sk-proj-...
 python3 evaluate.py \

@@ -47,18 +47,11 @@ cd VeriSoftBench-eval
 docker build -t verisoftbench/lean:latest .
 docker run -d --name verisoftbench-lean verisoftbench/lean:latest
 
-# 3. Submit tasks to AlephProver (ALREADY DONE — skip this step for reproducing existing results)
-#    The 91 successful proof requests are tracked in successful_submissions.json.
-#
-#    To run from scratch, get the 100 Aristotle task IDs from aristotle_tasks.json:
-#      jq '.[].id' aristotle_tasks.json | tr '\n' ' '
-#
-#    To submit all 100:
-#      cd verisoftbench-repos
-#      export ALEPH_API_KEY=sk-aleph-...
-#      python3 submit.py 4 5 14 15 29 ... --env prod -o runs.json
-#    Then wait for completion and download patches:
-#      python3 update_results.py --from-file runs.json
+# 3. Submit all 100 tasks to AlephProver
+#    (ALREADY DONE — skip for reproducing existing results, see successful_submissions.json)
+#    cd ../verisoftbench-repos
+#    export ALEPH_API_KEY=sk-aleph-...
+#    python3 submit.py $(jq '.[].id' aristotle_tasks.json) --env prod -o runs.json
 
 # 4. Download patches (fetches .patch files from API using request IDs in successful_submissions.json)
 cd ../verisoftbench-repos

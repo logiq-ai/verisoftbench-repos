@@ -1,0 +1,918 @@
+[
+  {
+    "task_id": 4,
+    "theorem_name": "Nat.getBit_repr",
+    "lean_root": "ArkLib",
+    "rel_path": "ArkLib/Data/Nat/Bitwise.lean",
+    "request_id": "96842f5d-5109-4235-b705-19738c2a837c",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/96842f5d-5109-4235-b705-19738c2a837c",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/357"
+  },
+  {
+    "task_id": 5,
+    "theorem_name": "Nat.getBit_of_binaryFinMapToNat",
+    "lean_root": "ArkLib",
+    "rel_path": "ArkLib/Data/Nat/Bitwise.lean",
+    "request_id": "9f734ea0-ee3a-43ea-b07b-0e263f2f990d",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/9f734ea0-ee3a-43ea-b07b-0e263f2f990d",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/39"
+  },
+  {
+    "task_id": 14,
+    "theorem_name": "Nat.getLowBits_succ",
+    "lean_root": "ArkLib",
+    "rel_path": "ArkLib/Data/Nat/Bitwise.lean",
+    "request_id": "7e2b1e49-3966-4e6e-b16d-4b5519a0aee7",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/7e2b1e49-3966-4e6e-b16d-4b5519a0aee7",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/37"
+  },
+  {
+    "task_id": 15,
+    "theorem_name": "rsum_eq_t1_square_aux",
+    "lean_root": "ArkLib",
+    "rel_path": "ArkLib/Data/FieldTheory/BinaryField/Tower/Prelude.lean",
+    "request_id": "2ae7a646-3599-4e67-99e5-b9917b3ee043",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/2ae7a646-3599-4e67-99e5-b9917b3ee043",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/13"
+  },
+  {
+    "task_id": 29,
+    "theorem_name": "Vector.foldl_succ",
+    "lean_root": "ArkLib",
+    "rel_path": "ArkLib/Data/Vector/Basic.lean",
+    "request_id": "25b46e66-0a42-4f5c-8011-479bf4bb7e1e",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/25b46e66-0a42-4f5c-8011-479bf4bb7e1e",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/23"
+  },
+  {
+    "task_id": 123,
+    "theorem_name": "MemoryAccessList.isConsistent_iff_all_single_address",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "78532ec0-68c3-40ba-b3e5-497479a96d4b",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/78532ec0-68c3-40ba-b3e5-497479a96d4b",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/57"
+  },
+  {
+    "task_id": 124,
+    "theorem_name": "Gadgets.Addition32.Theorems.add32_soundness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Addition32/Theorems.lean",
+    "request_id": "8eb5fa41-b027-4fba-9e34-9005b06ded1e",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/8eb5fa41-b027-4fba-9e34-9005b06ded1e",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/58"
+  },
+  {
+    "task_id": 125,
+    "theorem_name": "Gadgets.ByteDecomposition.Theorems.soundness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/ByteDecomposition/Theorems.lean",
+    "request_id": "0b609908-ba72-407c-bb18-7ab9232ee232",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/0b609908-ba72-407c-bb18-7ab9232ee232",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/67"
+  },
+  {
+    "task_id": 126,
+    "theorem_name": "MemoryAccessList.isConsistentOffline_implies_single_address",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "3bf9ca67-ce06-47eb-ad71-39205ceeb4b3",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/3bf9ca67-ce06-47eb-ad71-39205ceeb4b3",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/66"
+  },
+  {
+    "task_id": 128,
+    "theorem_name": "Gadgets.ByteDecomposition.soundness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/ByteDecomposition/ByteDecomposition.lean",
+    "request_id": "243fd28d-3c33-4913-937b-e67590f4be56",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/243fd28d-3c33-4913-937b-e67590f4be56",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/89"
+  },
+  {
+    "task_id": 129,
+    "theorem_name": "Gadgets.Or.Or8.completeness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Or/Or8.lean",
+    "request_id": "e2560247-9666-4fcc-92f5-773661d58c41",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/e2560247-9666-4fcc-92f5-773661d58c41",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/86"
+  },
+  {
+    "task_id": 131,
+    "theorem_name": "Utils.StateTransition.size_removeCycle_lt",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/SourceSinkPath.lean",
+    "request_id": "1f7af233-41a7-46fb-a83a-696e7fcb0c42",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/1f7af233-41a7-46fb-a83a-696e7fcb0c42",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/83"
+  },
+  {
+    "task_id": 132,
+    "theorem_name": "U32.ByteVector.bitwise_componentwise",
+    "lean_root": "clean",
+    "rel_path": "Clean/Types/U32.lean",
+    "request_id": "96e0547f-fbe5-4470-9d30-dc10a1beb115",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/96e0547f-fbe5-4470-9d30-dc10a1beb115",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/115",
+    "note": "Fixed theorem name: U32.ByteVector.bitwise_componentwise -> bitwise_componentwise"
+  },
+  {
+    "task_id": 133,
+    "theorem_name": "MemoryAccessList.isConsistentOffline_iff_all_single_addresses",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "135cf9c6-c97d-483e-a291-a6ff515a228a",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/135cf9c6-c97d-483e-a291-a6ff515a228a",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/61"
+  },
+  {
+    "task_id": 134,
+    "theorem_name": "FlatOperation.proverEnvironment_usesLocalWitnesses",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Theorems.lean",
+    "request_id": "cf873b3c-b053-4629-a8e2-f0a84ba9ddd3",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/cf873b3c-b053-4629-a8e2-f0a84ba9ddd3",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/63"
+  },
+  {
+    "task_id": 135,
+    "theorem_name": "Utils.StateTransition.acyclic_has_leaf_aux",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/SourceSinkPath.lean",
+    "request_id": "54ae2eec-b597-449e-8bb2-fbdfbf9265cf",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/54ae2eec-b597-449e-8bb2-fbdfbf9265cf",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/60"
+  },
+  {
+    "task_id": 136,
+    "theorem_name": "MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "eee18528-de49-4c73-84cf-30c5859763a1",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/eee18528-de49-4c73-84cf-30c5859763a1",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/107"
+  },
+  {
+    "task_id": 137,
+    "theorem_name": "MemoryAccessList.isConsistentOnline_iff_isConsistentOffline",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "6c99d538-ea38-40c9-a673-481e0d8cb063",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/6c99d538-ea38-40c9-a673-481e0d8cb063",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/65"
+  },
+  {
+    "task_id": 138,
+    "theorem_name": "Utils.StateTransition.path_with_back_edge_creates_cycle",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/SourceSinkPath.lean",
+    "request_id": "66ba8639-96b8-481e-9c8e-714ca4f06213",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/66ba8639-96b8-481e-9c8e-714ca4f06213",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/108"
+  },
+  {
+    "task_id": 139,
+    "theorem_name": "Vector.flatten_toChunks",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/Vector.lean",
+    "request_id": "67516d9a-03bd-4b2b-9819-37b2a2a994a9",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/67516d9a-03bd-4b2b-9819-37b2a2a994a9",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/88"
+  },
+  {
+    "task_id": 140,
+    "theorem_name": "Tables.Fibonacci32.fib_constraints",
+    "lean_root": "clean",
+    "rel_path": "Clean/Tables/Fibonacci32.lean",
+    "request_id": "11525756-39b2-45a2-bbd2-389230e0340f",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/11525756-39b2-45a2-bbd2-389230e0340f",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/105"
+  },
+  {
+    "task_id": 141,
+    "theorem_name": "MemoryAccessList.isConsistentOnline_iff_sorted_isConsistentOffline",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "b65c4406-77fa-4005-9190-884c6974e8f2",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/b65c4406-77fa-4005-9190-884c6974e8f2",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/64"
+  },
+  {
+    "task_id": 142,
+    "theorem_name": "U32.value_injective_on_normalized",
+    "lean_root": "clean",
+    "rel_path": "Clean/Types/U32.lean",
+    "request_id": "b1f820de-4b0a-467c-91f5-eafb65eee8a2",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/b1f820de-4b0a-467c-91f5-eafb65eee8a2",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/356"
+  },
+  {
+    "task_id": 143,
+    "theorem_name": "MemoryAccessList.isConsistentSingleAddress_cons_forall",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "3584f967-29e3-4de9-9905-32dc560b8ebc",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/3584f967-29e3-4de9-9905-32dc560b8ebc",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/84"
+  },
+  {
+    "task_id": 144,
+    "theorem_name": "Utils.StateTransition.acyclic_containsPath_nodup",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/SourceSinkPath.lean",
+    "request_id": "207aef80-ac44-45cf-b068-fbc9fb0759d4",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/207aef80-ac44-45cf-b068-fbc9fb0759d4",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/85"
+  },
+  {
+    "task_id": 145,
+    "theorem_name": "Gadgets.And.And8.completeness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/And/And8.lean",
+    "request_id": "a3f32764-9014-4a97-8093-7427ca1e113d",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/a3f32764-9014-4a97-8093-7427ca1e113d",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/62"
+  },
+  {
+    "task_id": 146,
+    "theorem_name": "Utils.StateTransition.acyclic_run_has_path_from_source_to_sink",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/SourceSinkPath.lean",
+    "request_id": "b3d7f393-d222-4cc4-a21f-0a23ea78ba87",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/b3d7f393-d222-4cc4-a21f-0a23ea78ba87",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/59"
+  },
+  {
+    "task_id": 147,
+    "theorem_name": "Circuit.FoldlM.operations_eq",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Loops.lean",
+    "request_id": "3339ddbd-73d4-4586-b9e4-58d537271178",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/3339ddbd-73d4-4586-b9e4-58d537271178",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/78"
+  },
+  {
+    "task_id": 148,
+    "theorem_name": "FlatOperation.localWitnesses_toFlat",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Theorems.lean",
+    "request_id": "08fb26fd-c7d9-4fd6-a7a1-a478c61c3fc9",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/08fb26fd-c7d9-4fd6-a7a1-a478c61c3fc9",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/72"
+  },
+  {
+    "task_id": 149,
+    "theorem_name": "Tables.KeccakInductive.tableStatement",
+    "lean_root": "clean",
+    "rel_path": "Clean/Tables/KeccakInductive.lean",
+    "request_id": "db4ecbe0-d841-41a0-88d8-eed4bca1d06b",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/db4ecbe0-d841-41a0-88d8-eed4bca1d06b",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/106",
+    "extra_hint": "IMPORTANT: Do NOT change the theorem signature. Keep the original statement exactly as written. Only replace the proof body.",
+    "note": "Resubmitted with hint to preserve original statement"
+  },
+  {
+    "task_id": 150,
+    "theorem_name": "Environment.usesLocalWitnessesFlat_iff_extends",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Theorems.lean",
+    "request_id": "295d521f-b737-4ad0-80c9-db099d995b47",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/295d521f-b737-4ad0-80c9-db099d995b47",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/110"
+  },
+  {
+    "task_id": 152,
+    "theorem_name": "Gadgets.Not.not_bytewise_value_spec",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Not/Not64.lean",
+    "request_id": "d599bb37-d2fd-465f-bb4f-5a9646468bbc",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/d599bb37-d2fd-465f-bb4f-5a9646468bbc",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/92"
+  },
+  {
+    "task_id": 153,
+    "theorem_name": "Gadgets.And.And8.soundness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/And/And8.lean",
+    "request_id": "f3d6c6fc-0d00-466b-a801-86ef9f11f10a",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/f3d6c6fc-0d00-466b-a801-86ef9f11f10a",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/71"
+  },
+  {
+    "task_id": 154,
+    "theorem_name": "MemoryAccessList.isConsistentOnline_filter_of_consistentOnline",
+    "lean_root": "clean",
+    "rel_path": "Clean/Utils/OfflineMemory.lean",
+    "request_id": "d9edb1b9-2c8b-4624-9707-9aa35e10c992",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/d9edb1b9-2c8b-4624-9707-9aa35e10c992",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/90"
+  },
+  {
+    "task_id": 156,
+    "theorem_name": "FlatOperation.localLength_toFlat",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Theorems.lean",
+    "request_id": "55f93af1-bf26-449e-a0c5-d48748ed1860",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/55f93af1-bf26-449e-a0c5-d48748ed1860",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/91"
+  },
+  {
+    "task_id": 157,
+    "theorem_name": "Gadgets.Xor64.completeness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Xor/Xor64.lean",
+    "request_id": "51a46c49-be26-457f-a131-e2e3367667a6",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/51a46c49-be26-457f-a131-e2e3367667a6",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/68"
+  },
+  {
+    "task_id": 158,
+    "theorem_name": "Circuit.subcircuit_computableWitnesses",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Subcircuit.lean",
+    "request_id": "f83eb4da-b789-4908-b325-c518371e55ac",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/f83eb4da-b789-4908-b325-c518371e55ac",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/73"
+  },
+  {
+    "task_id": 159,
+    "theorem_name": "Gadgets.Xor64.soundness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Xor/Xor64.lean",
+    "request_id": "69d52907-3017-4d5f-abd4-30864a3b2ded",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/69d52907-3017-4d5f-abd4-30864a3b2ded",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/69"
+  },
+  {
+    "task_id": 160,
+    "theorem_name": "Circuit.ext",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Theorems.lean",
+    "request_id": "f1e4ad1d-f1b5-4da8-8c6c-b3d8d364e111",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/f1e4ad1d-f1b5-4da8-8c6c-b3d8d364e111",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/77"
+  },
+  {
+    "task_id": 163,
+    "theorem_name": "Circuit.FoldlM.forAll_iff_const",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Loops.lean",
+    "request_id": "1fab35d7-2301-4226-8bb9-b8fb3dba4590",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/1fab35d7-2301-4226-8bb9-b8fb3dba4590",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/131"
+  },
+  {
+    "task_id": 164,
+    "theorem_name": "Gadgets.Rotation32.Theorems.rotation32_bits_soundness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Rotation32/Theorems.lean",
+    "request_id": "10605c4f-73f3-4d49-84da-b91f7bffb0e4",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/10605c4f-73f3-4d49-84da-b91f7bffb0e4",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/70"
+  },
+  {
+    "task_id": 165,
+    "theorem_name": "Circuit.FoldlM.operations_eq_const",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Loops.lean",
+    "request_id": "7600f48c-132d-4695-9939-eb00ca86825c",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/7600f48c-132d-4695-9939-eb00ca86825c",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/75"
+  },
+  {
+    "task_id": 168,
+    "theorem_name": "FlatOperation.onlyAccessedBelow_all",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Theorems.lean",
+    "request_id": "2ee4a58f-1377-41e3-8190-523817066958",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/2ee4a58f-1377-41e3-8190-523817066958",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/80"
+  },
+  {
+    "task_id": 169,
+    "theorem_name": "Gadgets.Addition8.Theorems.soundness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Addition8/Theorems.lean",
+    "request_id": "1fac427e-e23e-4e7a-b042-fa76803dbd4f",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/1fac427e-e23e-4e7a-b042-fa76803dbd4f",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/79"
+  },
+  {
+    "task_id": 176,
+    "theorem_name": "Circuit.FoldlM.output_eq",
+    "lean_root": "clean",
+    "rel_path": "Clean/Circuit/Loops.lean",
+    "request_id": "2de7597c-fcf8-4650-9185-8e8c4babfab6",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/2de7597c-fcf8-4650-9185-8e8c4babfab6",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/76"
+  },
+  {
+    "task_id": 178,
+    "theorem_name": "Gadgets.Xor32.completeness",
+    "lean_root": "clean",
+    "rel_path": "Clean/Gadgets/Xor/Xor32.lean",
+    "request_id": "b70f68e4-fcb8-454c-b9ee-96ee6928a291",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/b70f68e4-fcb8-454c-b9ee-96ee6928a291",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/74"
+  },
+  {
+    "task_id": 194,
+    "theorem_name": "DemonicChoice.ExtractNonDet.extract_refines_wp",
+    "lean_root": "loom",
+    "rel_path": "Loom/MonadAlgebras/NonDetT'/Extract.lean",
+    "request_id": "a1c59365-8450-465c-afff-cc568f67dc93",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/a1c59365-8450-465c-afff-cc568f67dc93",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/96"
+  },
+  {
+    "task_id": 222,
+    "theorem_name": "Iris.OFE.ContractiveHom.fixpoint_ind",
+    "lean_root": "iris-lean",
+    "rel_path": "src/Iris/Algebra/OFE.lean",
+    "request_id": "5addf3e4-2946-48bb-baa2-315d8a39819e",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/5addf3e4-2946-48bb-baa2-315d8a39819e",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/7",
+    "note": "Resubmitted after fixing Qq dependency in lake-manifest.json"
+  },
+  {
+    "task_id": 245,
+    "theorem_name": "Juvix.Core.Main.Value.Approx.Indexed.preserved_step",
+    "lean_root": "juvix-lean",
+    "rel_path": "Juvix/Core/Main/Semantics/Approx/Indexed.lean",
+    "request_id": "f6f3d41c-6987-42e9-959f-89a3667161df",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/f6f3d41c-6987-42e9-959f-89a3667161df",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/12"
+  },
+  {
+    "task_id": 246,
+    "theorem_name": "Juvix.Core.Main.Value.Approx.Indexed.refl",
+    "lean_root": "juvix-lean",
+    "rel_path": "Juvix/Core/Main/Semantics/Approx/Indexed.lean",
+    "request_id": "9e6519bc-3e55-47c2-9c74-278aa47f159d",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/9e6519bc-3e55-47c2-9c74-278aa47f159d",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/9"
+  },
+  {
+    "task_id": 247,
+    "theorem_name": "Juvix.Core.Main.Eval.toIndexed",
+    "lean_root": "juvix-lean",
+    "rel_path": "Juvix/Core/Main/Semantics/Eval/Indexed.lean",
+    "request_id": "fdb35eed-8a02-4561-a628-6534f89ff5f4",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/fdb35eed-8a02-4561-a628-6534f89ff5f4",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/8"
+  },
+  {
+    "task_id": 249,
+    "theorem_name": "Juvix.Core.Main.Value.Approx.Indexed.trans",
+    "lean_root": "juvix-lean",
+    "rel_path": "Juvix/Core/Main/Semantics/Approx.lean",
+    "request_id": "830dd3de-733b-4688-bced-70d03a7f33ac",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/830dd3de-733b-4688-bced-70d03a7f33ac",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/11"
+  },
+  {
+    "task_id": 250,
+    "theorem_name": "Juvix.Core.Main.Value.Approx.Indexed.anti_monotone",
+    "lean_root": "juvix-lean",
+    "rel_path": "Juvix/Core/Main/Semantics/Approx/Indexed.lean",
+    "request_id": "4e9c4d66-c92b-444d-b250-5d745b7ed7c6",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/4e9c4d66-c92b-444d-b250-5d745b7ed7c6",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/10"
+  },
+  {
+    "task_id": 271,
+    "theorem_name": "TM.progress",
+    "lean_root": "lean-formal-reasoning-program",
+    "rel_path": "Frap/Types.lean",
+    "request_id": "1dc8f7cf-5c79-41c6-8a66-9900b42c3ba0",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/1dc8f7cf-5c79-41c6-8a66-9900b42c3ba0",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/41"
+  },
+  {
+    "task_id": 272,
+    "theorem_name": "Imp.fold_constants_com_sound",
+    "lean_root": "lean-formal-reasoning-program",
+    "rel_path": "Frap/Trans.lean",
+    "request_id": "81790ed3-4651-4896-805a-6922d0ce446c",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/81790ed3-4651-4896-805a-6922d0ce446c",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/45"
+  },
+  {
+    "task_id": 273,
+    "theorem_name": "CImp.par_loop_any_x",
+    "lean_root": "lean-formal-reasoning-program",
+    "rel_path": "Frap/SmallStepImp.lean",
+    "request_id": "2f1c85e0-2dc9-4fcf-bc5f-f79c3f173f13",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/2f1c85e0-2dc9-4fcf-bc5f-f79c3f173f13",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/44"
+  },
+  {
+    "task_id": 274,
+    "theorem_name": "Imp.fold_constants_bexp_sound",
+    "lean_root": "lean-formal-reasoning-program",
+    "rel_path": "Frap/Trans.lean",
+    "request_id": "886183c9-2ccd-4c85-aba9-9bd034030377",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/886183c9-2ccd-4c85-aba9-9bd034030377",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/47"
+  },
+  {
+    "task_id": 275,
+    "theorem_name": "step_normalizing",
+    "lean_root": "lean-formal-reasoning-program",
+    "rel_path": "Frap/SmallStep.lean",
+    "request_id": "7738c3e8-ffaf-45ad-b890-ad2cc58c8e60",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/7738c3e8-ffaf-45ad-b890-ad2cc58c8e60",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/127"
+  },
+  {
+    "task_id": 277,
+    "theorem_name": "Tree.balance_BST",
+    "lean_root": "lean-formal-reasoning-program",
+    "rel_path": "Frap/RedBlack.lean",
+    "request_id": "6e7907dd-5fea-49a2-9403-644a889a9354",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/6e7907dd-5fea-49a2-9403-644a889a9354",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/134",
+    "extra_hint": "CRITICAL INSTRUCTION: DO NOT REPORT SUCCESS IF ANY NODE STILL CONTAINS SORRY. YOU MUST PROVE EVERY SINGLE SUBGOAL. NO SORRY ALLOWED ANYWHERE IN THE FINAL PROOF. IF A HELPER LEMMA HAS SORRY, KEEP WORKING ON IT UNTIL IT IS FULLY PROVEN. THE PROOF IS NOT COMPLETE UNTIL THERE ARE ZERO SORRIES IN THE ENTIRE PATCH.",
+    "note": "Solved with extra hint: \"DO NOT REPORT SUCCESS IF ANY NODE STILL CONTAINS SORRY. YOU MUST PROVE EVERY SINGLE SUBGOAL. NO SORRY ALLOWED ANYWHERE IN THE FINAL PROOF.\" Without this hint, prover reports success with sorry-containing proofs due to is_correct flag bug."
+  },
+  {
+    "task_id": 281,
+    "theorem_name": "Imp.Hoare.hoare_while",
+    "lean_root": "lean-formal-reasoning-program",
+    "rel_path": "Frap/Hoare.lean",
+    "request_id": "339ad14c-9f0c-42a5-8a9c-70dd4d81582e",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/339ad14c-9f0c-42a5-8a9c-70dd4d81582e",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/353"
+  },
+  {
+    "task_id": 356,
+    "theorem_name": "simulation_step",
+    "lean_root": "LeroyCompilerVerificationCourse",
+    "rel_path": "LeroyCompilerVerificationCourse/Compil.lean",
+    "request_id": "0e4e492f-8b76-43dc-9f44-4d9790923c72",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/0e4e492f-8b76-43dc-9f44-4d9790923c72",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/126"
+  },
+  {
+    "task_id": 357,
+    "theorem_name": "compile_com_correct_terminating",
+    "lean_root": "LeroyCompilerVerificationCourse",
+    "rel_path": "LeroyCompilerVerificationCourse/Compil.lean",
+    "request_id": "99a7f1fd-1533-47c1-90e3-4c81550d48a7",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/99a7f1fd-1533-47c1-90e3-4c81550d48a7",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/355"
+  },
+  {
+    "task_id": 359,
+    "theorem_name": "cp_com_correct_terminating",
+    "lean_root": "LeroyCompilerVerificationCourse",
+    "rel_path": "LeroyCompilerVerificationCourse/Constprop.lean",
+    "request_id": "7ab220e2-4c72-4760-a04b-91e1d917e451",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/7ab220e2-4c72-4760-a04b-91e1d917e451",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/31"
+  },
+  {
+    "task_id": 361,
+    "theorem_name": "compile_bexp_correct",
+    "lean_root": "LeroyCompilerVerificationCourse",
+    "rel_path": "LeroyCompilerVerificationCourse/Compil.lean",
+    "request_id": "a4e14648-c6b9-48d0-b9e8-e6e4591dd86b",
+    "env": "prod",
+    "api_url": "https://alephprover.logicalintelligence.com/requests/a4e14648-c6b9-48d0-b9e8-e6e4591dd86b",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/19"
+  },
+  {
+    "task_id": 378,
+    "theorem_name": "DemonicChoice.ExtractNonDet.extract_refines_wp_weak",
+    "lean_root": "loom",
+    "rel_path": "Loom/MonadAlgebras/NonDetT'/Extract.lean",
+    "request_id": "32f292c5-c963-418a-a654-b4fa341e9081",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/32f292c5-c963-418a-a654-b4fa341e9081",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/98"
+  },
+  {
+    "task_id": 381,
+    "theorem_name": "TotalCorrectness.repeat_inv",
+    "lean_root": "loom",
+    "rel_path": "Loom/MonadAlgebras/WP/Basic.lean",
+    "request_id": "24d29797-ce6c-4111-a0d4-4774fa7c021f",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/24d29797-ce6c-4111-a0d4-4774fa7c021f",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/97"
+  },
+  {
+    "task_id": 392,
+    "theorem_name": "p_findNat_some",
+    "lean_root": "loom",
+    "rel_path": "Loom/MonadAlgebras/NonDetT'/Extract.lean",
+    "request_id": "1a160d14-a7ba-4408-90ae-7c1cbb4fcae0",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/1a160d14-a7ba-4408-90ae-7c1cbb4fcae0",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/95"
+  },
+  {
+    "task_id": 396,
+    "theorem_name": "Flat.sup_some",
+    "lean_root": "pcf-lean",
+    "rel_path": "PCF/Flat.lean",
+    "request_id": "5ef48460-c7e3-41dc-a2e4-3a3bf63363ef",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/5ef48460-c7e3-41dc-a2e4-3a3bf63363ef",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/43"
+  },
+  {
+    "task_id": 444,
+    "theorem_name": "triple_forIn_deacreasing",
+    "lean_root": "loom",
+    "rel_path": "Loom/MonadAlgebras/WP/Gen.lean",
+    "request_id": "3c61b216-d70f-42d7-a38c-b7414834bbc5",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/3c61b216-d70f-42d7-a38c-b7414834bbc5",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/94"
+  },
+  {
+    "task_id": 445,
+    "theorem_name": "OracleComp.evalDist_liftComp",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/Coercions/SubSpec.lean",
+    "request_id": "bc61eec0-b5ed-4fd2-9578-be847a8b9e45",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/bc61eec0-b5ed-4fd2-9578-be847a8b9e45",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/22"
+  },
+  {
+    "task_id": 446,
+    "theorem_name": "OracleComp.pure_eq_bind_iff",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/OracleComp.lean",
+    "request_id": "48eeea95-e2fe-47c2-b279-83c3024aeac6",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/48eeea95-e2fe-47c2-b279-83c3024aeac6",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/21"
+  },
+  {
+    "task_id": 447,
+    "theorem_name": "OracleComp.evalDist_uniformSelectFinset",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/Constructions/UniformSelect.lean",
+    "request_id": "51c2bb83-79a7-4d16-8088-341868117192",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/51c2bb83-79a7-4d16-8088-341868117192",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/34"
+  },
+  {
+    "task_id": 450,
+    "theorem_name": "OracleComp.probFailure_bind_eq_sub_mul",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/EvalDist.lean",
+    "request_id": "17e62e21-7255-4f84-8ecd-76f04ab4d20c",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/17e62e21-7255-4f84-8ecd-76f04ab4d20c",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/30"
+  },
+  {
+    "task_id": 451,
+    "theorem_name": "BindEquiv.map_bind_inv",
+    "lean_root": "VCV-io",
+    "rel_path": "ToMathlib/Control/Monad/Equiv.lean",
+    "request_id": "c1d7644f-0760-4466-9c0e-e5dc84ccf203",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/c1d7644f-0760-4466-9c0e-e5dc84ccf203",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/15"
+  },
+  {
+    "task_id": 452,
+    "theorem_name": "OracleComp.mul_le_probEvent_bind",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/EvalDist.lean",
+    "request_id": "8fa876be-3528-4b30-af50-8d89af979bf8",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/8fa876be-3528-4b30-af50-8d89af979bf8",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/29"
+  },
+  {
+    "task_id": 453,
+    "theorem_name": "OracleComp.probEvent_seq_map_eq_mul",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/Seq.lean",
+    "request_id": "0aca0638-7912-434b-bea5-4641d4d04bd9",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/0aca0638-7912-434b-bea5-4641d4d04bd9",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/35"
+  },
+  {
+    "task_id": 454,
+    "theorem_name": "PMF.probOutput_eq",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/EvalDist/Basic.lean",
+    "request_id": "0da2536f-e91a-48f7-8379-f39ea5b093a8",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/0da2536f-e91a-48f7-8379-f39ea5b093a8",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/20"
+  },
+  {
+    "task_id": 455,
+    "theorem_name": "OracleComp.probEvent_congr'",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/EvalDist.lean",
+    "request_id": "8fcf2fb5-7463-404f-954a-ea7aea53922f",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/8fcf2fb5-7463-404f-954a-ea7aea53922f",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/27"
+  },
+  {
+    "task_id": 456,
+    "theorem_name": "PureEquiv.map_pure_inv",
+    "lean_root": "VCV-io",
+    "rel_path": "ToMathlib/Control/Monad/Equiv.lean",
+    "request_id": "324beecd-ed82-4520-944a-125c2298448f",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/324beecd-ed82-4520-944a-125c2298448f",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/17"
+  },
+  {
+    "task_id": 457,
+    "theorem_name": "OracleComp.isQueryBound_iff_probEvent",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/QueryBound.lean",
+    "request_id": "5257f15a-e1ba-448a-a4af-83357a449f7c",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/5257f15a-e1ba-448a-a4af-83357a449f7c",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/32"
+  },
+  {
+    "task_id": 458,
+    "theorem_name": "OracleComp.probEvent_uniformFin",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/EvalDist.lean",
+    "request_id": "e21f99f3-06c4-428f-b826-67c18bb4708b",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/e21f99f3-06c4-428f-b826-67c18bb4708b",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/25"
+  },
+  {
+    "task_id": 459,
+    "theorem_name": "OracleComp.probFailure_bind_of_const",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/EvalDist.lean",
+    "request_id": "b0a7de27-8c93-4ec9-babc-775827f7b319",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/b0a7de27-8c93-4ec9-babc-775827f7b319",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/33"
+  },
+  {
+    "task_id": 460,
+    "theorem_name": "OracleComp.probEvent_seq_map_eq_probEvent_comp_uncurry",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/Seq.lean",
+    "request_id": "88efa8cc-c517-4ea1-88c5-cb072a1a49fd",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/88efa8cc-c517-4ea1-88c5-cb072a1a49fd",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/28"
+  },
+  {
+    "task_id": 462,
+    "theorem_name": "PFunctor.Lens.prodPair_fst_snd",
+    "lean_root": "VCV-io",
+    "rel_path": "ToMathlib/PFunctor/Lens/Basic.lean",
+    "request_id": "693aa869-9bd0-491e-a73a-0ac399b7de11",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/693aa869-9bd0-491e-a73a-0ac399b7de11",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/18"
+  },
+  {
+    "task_id": 466,
+    "theorem_name": "OracleComp.probOutput_seq_map_eq_mul",
+    "lean_root": "VCV-io",
+    "rel_path": "VCVio/OracleComp/DistSemantics/Seq.lean",
+    "request_id": "267e6a1a-c09e-4587-baa9-3dfd8433382c",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/267e6a1a-c09e-4587-baa9-3dfd8433382c",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/26"
+  },
+  {
+    "task_id": 467,
+    "theorem_name": "PFunctor.Lens.sumPair_inl_inr",
+    "lean_root": "VCV-io",
+    "rel_path": "ToMathlib/PFunctor/Lens/Basic.lean",
+    "request_id": "2a05b3b4-3d8b-458c-bb96-51cdffe275b5",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/2a05b3b4-3d8b-458c-bb96-51cdffe275b5",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/16"
+  },
+  {
+    "task_id": 468,
+    "theorem_name": "Veil.bind_terminates",
+    "lean_root": "veil",
+    "rel_path": "Veil/DSL/Action/Theory.lean",
+    "request_id": "9dd5c522-1958-4791-8811-0366c9d1cfd9",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/9dd5c522-1958-4791-8811-0366c9d1cfd9",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/102"
+  },
+  {
+    "task_id": 469,
+    "theorem_name": "Veil.lift_transition_big_step'",
+    "lean_root": "veil",
+    "rel_path": "Veil/DSL/Action/Theory.lean",
+    "request_id": "61b79127-7f5b-4744-9121-fda1604f1b21",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/61b79127-7f5b-4744-9121-fda1604f1b21",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/104"
+  },
+  {
+    "task_id": 471,
+    "theorem_name": "Veil.big_step_always_terminating_sound",
+    "lean_root": "veil",
+    "rel_path": "Veil/DSL/Action/Theory.lean",
+    "request_id": "9349defc-71f4-4d06-bd92-bbe3698f5598",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/9349defc-71f4-4d06-bd92-bbe3698f5598",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/103"
+  },
+  {
+    "task_id": 472,
+    "theorem_name": "Veil.TwoState_sound'_ret_unit",
+    "lean_root": "veil",
+    "rel_path": "Veil/DSL/Action/Theory.lean",
+    "request_id": "161011d0-e1f8-4f20-b91d-906b4e13c48b",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/161011d0-e1f8-4f20-b91d-906b4e13c48b",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/101"
+  },
+  {
+    "task_id": 473,
+    "theorem_name": "FBA.slice_blocks_ne",
+    "lean_root": "veil",
+    "rel_path": "Examples/StellarConsensus/SCPTheory.lean",
+    "request_id": "344be9ba-16ca-4c14-9fda-b351a29274b8",
+    "env": "dev",
+    "api_url": "https://prover-dev.logicalintelligence.com/requests/344be9ba-16ca-4c14-9fda-b351a29274b8",
+    "pr_url": "https://github.com/logiq-ai/verisoftbench-repos/pull/125"
+  }
+]

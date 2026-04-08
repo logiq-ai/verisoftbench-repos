@@ -134,12 +134,355 @@ lemma traceInputs_length {N : ℕ} (trace : TraceOfLength F (ProvablePair State 
     (traceInputs trace).length = N := by
   rw [traceInputs, List.length_map, trace.val.toList_length, trace.prop]
 
+theorem inductiveConstraint_window_get_curr (table : InductiveTable F State Input) (curr next : State F × Input F) (aux_env : Environment F) :
+  let env' := TableConstraint.windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env
+  ∀ i (hi : i < size (ProvablePair State Input)),
+    env'.get i = (toElements (M := ProvablePair State Input) curr)[i]'hi := by
+  dsimp
+  intro i hi
+  have hfirst : i < size State + size Input := by
+    simpa using hi
+  have hmid :
+      i < (size State + size Input) +
+            (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength
+              (size State + size Input) := by
+    exact lt_of_lt_of_le hfirst (by omega)
+  have hioff :
+      i < (size State + size Input) +
+            (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength
+              (size State + size Input) +
+            (size State + size Input) := by
+    exact lt_of_lt_of_le hmid (by omega)
+  simpa [hioff, hmid, hfirst, Vector.getElem_append, TraceOfLength.get, Trace.getLeFromBottom,
+    _root_.Row.get, ProvablePair.instance, Vector.mapRange_zero, Vector.append_empty,
+    TableConstraint.windowEnv, InductiveTable.inductiveConstraint, table_assignment_norm, circuit_norm,
+    CellAssignment.assignmentFromCircuit_offset, CellAssignment.assignmentFromCircuit_vars]
+
+theorem inductiveConstraint_window_get_next (table : InductiveTable F State Input) (curr next : State F × Input F) (aux_env : Environment F) :
+  let env' := TableConstraint.windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env
+  let nextOffset :=
+    (size State) + (size Input) +
+      (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength ((size State) + (size Input))
+  ∀ i (hi : i < size (ProvablePair State Input)),
+    env'.get (nextOffset + i) = (toElements (M := ProvablePair State Input) next)[i]'hi := by
+  dsimp
+  intro i hi
+  have hi' : i < size State + size Input := by
+    simpa [ProvablePair.instance] using hi
+  have houter :
+      (size State + size Input) +
+            (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength
+              (size State + size Input) +
+          i <
+        (size State + size Input) +
+            (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength
+              (size State + size Input) +
+          (size State + size Input) := by
+    omega
+  have hge_first :
+      size State + size Input ≤
+        (size State + size Input) +
+          (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength
+            (size State + size Input) +
+          i := by
+    omega
+  have hafter_first :
+      (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength
+            (size State + size Input) ≤
+        ((size State + size Input) +
+              (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength
+                (size State + size Input) +
+              i) -
+          (size State + size Input) := by
+    omega
+  simpa [houter, hge_first, hafter_first,
+    Vector.getElem_append, Trace.getLeFromBottom, _root_.Row.get,
+    ProvablePair.instance, Vector.mapRange_zero, Vector.append_empty,
+    TableConstraint.windowEnv, InductiveTable.inductiveConstraint,
+    table_assignment_norm, circuit_norm,
+    CellAssignment.assignmentFromCircuit_offset, CellAssignment.assignmentFromCircuit_vars]
+
+theorem inductiveConstraint_window_eval (table : InductiveTable F State Input) (curr next : State F × Input F) (aux_env : Environment F) :
+  let env' := TableConstraint.windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env
+  let nextOffset :=
+    (size State) + (size Input) +
+      (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength ((size State) + (size Input))
+  eval env' (varFromOffset (ProvablePair State Input) 0) = curr ∧
+  eval env' (varFromOffset (ProvablePair State Input) nextOffset) = next := by
+  dsimp
+  constructor
+  · rw [ProvableType.ext_iff]
+    intro i hi
+    rw [ProvableType.eval_varFromOffset, ProvableType.toElements_fromElements, Vector.getElem_mapRange]
+    simpa using inductiveConstraint_window_get_curr table curr next aux_env i hi
+  · rw [ProvableType.ext_iff]
+    intro i hi
+    rw [ProvableType.eval_varFromOffset, ProvableType.toElements_fromElements, Vector.getElem_mapRange]
+    simpa using inductiveConstraint_window_get_next table curr next aux_env i hi
+
+theorem inductiveConstraint_soundness (table : InductiveTable F State Input) (initialState : State F)
+  (xs : List (Input F)) (i : ℕ) (hxs : xs.length = i)
+  (curr next : State F × Input F) (aux_env : Environment F) :
+  TableConstraint.ConstraintsHoldOnWindow (table.inductiveConstraint) ⟨<+> +> curr +> next, rfl⟩ aux_env →
+  table.Spec initialState xs i hxs curr.1 →
+  table.Spec initialState (xs.concat curr.2) (i + 1) (hxs ▸ List.length_concat) next.1 := by
+  intro h_hold h_spec
+  let env' := TableConstraint.windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env
+  let nextOffset :=
+    (size State) + (size Input) +
+      (table.step (varFromOffset State 0) (varFromOffset Input (size State))).localLength ((size State) + (size Input))
+  have h_eval := inductiveConstraint_window_eval table curr next aux_env
+  dsimp [env', nextOffset] at h_eval
+  rcases h_eval with ⟨h_curr, h_next⟩
+  have h_curr_state : eval env' (varFromOffset State 0) = curr.1 := by
+    simpa [env', circuit_norm] using congrArg Prod.fst h_curr
+  have h_curr_input : eval env' (varFromOffset Input (size State)) = curr.2 := by
+    simpa [env', circuit_norm] using congrArg Prod.snd h_curr
+  have h_next_state : eval env' (varFromOffset State nextOffset) = next.1 := by
+    simpa [env', nextOffset, circuit_norm] using congrArg Prod.fst h_next
+  have h_hold' :
+      Circuit.ConstraintsHold.Soundness env'
+        ((table.step (varFromOffset State 0) (varFromOffset Input (size State))).operations
+          ((size State) + (size Input))) ∧
+      eval env' (varFromOffset State nextOffset) =
+        eval env'
+          ((table.step (varFromOffset State 0) (varFromOffset Input (size State))).output
+            ((size State) + (size Input))) := by
+    simpa [env', nextOffset, TableConstraint.ConstraintsHoldOnWindow, InductiveTable.inductiveConstraint,
+      table_norm, table_assignment_norm, circuit_norm] using h_hold
+  have h_out_spec :=
+    table.soundness initialState i env' (varFromOffset State 0) (varFromOffset Input (size State))
+      curr.1 curr.2 xs hxs ⟨h_curr_state, h_curr_input⟩ h_hold'.1 h_spec
+  have h_out_eq :
+      eval env'
+          ((table.step (varFromOffset State 0) (varFromOffset Input (size State))).output
+            ((size State) + (size Input))) =
+        next.1 := by
+    rw [← h_hold'.2, h_next_state]
+  simpa [h_out_eq] using h_out_spec
+
+theorem tableConstraints_prefix_foldl_iff (table : InductiveTable F State Input) (input output : State F) (N : ℕ)
+  (rest : TraceOfLength F (ProvablePair State Input) N)
+  (curr : State F × Input F) (env : ℕ → ℕ → Environment F) :
+  TableConstraintsHold.foldl (N + 2)
+    ((table.tableConstraints input output).mapIdx (fun i cs => (cs, env i)))
+    (rest.val +> curr)
+    ((table.tableConstraints input output).mapIdx (fun i cs => (cs, env i)))
+  ↔
+  TableConstraintsHold (table.tableConstraints input curr.1)
+    ((⟨rest.val +> curr, by rw [Trace.len, rest.property]⟩ :
+      TraceOfLength F (ProvablePair State Input) (N + 1))) env := by
+  have h_base :
+      ∀ (trace : Trace F (ProvablePair State Input)) (extra₁ extra₂ : ℕ),
+        TableConstraintsHold.foldl (trace.len + extra₁)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+          trace
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+        ↔
+        TableConstraintsHold.foldl (trace.len + extra₂)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+          trace
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)] := by
+    intro trace
+    induction trace using Trace.every_row_two_rows_induction with
+    | zero =>
+        intro extra₁ extra₂
+        simp [TableConstraintsHold.foldl, table_norm]
+    | one row =>
+        intro extra₁ extra₂
+        simp [TableConstraintsHold.foldl, table_norm]
+    | more curr next rest ih_rest ih_prev =>
+        intro extra₁ extra₂
+        simp [TableConstraintsHold.foldl, table_norm]
+        intro _
+        simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm, Trace.len] using
+          ih_prev (extra₁ + 1) (extra₂ + 1)
+  have h_dropEnd :
+      ∀ (trace : Trace F (ProvablePair State Input)) (extra : ℕ), 0 < extra → ∀ out : State F,
+        TableConstraintsHold.foldl (trace.len + extra)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+            (boundary (.fromEnd 0) (equalityConstraint Input out), env 2)]
+          trace
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+            (boundary (.fromEnd 0) (equalityConstraint Input out), env 2)]
+        ↔
+        TableConstraintsHold.foldl (trace.len + extra)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+          trace
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)] := by
+    intro trace
+    induction trace using Trace.every_row_two_rows_induction with
+    | zero =>
+        intro extra hextra out
+        simp [TableConstraintsHold.foldl, table_norm]
+    | one row =>
+        intro extra hextra out
+        simp [TableConstraintsHold.foldl, table_norm]
+        intro _ hEq
+        exact (hextra.ne' hEq.symm).elim
+    | more prev curr rest ih_rest ih_prev =>
+        intro extra hextra out
+        simp [TableConstraintsHold.foldl, table_norm, hextra.ne']
+        intro _
+        simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm, Trace.len] using
+          ih_prev (extra + 1) (Nat.succ_pos _) out
+  have h_top :
+      ∀ (trace : Trace F (ProvablePair State Input)) (top : State F × Input F),
+        TableConstraintsHold.foldl (trace.len + 1)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+            (boundary (.fromEnd 0) (equalityConstraint Input top.1), env 2)]
+          (trace +> top)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+            (boundary (.fromEnd 0) (equalityConstraint Input top.1), env 2)]
+        ↔
+        TableConstraintsHold.foldl (trace.len + 1)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+          (trace +> top)
+          [(everyRowExceptLast table.inductiveConstraint, env 0),
+            (boundary (.fromStart 0) (equalityConstraint Input input), env 1)] := by
+    intro trace top
+    cases trace with
+    | empty =>
+        simp [TableConstraintsHold.foldl, equalityConstraint.soundness, table_norm]
+    | cons rest row =>
+        simp [TableConstraintsHold.foldl, equalityConstraint.soundness, table_norm]
+        intro _
+        simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm, Trace.len] using
+          h_dropEnd (rest +> row) 1 (Nat.succ_pos _) top.1
+  have h_left :
+      TableConstraintsHold.foldl (N + 2)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+          (boundary (.fromEnd 0) (equalityConstraint Input output), env 2)]
+        (rest.val +> curr)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+          (boundary (.fromEnd 0) (equalityConstraint Input output), env 2)]
+      ↔
+      TableConstraintsHold.foldl (N + 2)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+        (rest.val +> curr)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)] := by
+    simpa [Trace.len, rest.property, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+      h_dropEnd (rest.val +> curr) 1 (Nat.succ_pos _) output
+  have h_mid :
+      TableConstraintsHold.foldl (N + 2)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+        (rest.val +> curr)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+      ↔
+      TableConstraintsHold.foldl (N + 1)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+        (rest.val +> curr)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)] := by
+    simpa [Trace.len, rest.property, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+      h_base (rest.val +> curr) 1 0
+  have h_right :
+      TableConstraintsHold.foldl (N + 1)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+          (boundary (.fromEnd 0) (equalityConstraint Input curr.1), env 2)]
+        (rest.val +> curr)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1),
+          (boundary (.fromEnd 0) (equalityConstraint Input curr.1), env 2)]
+      ↔
+      TableConstraintsHold.foldl (N + 1)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)]
+        (rest.val +> curr)
+        [(everyRowExceptLast table.inductiveConstraint, env 0),
+          (boundary (.fromStart 0) (equalityConstraint Input input), env 1)] := by
+    simpa [Trace.len, rest.property, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+      h_top rest.val curr
+  simpa [TableConstraintsHold, tableConstraints] using h_left.trans (h_mid.trans h_right.symm)
+
+theorem tableConstraints_cons_cons_split (table : InductiveTable F State Input) (input output : State F) (N : ℕ)
+  (rest : TraceOfLength F (ProvablePair State Input) N)
+  (curr next : State F × Input F) (env : ℕ → ℕ → Environment F) :
+  TableConstraintsHold (table.tableConstraints input output)
+    ((⟨rest.val +> curr +> next, by rw [Trace.len, Trace.len, rest.property]⟩ :
+      TraceOfLength F (ProvablePair State Input) (N + 2))) env →
+    TableConstraint.ConstraintsHoldOnWindow (table.inductiveConstraint) ⟨<+> +> curr +> next, rfl⟩ (env 0 (N + 1)) ∧
+    TableConstraintsHold (table.tableConstraints input curr.1)
+      ((⟨rest.val +> curr, by rw [Trace.len, rest.property]⟩ :
+        TraceOfLength F (ProvablePair State Input) (N + 1))) env ∧
+    next.1 = output := by
+  intro h
+  have hsplit :
+      TableConstraint.ConstraintsHoldOnWindow (table.inductiveConstraint) ⟨<+> +> curr +> next, rfl⟩ (env 0 (N + 1)) ∧
+      TableConstraintsHold.foldl (N + 2)
+        ((table.tableConstraints input output).mapIdx (fun i cs => (cs, env i)))
+        (rest.val +> curr)
+        ((table.tableConstraints input output).mapIdx (fun i cs => (cs, env i))) ∧
+      next.1 = output := by
+    simpa [TableConstraintsHold, tableConstraints, equalityConstraint.soundness, table_norm,
+      rest.property, and_assoc, and_left_comm, and_comm] using h
+  refine ⟨hsplit.1, ?_, hsplit.2.2⟩
+  exact (tableConstraints_prefix_foldl_iff table input output N rest curr env).mp hsplit.2.1
+
+theorem tableConstraints_singleton_state_eq (table : InductiveTable F State Input) (input output : State F)
+  (row : State F × Input F) (env : ℕ → ℕ → Environment F) :
+  TableConstraintsHold (table.tableConstraints input output) ⟨<+> +> row, rfl⟩ env →
+    row.1 = input ∧ row.1 = output := by
+  intro h
+  simpa [TableConstraintsHold, InductiveTable.tableConstraints, equalityConstraint.soundness, table_norm] using h
+
 lemma table_soundness_aux (table : InductiveTable F State Input) (input output : State F)
   (N : ℕ+) (trace : TraceOfLength F (ProvablePair State Input) N) (env : ℕ → ℕ → Environment F) :
   table.Spec input [] 0 rfl input →
   TableConstraintsHold (table.tableConstraints input output) trace env →
     trace.ForAllRowsWithPrevious (fun row i rest => table.Spec input (traceInputs rest) i (traceInputs_length rest) row.1)
-    ∧ trace.lastRow.1 = output := by sorry
+    ∧ trace.lastRow.1 = output := by
+  intro h_input h_constraints
+  induction N, trace using TraceOfLength.everyRowTwoRowsInduction' generalizing output with
+  | one row =>
+      have h_eq := tableConstraints_singleton_state_eq table input output row env h_constraints
+      rcases h_eq with ⟨hrow_input, hrow_output⟩
+      constructor
+      · simpa only [TraceOfLength.ForAllRowsWithPrevious, Trace.ForAllRowsWithPrevious, traceInputs, Trace.toList, List.map_nil, hrow_input] using And.intro h_input trivial
+      · simpa only [TraceOfLength.lastRow] using hrow_output
+  | more N curr next rest ih =>
+      have h_split := tableConstraints_cons_cons_split table input output N rest curr next env h_constraints
+      rcases h_split with ⟨h_window, h_prefix_constraints, h_output⟩
+      have h_ih := ih curr.1 (by simpa [Trace.len, rest.property] using h_prefix_constraints)
+      rcases h_ih with ⟨h_prefix_rows, h_curr_eq⟩
+      have h_curr_spec : table.Spec input (traceInputs rest) N (traceInputs_length rest) curr.1 := by
+        simpa [TraceOfLength.lastRow, TraceOfLength.tail, Trace.tail, Trace.len, rest.property] using
+          (TraceOfLength.lastRow_of_forAllWithPrevious
+            (N := ⟨N + 1, Nat.succ_pos N⟩)
+            (trace := (⟨rest.val +> curr, by simp [Trace.len, rest.property]⟩ : TraceOfLength F (ProvablePair State Input) (N + 1)))
+            h_prefix_rows)
+      have h_next_spec : table.Spec input
+          (traceInputs (⟨rest.val +> curr, by simp [Trace.len, rest.property]⟩ : TraceOfLength F (ProvablePair State Input) (N + 1)))
+          (N + 1)
+          (traceInputs_length (⟨rest.val +> curr, by simp [Trace.len, rest.property]⟩ : TraceOfLength F (ProvablePair State Input) (N + 1)))
+          next.1 := by
+        simpa [traceInputs, Trace.toList, List.map_concat, Trace.len, rest.property] using
+          inductiveConstraint_soundness table input (traceInputs rest) N (traceInputs_length rest)
+            curr next (env 0 (N + 1)) h_window h_curr_spec
+      constructor
+      · simpa [TraceOfLength.ForAllRowsWithPrevious, Trace.ForAllRowsWithPrevious, Trace.len, rest.property] using
+          And.intro h_next_spec h_prefix_rows
+      · simpa only [TraceOfLength.lastRow] using h_output
+
 
 theorem table_soundness (table : InductiveTable F State Input) (input output : State F)
   (N : ℕ+) (trace : TraceOfLength F (ProvablePair State Input) N) (env : ℕ → ℕ → Environment F) :

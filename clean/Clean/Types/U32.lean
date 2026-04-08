@@ -185,21 +185,7 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
 omit p_large_enough in
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
-    x.value = y.value → x = y := by
-  intro h_eq
-  -- Use horner form of value
-  have hx_value := U32.value_horner x
-  have hy_value := U32.value_horner y
-
-  simp only [U32.Normalized] at hx hy
-
-  have : x.x0 = y.x0 := by apply ZMod.val_injective; omega
-  have : x.x1 = y.x1 := by apply ZMod.val_injective; omega
-  have : x.x2 = y.x2 := by apply ZMod.val_injective; omega
-  have : x.x3 = y.x3 := by apply ZMod.val_injective; omega
-
-  cases x; cases y
-  simp_all
+    x.value = y.value → x = y := by sorry
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]
@@ -358,30 +344,7 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
-  intro _
-  simp only [value]
-
-  have ⟨_, _, _, _⟩ := x_norm
-  have ⟨_, _, _, _⟩ := y_norm
-  apply Nat.eq_of_testBit_eq
-  intro i
-  simp only [reorganize_value, reorganize_value']
-  rw [Nat.testBit_bitwise] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x0)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x0)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x0) (ZMod.val y.x0))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
-  split
-  · simp_all only [Nat.testBit_bitwise]
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x1)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x1)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x1) (ZMod.val y.x1))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
-  split
-  · simp_all only [not_lt, Nat.testBit_bitwise]
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val x.x2)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=ZMod.val y.x2)] <;> try assumption
-  rw [Nat.testBit_two_pow_mul_add (i:=8) (b:=Nat.bitwise f (ZMod.val x.x2) (ZMod.val y.x2))] <;> try (apply Nat.bitwise_lt_two_pow <;> assumption)
-  aesop
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :

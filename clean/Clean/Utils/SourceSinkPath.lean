@@ -324,31 +324,7 @@ omit [Fintype S] in
 lemma acyclic_containsPath_nodup (R : Run S) (path : List S)
     (h_acyclic : R.isAcyclic)
     (h_contains : R.containsPath path) :
-    path.Nodup := by
-  -- Proof by contradiction: if path has duplicates, extract a cycle
-  by_contra h_dup
-  -- If path is not Nodup, there exists an element that appears twice
-  rw [← List.exists_duplicate_iff_not_nodup] at h_dup
-  obtain ⟨x, h_duplicate⟩ := h_dup
-  -- x appears at least twice in path, at distinct positions
-  rw [List.duplicate_iff_exists_distinct_get] at h_duplicate
-  obtain ⟨n, m, h_n_lt_m, h_x_at_n, h_x_at_m⟩ := h_duplicate
-  -- Extract the subpath from index n to index m (inclusive)
-  -- This forms a cycle: path[n..m] starts and ends with x
-  -- Use take and drop: drop n first, then take (m - n + 1) elements
-  let cycle := (path.drop n.val).take (m.val - n.val + 1)
-  -- Prove this is a cycle
-  have h_n_lt_len : n.val < path.length := n.isLt
-  have h_m_lt_len : m.val < path.length := m.isLt
-  have h_cycle_len := drop_take_length_ge_two path n m h_n_lt_m
-  have h_cycle_starts_ends_with_x : cycle.head? = cycle.getLast? :=
-    drop_take_cycle_same_endpoints path x n m h_n_lt_m h_x_at_n.symm h_x_at_m.symm
-  have h_cycle_contained : R.containsPath cycle :=
-    containsPath_drop_take R path n.val (m.val - n.val + 1) h_contains
-  -- This contradicts acyclicity
-  unfold Run.isAcyclic Run.hasCycle at h_acyclic
-  push_neg at h_acyclic
-  apply h_acyclic cycle h_cycle_len h_cycle_starts_ends_with_x h_cycle_contained
+    path.Nodup := by sorry
 
 omit [Fintype S] in
 /-- Appending an element to a non-empty path adds exactly one transition from the last element. -/
@@ -675,30 +651,7 @@ lemma size_removeCycle_lt (R : Run S) (cycle : List S)
     (h_len : cycle.length ≥ 2)
     (h_contains : R.containsPath cycle)
     (_h_cycle : cycle.head? = cycle.getLast?) :
-    (R.removeCycle cycle).size < R.size := by
-  -- Get a transition in the path
-  obtain ⟨t, h_in_zip⟩ := path_has_transition cycle h_len
-  -- This transition has positive capacity
-  have h_pos := containsPath_has_positive_transition R cycle h_contains t h_in_zip
-  let (x, y) := t
-  -- Show that this transition appears in the cycle, so countTransitionInPath > 0
-  have h_count_pos : countTransitionInPath (x, y) cycle > 0 := by
-    unfold countTransitionInPath
-    exact List.count_pos_iff.mpr h_in_zip
-  -- The size decreases because we subtract countTransitionInPath (x,y) cycle from R(x,y)
-  -- Since R(x,y) > 0 and countTransitionInPath (x,y) cycle > 0, the total decreases.
-  unfold Run.size Run.removeCycle
-  -- We'll prove that the sum of (R t - countTransitionInPath t cycle) is less than sum of R t
-  have h_decrease : (fun t => R t - countTransitionInPath t cycle) (x, y) < R (x, y) := by
-    -- R(x,y) > 0 and countTransitionInPath (x,y) cycle > 0
-    -- So R(x,y) - count < R(x,y) by Nat.sub_lt
-    exact Nat.sub_lt h_pos h_count_pos
-  have h_xy_in_univ : (x, y) ∈ (Finset.univ : Finset (Transition S)).toList := by
-    simp [Finset.mem_toList]
-  have h_others_le : ∀ t, (fun t => R t - countTransitionInPath t cycle) t ≤ R t := fun t =>
-    Nat.sub_le (R t) (countTransitionInPath t cycle)
-  -- Apply the sum_decrease lemma
-  exact sum_decrease R (fun t => R t - countTransitionInPath t cycle) (x, y) h_decrease h_others_le
+    (R.removeCycle cycle).size < R.size := by sorry
 
 omit [Fintype S] in
 /-- Removing a cycle gives a smaller or equal run at each transition. -/
@@ -876,30 +829,7 @@ lemma path_with_back_edge_creates_cycle (R : Run S) (path : List S) (current y :
     (h_contains : R.containsPath path)
     (h_y_in_path : y ∈ path)
     (h_edge : R (current, y) > 0) :
-    R.hasCycle := by
-  -- Find y's position in path
-  rw [List.mem_iff_getElem] at h_y_in_path
-  obtain ⟨i, h_i_lt, h_y_eq⟩ := h_y_in_path
-  let suffix := path.drop i
-  have h_suffix_nonempty : suffix ≠ [] := drop_of_lt_length_nonempty path i h_i_lt
-  have h_suffix_head : suffix.head? = some y := by aesop
-  have h_suffix_last : suffix.getLast? = some current := by grind
-  let cycle := suffix ++ [y]
-  have h_cycle_head : cycle.head? = some y := by grind
-  have h_cycle_last : cycle.getLast? = some y := by grind
-  have h_cycle_len : cycle.length ≥ 2 := by grind
-  use cycle
-  constructor
-  · exact h_cycle_len
-  constructor
-  · rw [h_cycle_head, h_cycle_last]
-  · unfold cycle
-    have h_suffix_contains : R.containsPath suffix := by
-      unfold suffix
-      exact containsPath_drop R path i h_contains
-    have h_path_nodup := acyclic_containsPath_nodup R path h_acyclic h_contains
-    have h_suffix_nodup : suffix.Nodup := by grind
-    exact cycle_from_suffix_contains R suffix current y h_suffix_nodup h_suffix_contains h_suffix_nonempty h_suffix_last h_edge
+    R.hasCycle := by sorry
 
 omit [Fintype S] in
 /-- If there's an edge from current to y, and y is in the path from root to current,
@@ -958,81 +888,7 @@ lemma acyclic_has_leaf_aux (R : Run S) (root current : S)
     (h_nonempty : path ≠ [])
     (h_contains : R.containsPath path)
     (h_has_out : ∃ y, y ∉ path ∧ R (current, y) > 0) :
-    ∃ leaf, R.isLeaf root leaf := by
-  -- Get a successor not in path
-  obtain ⟨y, h_y_not_in_path, h_edge⟩ := h_has_out
-
-  -- Check if y has any outgoing edges to states not in path ++ [y]
-  by_cases h_y_has_out : ∃ z, z ∉ path ∧ z ≠ y ∧ R (y, z) > 0
-  case neg =>
-    -- y has no outgoing edges to states not in path ++ [y]
-    -- We'll show y is actually a leaf (has NO outgoing edges at all)
-    use y
-    constructor
-    · -- Show y is reachable from root
-      -- Extend the path by adding y
-      use path ++ [y]
-      constructor
-      · aesop
-      constructor
-      · simp
-      constructor
-      · aesop
-      · exact containsPath_append_singleton R path current y h_nonempty h_end h_contains h_y_not_in_path h_edge
-    · -- Show y has no outgoing edges
-      intro z
-      by_contra h_pos
-      push_neg at h_y_has_out
-      -- If R(y,z) > 0, then by h_y_has_out, either z ∈ path or z = y
-      have h_z_pos : R (y, z) > 0 := by omega
-      have h_z_in_path_or_y : z ∈ path ∨ z = y := by grind
-
-      -- Derive contradiction from cycle
-      cases h_z_in_path_or_y with
-      | inl h_z_in_path =>
-        -- z ∈ path, so we can construct a cycle
-        -- path ends with current, current → y, y → z, and z ∈ path
-        -- This creates a cycle: (suffix of path from z to current) → y → z
-        have h_z_in_extended : z ∈ path ++ [y] := by aesop
-        exact acyclic_edge_not_in_path R (path ++ [y]) y z h_acyclic (by simp) (containsPath_append_singleton R path current y h_nonempty h_end h_contains h_y_not_in_path h_edge) h_z_pos h_z_in_extended
-      | inr h_z_eq_y =>
-        -- z = y, so we have a self-loop y → y
-        rw [h_z_eq_y] at h_z_pos
-        exact acyclic_no_self_loop R y h_acyclic h_z_pos
-
-  case pos =>
-    -- y has an outgoing edge to some z not in path and z ≠ y
-    -- Recurse with path ++ [y]
-    obtain ⟨z, h_z_not_in_path, h_z_ne_y, h_y_z_edge⟩ := h_y_has_out
-
-    -- Construct new path
-    let new_path := path ++ [y]
-
-    -- Show properties of new_path
-    have h_new_start : new_path.head? = some root := by aesop
-    have h_new_end : new_path.getLast? = some y := by aesop
-    have h_new_nonempty : new_path ≠ [] := by aesop
-    have h_new_contains : R.containsPath new_path :=
-      containsPath_append_singleton R path current y h_nonempty h_end h_contains h_y_not_in_path h_edge
-
-    have h_new_has_out : ∃ w, w ∉ new_path ∧ R (y, w) > 0 := by grind
-    exact acyclic_has_leaf_aux R root y new_path h_acyclic h_new_start h_new_end h_new_nonempty h_new_contains h_new_has_out
-termination_by Fintype.card S - path.toFinset.card
-decreasing_by
-  simp_wf
-  -- new_path = path ++ [y], and y ∉ path, so toFinset increases by 1
-  have h_y_not_mem : y ∉ path.toFinset := by
-    simp
-    exact h_y_not_in_path
-  have h_card_increase : (insert y path.toFinset).card = path.toFinset.card + 1 := by
-    rw [Finset.card_insert_of_notMem h_y_not_mem]
-  -- path.toFinset is a strict subset of univ
-  have h_path_subset := finset_ssubset_univ_of_not_mem path.toFinset y h_y_not_mem
-  have h_card_bound : path.toFinset.card < Fintype.card S := by
-    rw [← Finset.card_univ]
-    exact Finset.card_lt_card h_path_subset
-  rw [h_card_increase]
-  omega
+    ∃ leaf, R.isLeaf root leaf := by sorry
 
 /-- A finite DAG reachable from a root has at least one leaf. -/
 lemma acyclic_has_leaf (R : Run S) (root : S)
@@ -1252,29 +1108,7 @@ lemma acyclic_run_has_path_from_source_to_sink (R : Run S) (s d : S)
     (h_source : R.netFlow s = 1)
     (h_others : ∀ x, x ≠ s → x ≠ d → R.netFlow x = 0) :
     ∃ (path : List S), path.head? = some s ∧ path.getLast? = some d ∧
-      path ≠ [] ∧ R.containsPath path ∧ path.Nodup := by
-  -- s has positive net flow, so it has an outgoing edge
-  have h_s_out : ∃ y, R (s, y) > 0 := by
-    apply positive_netFlow_has_outgoing_edge
-    rw [h_source]
-    omega
-
-  -- Find a leaf reachable from s
-  obtain ⟨leaf, h_leaf⟩ := acyclic_has_leaf R s h_acyclic h_s_out
-
-  -- The leaf has negative net flow
-  have h_leaf_neg := leaf_has_incoming_and_negative_netFlow R s leaf h_leaf h_s_out
-
-  -- Identify leaf = d (only state with negative net flow)
-  have h_leaf_eq_d := unique_negative_netFlow R s d leaf h_source h_others h_leaf_neg
-
-  -- Extract the path from s to d
-  rw [h_leaf_eq_d] at h_leaf
-  obtain ⟨h_reach, _⟩ := h_leaf
-  obtain ⟨path, h_head, h_last, h_nonempty, h_contains⟩ := h_reach
-  use path
-  refine ⟨h_head, h_last, h_nonempty, h_contains, ?_⟩
-  exact acyclic_containsPath_nodup R path h_acyclic h_contains
+      path ≠ [] ∧ R.containsPath path ∧ path.Nodup := by sorry
 
 /-- Main theorem: If the net flow is +1 at source s, anything at sink d,
     and 0 elsewhere, then there exists a cycle-free path from s to d. -/

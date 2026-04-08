@@ -710,25 +710,7 @@ instance OFE.ContractiveHom.fixpoint_ne [COFE α] [Inhabited α] :
 theorem OFE.ContractiveHom.fixpoint_ind [COFE α] [Inhabited α] (f : α -c> α)
     (P : α → Prop) (HProper : ∀ A B : α, A ≡ B → P A → P B) (x : α) (Hbase : P x)
     (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) :
-    P f.fixpoint := by
-  let chain : Chain α := by
-    refine ⟨fun i => Nat.repeat f (i + 1) x, fun {n i} H => ?_⟩
-    induction n generalizing i with
-    | zero => simp [Nat.repeat]
-    | succ _ IH =>
-      cases i <;> simp at H
-      exact Contractive.succ _ <| IH H
-  refine HProper _ _ (fixpoint_unique (x := COFE.compl chain) ?_) ?_
-  · refine equiv_dist.mpr fun n => ?_
-    apply COFE.conv_compl.trans
-    refine .trans ?_ (f.ne.ne COFE.conv_compl).symm
-    induction n
-    · exact Contractive.zero f.f
-    · rename_i IH; apply Contractive.succ _ IH
-  · apply Hlim; intro n
-    induction n with
-    | zero => exact Hind (Nat.repeat f.f 0 x) Hbase
-    | succ _ IH => apply Hind (Nat.repeat f.f _ x) IH
+    P f.fixpoint := by sorry
 
 end Fixpoint
 

@@ -534,26 +534,7 @@ lemma probOutput_congr {x y : α} {oa : OracleComp spec α} {oa' : OracleComp sp
 
 lemma probEvent_congr' {p q : α → Prop} {oa : OracleComp spec α} {oa' : OracleComp spec' α}
     (h1 : ∀ x, x ∈ oa.support → x ∈ oa'.support → (p x ↔ q x))
-    (h2 : evalDist oa = evalDist oa') : [p | oa] = [q | oa'] := by
-  have h : ∀ x, x ∈ oa.support ↔ x ∈ oa'.support := mem_support_iff_of_evalDist_eq h2
-  have h' : ∀ x, [= x | oa] = [= x | oa'] := λ x ↦ probOutput_congr rfl h2
-  rw [probEvent_eq_tsum_indicator, probEvent_eq_tsum_indicator]
-  refine tsum_congr λ x ↦ ?_
-  simp [Set.indicator, h']
-  by_cases hp : p x
-  · by_cases hq : q x
-    · simp [hp, hq]
-    · simp [hp, hq, h]
-      refine λ hoa ↦ hq ?_
-      refine (h1 _ ?_ hoa).1 hp
-      refine (h _).2 hoa
-  · by_cases hq : q x
-    · simp [hp, hq]
-      simp [h] at h1
-      intro hoa
-      specialize h1 _ hoa
-      tauto
-    · rw [if_neg hp, if_neg hq]
+    (h2 : evalDist oa = evalDist oa') : [p | oa] = [q | oa'] := by sorry
 
 
 @[simp] lemma probEvent_const (oa : OracleComp spec α) (p : Prop) [Decidable p] :
@@ -678,42 +659,11 @@ lemma probOutput_bind_of_const (y : β) (r : ℝ≥0∞) (h : ∀ x, [= y | ob x
   simp [probOutput_bind_eq_tsum, h, ENNReal.tsum_mul_right, tsum_probOutput_eq_sub]
 
 lemma probFailure_bind_of_const [Nonempty α] (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
-    [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by
-  have : r ≠ ⊤ := λ hr ↦ probFailure_ne_top ((h (Classical.arbitrary α)).trans hr)
-  simp [probFailure_bind_eq_tsum, h, ENNReal.tsum_mul_right, tsum_probOutput_eq_sub]
-  rw [ENNReal.sub_mul λ _ _ ↦ this, one_mul]
-  refine symm (AddLECancellable.add_tsub_assoc_of_le ?_ ?_ _)
-  · refine ENNReal.addLECancellable_iff_ne.2 (ENNReal.mul_ne_top probFailure_ne_top this)
-  · by_cases hr : r = 0
-    · simp only [hr, mul_zero, le_refl]
-    refine mul_le_of_le_div (le_of_le_of_eq probFailure_le_one ?_)
-    refine symm (ENNReal.div_self hr this)
+    [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by sorry
 
 lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
-    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by
-  rw [probFailure_bind_eq_tsum]
-  rw [← tsum_probOutput_eq_sub]
-  rw [← ENNReal.tsum_mul_right]
-  have hl : ∀ x, [=x|oa] * [⊥|ob x] ≤ [=x|oa] :=
-    λ x ↦ le_of_le_of_eq (mul_le_mul' le_rfl probFailure_le_one) (mul_one _)
-  calc [⊥ | oa] + ∑' x, [= x | oa] * [⊥ | ob x]
-    _ = 1 - (∑' x, [= x | oa]) + (∑' x, [= x | oa] * [⊥ | ob x]) := by
-      rw [probFailure_eq_sub_tsum]
-    _ = 1 - (∑' x, [= x | oa] - ∑' x, [= x | oa] * [⊥ | ob x]) := by
-      exact Eq.symm (AddLECancellable.tsub_tsub_assoc
-        (by simp) tsum_probOutput_le_one (ENNReal.tsum_le_tsum hl))
-    _ = 1 - ∑' x, ([= x | oa] - [= x | oa] * [⊥ | ob x]) := by
-      refine congr_arg (1 - ·) (ENNReal.eq_sub_of_add_eq ?_ ?_).symm
-      · refine ne_top_of_le_ne_top one_ne_top ?_
-        refine le_trans ?_ (@tsum_probOutput_le_one _ _ _ _ oa)
-        refine ENNReal.tsum_le_tsum λ x ↦ ?_
-        exact hl x
-      rw [← ENNReal.tsum_add]
-      refine tsum_congr λ x ↦ tsub_add_cancel_of_le (hl x)
-    _ = 1 - ∑' x : α, [= x | oa] * (1 - r) := by
-      refine congr_arg (1 - ·) (tsum_congr λ x ↦ ?_)
-      rw [ENNReal.mul_sub (λ _ _ ↦ probOutput_ne_top), mul_one, ← h x]
+    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by sorry
 
 lemma probFailure_bind_le_of_forall {oa : OracleComp spec α} {s : ℝ≥0∞}
     -- TODO: this should be a general type of `uniformOutput` computations
@@ -742,16 +692,7 @@ section mul_le_probEvent_bind
 lemma mul_le_probEvent_bind {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     {p : α → Prop} {q : β → Prop} {r r' : ℝ≥0∞}
     (h : r ≤ [p | oa]) (h' : ∀ x ∈ oa.support, p x → r' ≤ [q | ob x]) :
-    r * r' ≤ [q | oa >>= ob] := by
-  rw [probEvent_bind_eq_tsum]
-  refine (mul_le_mul_right' h r').trans ?_
-  rw [probEvent_eq_tsum_indicator, ← ENNReal.tsum_mul_right]
-  refine ENNReal.tsum_le_tsum fun x => ?_
-  rw [← Set.indicator_mul_const]
-  by_cases hx : x ∈ oa.support
-  · refine Set.indicator_apply_le' (fun h => ?_) (fun _ => zero_le')
-    exact (ENNReal.mul_le_mul_left (probOutput_ne_zero _ _ hx) probOutput_ne_top).mpr (h' x hx h)
-  · simp [probOutput_eq_zero _ _ hx]
+    r * r' ≤ [q | oa >>= ob] := by sorry
 
 end mul_le_probEvent_bind
 
@@ -1061,9 +1002,7 @@ lemma probFailure_uniformFin : [⊥ | $[0..n]] = 0 := probFailure_query _ _
 
 @[simp]
 lemma probEvent_uniformFin (p : Fin (n + 1) → Prop) [DecidablePred p] :
-    [p | $[0..n]] = (Finset.univ.filter p).card * (n + 1 : ℝ≥0∞)⁻¹ := by
-  simp only [probEvent_eq_sum_filter_finSupport, finSupport_uniformFin, probOutput_uniformFin,
-    Finset.sum_const, nsmul_eq_mul]
+    [p | $[0..n]] = (Finset.univ.filter p).card * (n + 1 : ℝ≥0∞)⁻¹ := by sorry
 
 end uniformFin
 

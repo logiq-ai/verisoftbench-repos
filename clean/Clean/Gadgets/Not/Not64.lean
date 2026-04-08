@@ -31,26 +31,7 @@ theorem not_lt (n : ℕ) {x : ℕ} (hx : x < n) : n - 1 - (x : ℤ) < n := by
 
 theorem not_bytewise_value_spec {x : U64 (F p)} (x_lt : x.Normalized) :
     (not64_bytewise_value x).value = not64 x.value
-    ∧ (not64_bytewise_value x).Normalized := by
-
-  rw [not64_eq_sub (U64.value_lt_of_normalized x_lt)]
-
-  have h_not_val : ∀ {x : F p}, x.val < 256 → ((255 - x).val : ℤ) = 255 - ↑x.val := by
-    intro x hx
-    have val_255 : (255 : F p).val = 255 := FieldUtils.val_lt_p 255 (by linarith [p_large_enough.elim])
-    have hx' : x.val ≤ (255 : F p).val := by linarith
-    rw [ZMod.val_sub hx', val_255]
-    exact not_zify 256 hx
-
-  rw [U64.value, U64.Normalized, not64_bytewise_value, U64.map]
-  zify
-  rw [not_zify (2^64) (U64.value_lt_of_normalized x_lt), U64.value]
-  zify
-  have ⟨ hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7 ⟩ := x_lt
-  repeat rw [h_not_val (by assumption)]
-  constructor; ring
-  exact ⟨ not_lt 256 hx0, not_lt 256 hx1, not_lt 256 hx2, not_lt 256 hx3,
-      not_lt 256 hx4, not_lt 256 hx5, not_lt 256 hx6, not_lt 256 hx7 ⟩
+    ∧ (not64_bytewise_value x).Normalized := by sorry
 
 def circuit : FormalCircuit (F p) U64 U64 where
   main x := pure (not64_bytewise x)

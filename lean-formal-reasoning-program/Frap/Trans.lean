@@ -500,59 +500,7 @@ example : atrans_sound fold_constants_aexp := by
 Here's the proof for boolean expressions:
 -/
 
-theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by
-  intro b st; induction b with simp [fold_constants_bexp]
-  | b_eq a1 a2 =>
-    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
-    split
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      split <;> simp [*]
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-  | b_neq a1 a2 =>
-    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
-    split
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      split <;> simp [*]
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-  | b_le a1 a2 =>
-    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
-    split
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      split <;> simp [*]
-    . rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-  | b_not =>
-    split <;> simp [*]
-  | b_and =>
-    simp [*]
-    split <;> (
-      rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-    )
-  | b_or =>
-    simp [*]
-    split <;> (
-      rename_i hm
-      simp at hm
-      obtain ⟨⟩ := hm
-      simp [*]
-    )
+theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by sorry
 
 /-
 We see that after doing each split, we need to focus on the last hypothesis and simplify it for further use.
@@ -603,40 +551,7 @@ example : btrans_sound fold_constants_bexp := by
 Finally, here's the proof for commands:
 -/
 
-theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by
-  intro c; induction c with simp [fold_constants_com]
-  | c_asgn =>
-    apply c_asgn_congruence
-    apply fold_constants_aexp_sound
-  | c_seq =>
-    apply c_seq_congruence <;> assumption
-  | c_if b c₁ c₂ ih1 ih2 =>
-    split
-    . apply trans_cequiv _ c₁
-      . apply if_true
-        rename_i heq; rw [← heq]
-        apply fold_constants_bexp_sound
-      . assumption
-    . apply trans_cequiv _ c₂
-      . apply if_false
-        rename_i heq; rw [← heq]
-        apply fold_constants_bexp_sound
-      . assumption
-    . apply c_if_congruence
-      . apply fold_constants_bexp_sound
-      . assumption
-      . assumption
-  | c_while b c' ih =>
-    split
-    . apply while_true
-      rename_i heq; rw [← heq]
-      apply fold_constants_bexp_sound
-    . apply while_false
-      rename_i heq; rw [← heq]
-      apply fold_constants_bexp_sound
-    . apply c_while_congruence
-      . apply fold_constants_bexp_sound
-      . assumption
+theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by sorry
 
 /-
 ## references

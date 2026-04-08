@@ -190,23 +190,7 @@ theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
       (inv b)
       (f b)
       (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
-  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by
-  apply le_trans'; apply wp_cons; rotate_left 2; apply le_trans; rotate_left 1
-  apply triple_forIn_range_step1 (inv := fun i b => ⌜ measure b + i <= measure init ⌝ ⊓ inv b) <;>
-    try solve | aesop
-  { simp; intro i b
-    by_cases h : measure b + i ≤ measure init <;> simp [h, triple]
-    apply le_trans; apply hstep; omega
-    apply wp_cons; rintro (b'|b') <;> simp
-    by_cases h: measure b' = 0 <;> simp [h]
-    by_cases h': measure b' < measure b <;> simp [h']
-    have : measure b' + (i + 1) ≤ measure init := by omega
-    simp [this] }
-  { simp; intro b
-    by_cases h : measure b + measure init ≤ measure init <;> simp [h]
-    by_cases h' : measure b = 0 <;> simp [h']
-    omega }
-  simp
+  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by sorry
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

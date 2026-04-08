@@ -124,25 +124,7 @@ lemma fib_constraints (curr next : Row (F p) RowType) (aux_env : Environment (F 
   : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env →
   curr.y = next.x ∧
   (curr.x.Normalized → curr.y.Normalized → next.y.value = (curr.x.value + curr.y.value) % 2^32 ∧ next.y.Normalized)
-   := by
-  simp only [table_norm]
-  obtain ⟨ hcurr_x, hcurr_y, hnext_x, hnext_y ⟩ := fib_vars curr next aux_env
-  set env := recursiveRelation.windowEnv  ⟨<+> +> curr +> next, rfl⟩ aux_env
-  simp only [table_norm, circuit_norm, recursiveRelation,
-    assignU32, Gadgets.Addition32.circuit]
-  rintro ⟨ h_add, h_eq ⟩
-  simp only [table_norm, circuit_norm, Nat.reduceAdd, zero_add] at h_add
-  simp only [circuit_norm] at hnext_y
-  rw [hcurr_x, hcurr_y, hnext_y] at h_add
-  rw [hcurr_y, hnext_x] at h_eq
-  clear hcurr_x hcurr_y hnext_x hnext_y
-  constructor
-  · exact h_eq
-  rw [Gadgets.Addition32.Assumptions, Gadgets.Addition32.Spec] at h_add
-  intro h_norm_x h_norm_y
-  specialize h_add ⟨ h_norm_x, h_norm_y ⟩
-  obtain ⟨ h_add_mod, h_norm_next_y ⟩ := h_add
-  exact ⟨h_add_mod, h_norm_next_y⟩
+   := by sorry
 
 lemma boundary_constraints (first_row : Row (F p) RowType) (aux_env : Environment (F p)) :
   Circuit.ConstraintsHold.Soundness (windowEnv boundary ⟨<+> +> first_row, rfl⟩ aux_env) boundary.operations →

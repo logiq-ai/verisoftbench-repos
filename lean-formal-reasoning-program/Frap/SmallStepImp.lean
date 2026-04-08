@@ -401,29 +401,7 @@ theorem par_body_n n st
 
 theorem par_loop_any_x n
     : ∃ st', Multi CStep (par_loop, empty) (c_skip, st')
-        ∧ st' x = n := by
-  let h := par_body_n n empty
-  simp [empty] at h
-  obtain ⟨st', ⟨h', ⟨hx, _⟩⟩⟩ := h
-  exists y !-> 1; st'
-  constructor
-  . apply multi_trans
-    . apply h'
-    . apply multi_step
-      . apply cs_par1; apply cs_asgn
-      . apply multi_step
-        . apply cs_par2; apply cs_while
-        . apply multi_step
-          . apply cs_par2; apply cs_ifStep
-            apply bs_eq1; apply as_id
-          . apply multi_step
-            . apply cs_par2; apply cs_ifStep
-              apply bs_eq
-            . simp [update]; apply multi_step
-              . apply cs_par2; apply cs_ifFalse
-              . apply multi_R
-                apply cs_parDone
-  . simp [update]; assumption
+        ∧ st' x = n := by sorry
 
 end CImp
 

@@ -87,7 +87,7 @@ theorem not64_eq_sub {x : ℕ} (x_lt : x < 2^64) :
   rw [not64]
   have h_u64 : (x.toUInt64 ^^^ 0xffffffffffffffff).toNat = (0xffffffffffffffff - x.toUInt64).toNat := by
     apply congrArg UInt64.toNat
-    bv_decide
+    bv_decide (timeout := 120)
   rw [UInt64.toNat_xor, UInt64.toNat_sub_of_le, Nat.toUInt64, UInt64.toNat_ofNat_of_lt' x_lt] at h_u64
   exact h_u64
   rw [UInt64.le_iff_toNat_le, UInt64.toNat_ofNat_of_lt' x_lt]

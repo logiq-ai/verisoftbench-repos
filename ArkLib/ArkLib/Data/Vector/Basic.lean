@@ -85,15 +85,37 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
+theorem toList_eq_head_cons_tail {α} {n : ℕ} [NeZero n] (v : Vector α n) : v.toList = v.head :: v.tail.toList := by
+  refine Vector.elimAsList (xs := v) ?_
+  intro l hl
+  cases l with
+  | nil =>
+      simp at hl
+      exact (False.elim <| (Nat.ne_of_gt (Nat.pos_of_neZero n)) hl.symm)
+  | cons x xs =>
+      have hlen : xs.length = n - 1 := by
+        simpa using congrArg Nat.pred hl
+      have htake : List.take (n - 1) xs = xs := by
+        rw [← hlen]
+        simp
+      simp only [Vector.toList, Vector.head, Vector.tail,
+        Vector.toArray_cast, Vector.toArray_extract, Vector.getElem_mk,
+        Array.toList_extract, List.extract_eq_drop_take,
+        List.getElem_toArray, List.getElem_cons_zero,
+        List.length_tail, List.size_toArray]
+      simp [List.drop_one, htake]
 
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
   rfl
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rw [foldl_eq_toList_foldl, foldl_eq_toList_foldl]
+  rw [toList_eq_head_cons_tail]
+  simp only [List.foldl_cons]
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)
 

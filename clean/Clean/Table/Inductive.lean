@@ -243,10 +243,6 @@ theorem table_soundness_drop_output_boundary (table : InductiveTable F State Inp
       intro hzero
       simpa [Trace.len] using hzero
 
-theorem two_row_trace_getLeFromBottom_zero (curr next : State F × Input F) (j : ℕ) (hj : j < size State + size Input) :
-  (((<+> : Trace F (ProvablePair State Input)) +> curr +> next).getLeFromBottom ⟨0, by simp [Trace.len]⟩ ⟨j, hj⟩) =
-    (ProvablePair.toElements next)[j] :=   rfl
-
 theorem table_inductiveConstraint_windowEnv_next_state_get (table : InductiveTable F State Input) (curr next : State F × Input F) (aux_env : Environment F)
   (j : ℕ) (hj : j < size State) :
   (windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env).get

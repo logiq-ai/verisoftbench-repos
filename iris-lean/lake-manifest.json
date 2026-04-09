@@ -1,0 +1,20 @@
+{
+  "version": "1.1.0",
+  "packagesDir": ".lake/packages",
+  "packages": [
+    {
+      "url": "https://github.com/leanprover-community/quote4",
+      "type": "git",
+      "subDir": null,
+      "scope": "leanprover-community",
+      "rev": "9312503909aa8e8bb392530145cc1677a6298574",
+      "name": "Qq",
+      "manifestFile": "lake-manifest.json",
+      "inputRev": "stable",
+      "inherited": false,
+      "configFile": "lakefile.toml"
+    }
+  ],
+  "name": "iris",
+  "lakeDir": ".lake"
+}

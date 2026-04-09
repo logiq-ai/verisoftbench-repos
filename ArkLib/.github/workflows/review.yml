@@ -1,0 +1,60 @@
+name: AI Code Review with External Context
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/review') &&
+      (
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Extract arguments from comment
+        id: get_args
+        run: |
+          PARSED_ARGS=$(awk '
+            /^External:/ { section="ext"; next }
+            /^Internal:/ { section="int"; next }
+            /^Comments:/ { section="com"; next }
+            { 
+              gsub(/^[ 	]+|[ 	]+$/, "", $0);
+              if ($0 == "" || $0 == "/review") { next }
+              if (section == "ext") {
+                sub(/^- +/, "");
+                if (ext) { ext = ext "," $0 } else { ext = $0 }
+              }
+              else if (section == "int") {
+                sub(/^- +/, "");
+                if (ark) { ark = ark "," $0 } else { ark = $0 }
+              }
+              else if (section == "com") {
+                if (com) { com = com " " $0 } else { com = $0 }
+              }
+            }
+            END {
+              print "external_refs=" ext
+              print "arklib_refs=" ark
+              print "additional_comments=" com
+            }
+          ' <<< "${{ github.event.comment.body }}")
+          echo "$PARSED_ARGS" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - uses: alexanderlhicks/lean-review-workflow@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          pr_number: ${{ github.event.issue.number }}
+          external_refs: "${{ steps.get_args.outputs.external_refs }}"
+          arklib_refs: "${{ steps.get_args.outputs.arklib_refs }}"
+          additional_comments: "${{ steps.get_args.outputs.additional_comments }}"

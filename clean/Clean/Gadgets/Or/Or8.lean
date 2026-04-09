@@ -41,7 +41,7 @@ private theorem or_times_two_sub_xor {x y : ℕ} (hx : x < 256) (hy : y < 256) :
   let y16 := y.toUInt16
   have h_u16 : (2 * (x16 ||| y16)).toNat = (x16 + y16 + (x16 ^^^ y16)).toNat := by
     apply congrArg UInt16.toNat
-    bv_decide
+    bv_decide (timeout := 120)
 
   have hx16 : x.toUInt16.toNat = x := UInt16.toNat_ofNat_of_lt (by linarith)
   have hy16 : y.toUInt16.toNat = y := UInt16.toNat_ofNat_of_lt (by linarith)

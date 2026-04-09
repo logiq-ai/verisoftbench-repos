@@ -571,13 +571,41 @@ lemma soundness_one {p : ℕ} [Fact p.Prime]
   · simp only [h_eval_eq]
     exact h_input0
 
-/-- Soundness for n = 2 case -/
+open Vector in
+open ProvableType in
+theorem foldl_vals_two_eq {p : ℕ} [Fact p.Prime] (input : fields 2 (F p)) (h0 : IsBool input[0]) : (input.map (·.val)).foldl (· &&& ·) 1 = input[0].val &&& input[1].val := by
+  rw [Vector.foldl_mk]
+  rw [← Array.foldl_toList]
+  rw [Vector.toList_toArray, Vector.toList_length_two]
+  simp only [List.foldl_cons, List.foldl_nil]
+  simp only [Vector.getElem_map]
+  rw [one_land_of_IsBool input[0].val (val_of_IsBool h0)]
+
+open ProvableType in
+open Vector in
 lemma soundness_two {p : ℕ} [Fact p.Prime]
     (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields 2) (F p))
     (input : fields 2 (F p)) (h_env : input = eval env input_var)
     (h_assumptions : Assumptions 2 input)
     (h_hold : Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset)) :
-    Spec 2 input (env ((main input_var).output offset)) := by sorry
+    Spec 2 input (env ((main input_var).output offset)) := by
+  simp only [main, circuit_norm] at h_hold ⊢
+  have h0 : IsBool input[0] := h_assumptions 0 (by norm_num)
+  have h1 : IsBool input[1] := h_assumptions 1 (by norm_num)
+  have h_eval0 : env input_var[0] = input[0] := by
+    simpa [h_env, circuit_norm]
+  have h_eval1 : env input_var[1] = input[1] := by
+    simpa [h_env, circuit_norm]
+  have h_and :=
+    AND.circuit.soundness offset env (input_var[0], input_var[1]) (input[0], input[1])
+      (by
+        simpa [ProvableType.eval_fieldPair, h_eval0, h_eval1])
+      ⟨h0, h1⟩ h_hold
+  rcases h_and with ⟨hval, hbool⟩
+  refine ⟨?_, hbool⟩
+  rw [foldl_vals_two_eq input h0]
+  exact hval
+
 
 /-- Completeness for n = 0 case -/
 lemma completeness_zero {p : ℕ} [Fact p.Prime]

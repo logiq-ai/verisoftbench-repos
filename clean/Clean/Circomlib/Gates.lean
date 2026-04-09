@@ -320,8 +320,57 @@ def main : {n : ℕ} → Vector (Expression (F p)) n → Circuit (F p) (Expressi
     AND.circuit.main (out1, out2)
 
 -- Helper lemma for localLength
+theorem localLength_rec_step (m : ℕ) (input : Var (fields (m + 3)) (F p)) (offset : ℕ) :
+    let n1 := (m + 3) / 2
+    let n2 := (m + 3) - n1
+    let input1 : Var (fields n1) (F p) :=
+      input.take n1 |>.cast (by
+        simp only [Nat.min_def, n1]
+        split <;> omega)
+    let input2 : Var (fields n2) (F p) :=
+      input.drop n1 |>.cast (by omega)
+    (main input).localLength offset =
+      (main input1).localLength offset +
+        (main input2).localLength
+          (offset + (main input1).localLength offset) + 1 := by
+  simp only [main]
+  rw [Circuit.bind_localLength_eq, Circuit.bind_localLength_eq, AND.circuit.localLength_eq]
+  simp only [AND.circuit]
+  omega
+
 theorem localLength_eq (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
-    (main input).localLength offset = n - 1 := by sorry
+    (main input).localLength offset = n - 1 := by
+  induction n using Nat.strong_induction_on generalizing offset with
+  | h n ih =>
+      match n with
+      | 0 =>
+          simpa [main] using (Circuit.pure_localLength_eq (a := (1 : F p)) offset)
+      | 1 =>
+          simpa [main] using (Circuit.pure_localLength_eq (a := input[0]) offset)
+      | 2 =>
+          simpa [main, AND.circuit, circuit_norm] using (AND.circuit.localLength_eq (input := (input[0], input[1])) (offset := offset))
+      | m + 3 =>
+          let n1 := (m + 3) / 2
+          let n2 := (m + 3) - n1
+          let input1 : Var (fields n1) (F p) :=
+            input.take n1 |>.cast (by
+              simp only [Nat.min_def, n1]
+              split <;> omega)
+          let input2 : Var (fields n2) (F p) :=
+            input.drop n1 |>.cast (by omega)
+          rw [localLength_rec_step m input offset]
+          have h1lt : n1 < m + 3 := by
+            dsimp [n1]
+            omega
+          have h2lt : n2 < m + 3 := by
+            dsimp [n2, n1]
+            omega
+          have h1 := ih n1 h1lt input1 offset
+          have h2 := ih n2 h2lt input2 (offset + (main input1).localLength offset)
+          rw [h2, h1]
+          dsimp [n1, n2]
+          omega
+
 
 -- Helper lemma: SubcircuitsConsistent preserved by bind
 theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α) (g : α → Circuit (F p) β) (offset : ℕ)
@@ -653,7 +702,8 @@ lemma main_output_binary_from_completeness (n : ℕ) (offset : ℕ) (env : Envir
     (h_assumptions : Assumptions n input)
     (h_local_witnesses : env.UsesLocalWitnessesCompleteness offset ((main input_var).operations offset))
     (h_completeness : Circuit.ConstraintsHold.Completeness env ((main input_var).operations offset)) :
-    let output := by sorry
+    let output := env ((main input_var).output offset)
+    IsBool output := by sorry
 
 theorem completeness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields n) (F p))

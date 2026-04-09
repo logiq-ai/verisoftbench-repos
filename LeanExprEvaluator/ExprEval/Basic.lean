@@ -13,9 +13,6 @@ theorem eval_bool_soundness (e: BoolExpr V) (b: Bool) :
     intro h
     exact boolstepstar_preserves_eval_bool _ _ h
 
-mutual
-    theorem eval_completeness (e: ArExpr V) : ArStepStar V val e (ArExpr.Const (eval V val e)) := by sorry
+theorem eval_completeness (e: ArExpr V) : ArStepStar V val e (ArExpr.Const (eval V val e)) := by sorry
 
-
-    theorem eval_bool_completeness (e: BoolExpr V): BoolStepStar V val e (BoolExpr.Const (eval_bool V val e)) := by sorry
-end
+theorem eval_bool_completeness (e: BoolExpr V): BoolStepStar V val e (BoolExpr.Const (eval_bool V val e)) := by sorry

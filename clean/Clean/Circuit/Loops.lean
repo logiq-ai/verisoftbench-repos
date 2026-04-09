@@ -304,7 +304,8 @@ theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
   (xs.foldlM circuit init).forAll n prop ↔
   (circuit init (xs[0]'(NeZero.pos m))).forAll n prop ∧
   ∀ (i : ℕ) (hi : i + 1 < m),
-    let acc := by sorry
+    let acc := (circuit default xs[i]).output (n + i*(circuit default default).localLength);
+    (circuit acc xs[i + 1]).forAll (n + (i + 1)*(circuit default default).localLength) prop := by sorry
 
 end FoldlM
 

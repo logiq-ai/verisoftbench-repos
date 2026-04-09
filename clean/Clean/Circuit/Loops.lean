@@ -299,13 +299,85 @@ theorem operations_eq_const [NeZero m] (constant : ConstantLength (prod circuit)
     let acc := (circuit default xs[i]).output (n + i*k)
     (circuit acc xs[i + 1]).operations (n + (i + 1)*k)).flatten := by sorry
 
+theorem forAll_iff_foldlAcc_const (constant : ConstantLength (prod circuit)) : (xs.foldlM circuit init).forAll n prop ↔ ∀ i : Fin m, (circuit (foldlAcc n xs circuit init i) xs[i.val]).forAll (n + i * constant.localLength) prop := by
+  letI : ConstantLength (prod circuit) := constant
+  induction xs using Vector.induct generalizing init n with
+  | nil =>
+      simp [Vector.foldlM_empty, Circuit.forAll_def, Circuit.pure_operations_eq, Operations.forAll_empty]
+  | cons x xs ih =>
+      rw [foldlM_cons, Circuit.bind_forAll', constant.localLength_eq (init, x) n, Fin.forall_fin_succ]
+      constructor
+      · rintro ⟨hx, hxs⟩
+        constructor
+        · simpa [foldlAcc, Fin.foldl_zero, Vector.cons] using hx
+        · intro i
+          have hxs' :=
+            ih.mp
+              (show (Vector.foldlM circuit ((circuit init x).output n) xs).forAll (n + constant.localLength) prop from
+                hxs)
+          have hcons :
+              foldlAcc n (Vector.cons x xs) circuit init i.succ =
+                foldlAcc (n + constant.localLength) xs circuit ((circuit init x).output n) i := by
+            simpa [constant.localLength_eq (init, x) n] using
+              (foldlAcc_cons_succ (constant := constant) (n := n) (xs := xs)
+                (circuit := circuit) (init := init) (i := i) (x := x))
+          have hoff :
+              n + i.succ * constant.localLength =
+                (n + constant.localLength) + i * constant.localLength := by
+            simp [Fin.val_succ, add_mul, one_mul]
+            ac_rfl
+          rw [hcons, hoff]
+          simpa [Vector.cons, Fin.val_succ] using hxs' i
+      · rintro ⟨hx, hxs⟩
+        constructor
+        · simpa [foldlAcc, Fin.foldl_zero, Vector.cons] using hx
+        · apply ih.mpr
+          intro i
+          have hi := hxs i
+          have hcons :
+              foldlAcc n (Vector.cons x xs) circuit init i.succ =
+                foldlAcc (n + constant.localLength) xs circuit ((circuit init x).output n) i := by
+            simpa [constant.localLength_eq (init, x) n] using
+              (foldlAcc_cons_succ (constant := constant) (n := n) (xs := xs)
+                (circuit := circuit) (init := init) (i := i) (x := x))
+          have hoff :
+              n + i.succ * constant.localLength =
+                (n + constant.localLength) + i * constant.localLength := by
+            simp [Fin.val_succ, add_mul, one_mul]
+            ac_rfl
+          rw [hcons, hoff] at hi
+          simpa [Vector.cons, Fin.val_succ] using hi
+
 theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
     (h_const_out : ConstantOutput (prod circuit)) :
   (xs.foldlM circuit init).forAll n prop ↔
   (circuit init (xs[0]'(NeZero.pos m))).forAll n prop ∧
   ∀ (i : ℕ) (hi : i + 1 < m),
     let acc := (circuit default xs[i]).output (n + i*(circuit default default).localLength);
-    (circuit acc xs[i + 1]).forAll (n + (i + 1)*(circuit default default).localLength) prop := by sorry
+    (circuit acc xs[i + 1]).forAll (n + (i + 1)*(circuit default default).localLength) prop := by
+  rcases Nat.exists_eq_succ_of_ne_zero (NeZero.ne m) with ⟨m, rfl⟩
+  rw [forAll_iff_foldlAcc_const (constant := constant)]
+  rw [Fin.forall_fin_succ]
+  constructor
+  · intro h
+    refine ⟨?_, ?_⟩
+    · simpa [foldlAcc, Fin.foldl_zero] using h.1
+    · intro i hi
+      have h' := h.2 ⟨i, Nat.lt_of_succ_lt_succ hi⟩
+      simpa [Fin.val_succ, constant.localLength_eq (default, default) 0,
+        foldlAcc_const_succ (constant := constant) (h_const_out := h_const_out) (i := i) (hi := hi)] using h'
+  · rintro ⟨h0, htail⟩
+    refine ⟨?_, ?_⟩
+    · simpa [foldlAcc, Fin.foldl_zero] using h0
+    · intro i
+      have h' := htail i.val (Nat.succ_lt_succ i.is_lt)
+      change
+        (circuit (foldlAcc n xs circuit init ⟨i.val + 1, Nat.succ_lt_succ i.is_lt⟩) xs[i.val + 1]).forAll
+          (n + (i.val + 1) * constant.localLength) prop
+      simpa [Fin.val_succ, constant.localLength_eq (default, default) 0,
+        foldlAcc_const_succ (constant := constant) (h_const_out := h_const_out) (i := i.val)
+          (hi := Nat.succ_lt_succ i.is_lt)] using h'
+
 
 end FoldlM
 

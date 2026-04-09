@@ -706,11 +706,32 @@ instance OFE.ContractiveHom.fixpoint_ne [COFE α] [Inhabited α] :
     | zero => exact H _
     | succ _ IH => exact (H _).trans <| Contractive.succ _ <| IH <| Dist.lt H (Nat.lt_add_one _)
 
-@[elab_as_elim]
+theorem OFE.ContractiveHom.fixpoint_ind_default [COFE α] [Inhabited α]
+    (f : α -c> α) (P : α → Prop) (Hbase : P default)
+    (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) : P f.fixpoint := by
+  change P (COFE.compl (Fixpoint.chain f))
+  apply Hlim
+  intro n
+  induction n with
+  | zero =>
+      simpa [Fixpoint.chain, Nat.repeat] using Hind default Hbase
+  | succ n ih =>
+      simpa [Fixpoint.chain, Nat.repeat] using Hind _ ih
+
 theorem OFE.ContractiveHom.fixpoint_ind [COFE α] [Inhabited α] (f : α -c> α)
     (P : α → Prop) (HProper : ∀ A B : α, A ≡ B → P A → P B) (x : α) (Hbase : P x)
     (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) :
-    P f.fixpoint := by sorry
+    P f.fixpoint := by
+  let fp := f.fixpoint
+  have hfp : fp ≡ f fp := by
+    simpa [fp] using (fixpoint_unfold f)
+  letI : Inhabited α := ⟨x⟩
+  have hPx : P f.fixpoint :=
+    OFE.ContractiveHom.fixpoint_ind_default (f := f) (P := P) (Hbase := Hbase) (Hind := Hind) (Hlim := Hlim)
+  have hEq : fp ≡ f.fixpoint :=
+    fixpoint_unique (f := f) hfp
+  exact HProper _ _ hEq.symm hPx
+
 
 end Fixpoint
 

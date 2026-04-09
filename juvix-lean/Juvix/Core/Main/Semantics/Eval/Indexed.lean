@@ -136,6 +136,74 @@ lemma Eval.Indexed.toEval {n env e v} (h : env ⊢ e ↦(n) v) : env ⊢ e ↦ v
   case recur =>
     apply Eval.recur; assumption
 
-lemma Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by sorry
+lemma Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by
+  induction h with
+  | var hlookup =>
+      exact ⟨0, Eval.Indexed.var hlookup⟩
+  | var_rec hlookup _ ih =>
+      rcases ih with ⟨n, hindexed⟩
+      exact ⟨n, Eval.Indexed.var_rec hlookup hindexed⟩
+  | unit =>
+      exact ⟨0, Eval.Indexed.unit⟩
+  | const =>
+      exact ⟨0, Eval.Indexed.const⟩
+  | constr =>
+      exact ⟨0, Eval.Indexed.constr⟩
+  | app _ _ _ ihf iharg ihbody =>
+      rcases ihf with ⟨n₁, hf⟩
+      rcases iharg with ⟨n₂, harg⟩
+      rcases ihbody with ⟨n₃, hbody⟩
+      let k := max n₁ n₂
+      have hk₁ : n₁ ≤ k := by
+        dsimp [k]
+        exact le_max_left n₁ n₂
+      have hk₂ : n₂ ≤ k := by
+        dsimp [k]
+        exact le_max_right n₁ n₂
+      have hf' := Eval.Indexed.monotone (n' := k) hf hk₁
+      have harg' := Eval.Indexed.monotone (n' := k + 1) harg (Nat.le_trans hk₂ (Nat.le_succ k))
+      exact ⟨k + n₃ + 1, Eval.Indexed.app (n₁ := k) (n₂ := n₃) le_rfl hf' harg' hbody⟩
+  | constr_app _ _ ihctr iharg =>
+      rcases ihctr with ⟨n₁, hctr⟩
+      rcases iharg with ⟨n₂, harg⟩
+      let k := max n₁ n₂
+      have hk₁ : n₁ ≤ k := by
+        dsimp [k]
+        exact le_max_left n₁ n₂
+      have hk₂ : n₂ ≤ k := by
+        dsimp [k]
+        exact le_max_right n₁ n₂
+      have hctr' := Eval.Indexed.monotone (n' := k + 1) hctr (Nat.le_trans hk₁ (Nat.le_succ k))
+      have harg' := Eval.Indexed.monotone (n' := k) harg hk₂
+      exact ⟨k + 1, Eval.Indexed.constr_app (n' := k) (Nat.lt_succ_self k) hctr' harg'⟩
+  | binop _ _ ih₁ ih₂ =>
+      rcases ih₁ with ⟨n₁, h₁⟩
+      rcases ih₂ with ⟨n₂, h₂⟩
+      let k := max n₁ n₂
+      have hk₁ : n₁ ≤ k := by
+        dsimp [k]
+        exact le_max_left n₁ n₂
+      have hk₂ : n₂ ≤ k := by
+        dsimp [k]
+        exact le_max_right n₁ n₂
+      have h₁' := Eval.Indexed.monotone (n' := k) h₁ hk₁
+      have h₂' := Eval.Indexed.monotone (n' := k) h₂ hk₂
+      exact ⟨k, Eval.Indexed.binop h₁' h₂'⟩
+  | lambda =>
+      exact ⟨0, Eval.Indexed.lambda⟩
+  | save _ _ ihval ihbody =>
+      rcases ihval with ⟨n₁, hval⟩
+      rcases ihbody with ⟨n₂, hbody⟩
+      exact ⟨n₁ + n₂, Eval.Indexed.save (n₁ := n₁) (n₂ := n₂) le_rfl hval hbody⟩
+  | branch_matches _ ih =>
+      rcases ih with ⟨n, hbody⟩
+      exact ⟨n + 1, Eval.Indexed.branch_matches (n' := n) (Nat.lt_succ_self n) hbody⟩
+  | branch_fails hne _ ih =>
+      rcases ih with ⟨n, hnext⟩
+      exact ⟨n, Eval.Indexed.branch_fails hne hnext⟩
+  | recur _ ih =>
+      rcases ih with ⟨n, hbody⟩
+      exact ⟨n + 1, Eval.Indexed.recur (n' := n) (Nat.lt_succ_self n) hbody⟩
+
 
 end Juvix.Core.Main

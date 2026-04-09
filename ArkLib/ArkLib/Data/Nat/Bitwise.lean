@@ -951,7 +951,70 @@ lemma getBit_eq_pred_getBit_of_div_two {n k : ℕ} (h_k: k > 0) :
 
 -- TODO: uniqueness of this representation?
 theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by sorry
+  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
+  have h_range : ∀ ℓ j, j < 2 ^ ℓ → j = ∑ k ∈ Finset.range ℓ, (getBit k j) * 2 ^ k := by
+    intro ℓ
+    induction ℓ with
+    | zero =>
+        intro j hj
+        have hj0 : j = 0 := by omega
+        subst hj0
+        simp
+    | succ ℓ ih =>
+        intro j hj
+        have hdiv : j / 2 < 2 ^ ℓ := by
+          rw [pow_succ] at hj
+          omega
+        have htail :
+            ∑ k ∈ Finset.range ℓ, 2 * ((getBit k (j / 2)) * 2 ^ k) =
+              ∑ k ∈ Finset.range ℓ, (getBit (k + 1) j) * 2 ^ (k + 1) := by
+          apply Finset.sum_congr rfl
+          intro k hk
+          calc
+            2 * ((getBit k (j / 2)) * 2 ^ k)
+                = ((getBit k (j / 2)) * 2 ^ k) * 2 := by rw [Nat.mul_comm]
+            _ = (getBit k (j / 2)) * (2 ^ k * 2) := by rw [Nat.mul_assoc]
+            _ = (getBit (k + 1) j) * 2 ^ (k + 1) := by
+              rw [Nat.getBit_eq_pred_getBit_of_div_two (n := j) (k := k + 1) (by omega),
+                pow_succ]
+              simp
+        have hsplit :
+            ∑ k ∈ Finset.range (ℓ + 1), (getBit k j) * 2 ^ k =
+              ∑ k ∈ Finset.range 1, (getBit k j) * 2 ^ k +
+                ∑ k ∈ Finset.range ℓ, (getBit (1 + k) j) * 2 ^ (1 + k) := by
+          simpa [one_add, add_assoc, add_left_comm, add_comm] using
+            (Finset.sum_range_add (f := fun k => (getBit k j) * 2 ^ k) 1 ℓ)
+        have hih : j / 2 = ∑ k ∈ Finset.range ℓ, (getBit k (j / 2)) * 2 ^ k :=
+          ih (j / 2) hdiv
+        calc
+          j = j % 2 + 2 * (j / 2) := by
+            symm
+            exact Nat.mod_add_div j 2
+          _ = (getBit 0 j) * 2 ^ 0 + 2 * (j / 2) := by
+            rw [getBit, Nat.shiftRight_zero, Nat.and_one_is_mod, pow_zero, Nat.mul_one]
+          _ = ∑ k ∈ Finset.range 1, (getBit k j) * 2 ^ k + 2 * (j / 2) := by
+            simp
+          _ = ∑ k ∈ Finset.range 1, (getBit k j) * 2 ^ k +
+                2 * (∑ k ∈ Finset.range ℓ, (getBit k (j / 2)) * 2 ^ k) := by
+            simpa using congrArg
+              (fun x => ∑ k ∈ Finset.range 1, (getBit k j) * 2 ^ k + 2 * x) hih
+          _ = ∑ k ∈ Finset.range 1, (getBit k j) * 2 ^ k +
+                ∑ k ∈ Finset.range ℓ, 2 * ((getBit k (j / 2)) * 2 ^ k) := by
+            rw [Finset.mul_sum]
+          _ = ∑ k ∈ Finset.range 1, (getBit k j) * 2 ^ k +
+                ∑ k ∈ Finset.range ℓ, (getBit (k + 1) j) * 2 ^ (k + 1) := by
+            rw [htail]
+          _ = ∑ k ∈ Finset.range (ℓ + 1), (getBit k j) * 2 ^ k := by
+            simpa [one_add] using hsplit.symm
+  intro j hj
+  cases ℓ with
+  | zero =>
+      have hj0 : j = 0 := by omega
+      subst hj0
+      simp [Nat.getBit_zero_eq_zero]
+  | succ ℓ =>
+      simpa [Nat.range_succ_eq_Icc_zero] using h_range (ℓ + 1) j hj
+
 
 theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
   j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by

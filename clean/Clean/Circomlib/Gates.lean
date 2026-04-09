@@ -334,8 +334,77 @@ theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α)
   exact ⟨hf, hg⟩
 
 -- Helper theorem for subcircuitsConsistent
+theorem subcircuitsConsistent_bind_aux {α β : Type} (f : Circuit (F p) α) (g : α → Circuit (F p) β) (offset : ℕ) :
+    Operations.SubcircuitsConsistent offset (f.operations offset) →
+    Operations.SubcircuitsConsistent (offset + f.localLength offset)
+      ((g (f.output offset)).operations (offset + f.localLength offset)) →
+    Operations.SubcircuitsConsistent offset ((f >>= g).operations offset) := by
+  intro hf hg
+  unfold Operations.SubcircuitsConsistent at *
+  rw [bind_forAll]
+  exact ⟨hf, hg⟩
+
 theorem subcircuitsConsistent (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
-    Operations.SubcircuitsConsistent offset ((main input).operations offset) := by sorry
+    Operations.SubcircuitsConsistent offset ((main input).operations offset) := by
+  induction n using Nat.strong_induction_on generalizing offset with
+  | _ n IH =>
+      match n with
+      | 0 =>
+          simp [main, Circuit.operations, Circuit.pure_def, Operations.SubcircuitsConsistent, Operations.forAll]
+      | 1 =>
+          simp [main, Circuit.operations, Circuit.pure_def, Operations.SubcircuitsConsistent, Operations.forAll]
+      | 2 =>
+          simpa [main] using (AND.circuit.subcircuitsConsistent (input[0], input[1]) offset)
+      | m + 3 =>
+          let n1 := (m + 3) / 2
+          let n2 := (m + 3) - n1
+          let input1 : Var (fields n1) (F p) :=
+            input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega)
+          let input2 : Var (fields n2) (F p) :=
+            input.drop n1 |>.cast (by omega)
+          have h_n1 : n1 < m + 3 := by
+            dsimp [n1]
+            omega
+          have h_n2 : n2 < m + 3 := by
+            dsimp [n1, n2]
+            omega
+          have h1 : Operations.SubcircuitsConsistent offset ((main input1).operations offset) := by
+            exact IH n1 h_n1 input1 offset
+          have h2 : Operations.SubcircuitsConsistent
+              (offset + (main input1).localLength offset)
+              ((main input2).operations (offset + (main input1).localLength offset)) := by
+            exact IH n2 h_n2 input2 (offset + (main input1).localLength offset)
+          have h3 : Operations.SubcircuitsConsistent
+              (offset + (main input1).localLength offset +
+                (main input2).localLength (offset + (main input1).localLength offset))
+              ((AND.circuit.main
+                  ((main input1).output offset,
+                    (main input2).output (offset + (main input1).localLength offset))).operations
+                (offset + (main input1).localLength offset +
+                  (main input2).localLength (offset + (main input1).localLength offset))) := by
+            simpa [Nat.add_assoc] using
+              (AND.circuit.subcircuitsConsistent
+                ((main input1).output offset,
+                  (main input2).output (offset + (main input1).localLength offset))
+                (offset + (main input1).localLength offset +
+                  (main input2).localLength (offset + (main input1).localLength offset)))
+          have htail : Operations.SubcircuitsConsistent
+              (offset + (main input1).localLength offset)
+              ((main input2 >>= fun out2 =>
+                  AND.circuit.main ((main input1).output offset, out2)).operations
+                (offset + (main input1).localLength offset)) := by
+            apply subcircuitsConsistent_bind_aux
+            · exact h2
+            · exact h3
+          have hfinal : Operations.SubcircuitsConsistent offset
+              ((main input1 >>= fun out1 =>
+                  main input2 >>= fun out2 =>
+                    AND.circuit.main (out1, out2)).operations offset) := by
+            apply subcircuitsConsistent_bind_aux
+            · exact h1
+            · exact htail
+          simpa [main, n1, n2, input1, input2] using hfinal
+
 
 -- Helper lemma: UsesLocalWitnesses and UsesLocalWitnessesCompleteness are equivalent for MultiAND.main
 lemma main_usesLocalWitnesses_iff_completeness (n : ℕ) (input : Var (fields n) (F p)) (offset1 offset2 : ℕ) (env : Environment (F p)) :

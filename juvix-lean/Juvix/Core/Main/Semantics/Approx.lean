@@ -209,8 +209,39 @@ lemma Value.Approx.invert {v v'} :
   intro h
   invert (h 0) <;> constructor <;> aesop
 
-@[trans]
-lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by sorry
+lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  suffices h : ∀ n {v₁ v₂ v₃}, v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ by
+    exact h n
+  intro n v₁ v₂ v₃ h₁ h₂
+  induction n using Nat.strong_induction_on generalizing v₁ v₂ v₃ with
+  | h n ih =>
+      unfold Value.Approx.Indexed at h₁
+      rcases h₁ with h₁ | h₁ | h₁ | h₁
+      · rcases h₁ with ⟨rfl, rfl⟩
+        have hv3 : v₃ = Value.unit := Value.Approx.unit_right.mp h₂
+        subst hv3
+        exact Value.Approx.Indexed.unit
+      · rcases h₁ with ⟨c, rfl, rfl⟩
+        have hv3 : v₃ = Value.const c := Value.Approx.const_right.mp h₂
+        subst hv3
+        exact Value.Approx.Indexed.const
+      · rcases h₁ with ⟨ctr_name, args_rev, args_rev', rfl, rfl, hargs⟩
+        rcases Value.Approx.constr_app_inv_right h₂ with ⟨args_rev'', rfl, happrox⟩
+        apply Value.Approx.Indexed.constr_app
+        intro k hk
+        exact Juvix.Utils.forall₂_trans'
+          (fun x y z hx hy => ih k hk (v₁ := x) (v₂ := y) (v₃ := z) hx hy)
+          (hargs k hk)
+          happrox
+      · rcases h₁ with ⟨env₁, body₁, env₂, body₂, rfl, rfl, hcl₁⟩
+        rcases Value.Approx.closure_inv_right h₂ with ⟨env₃, body₃, rfl, hcl₂⟩
+        apply Value.Approx.Indexed.closure
+        intro n₁ n₂ hn a₁ a₃ r₁ ha heval₁
+        obtain ⟨r₂, heval₂, hr₂⟩ := hcl₁ n₁ n₂ hn a₁ a₃ r₁ ha heval₁
+        obtain ⟨r₃, heval₃, hr₃⟩ := hcl₂ a₃ a₃ (Value.Approx.refl a₃) r₂ heval₂
+        refine ⟨r₃, heval₃, ?_⟩
+        exact ih n₂ (by linarith) (v₁ := r₁) (v₂ := r₂) (v₃ := r₃) hr₂ hr₃
+
 
 @[trans]
 lemma Value.Approx.trans {v₁ v₂ v₃} : v₁ ≲ᵥ v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ v₃ := by

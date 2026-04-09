@@ -653,7 +653,8 @@ lemma main_output_binary_from_completeness (n : ℕ) (offset : ℕ) (env : Envir
     (h_assumptions : Assumptions n input)
     (h_local_witnesses : env.UsesLocalWitnessesCompleteness offset ((main input_var).operations offset))
     (h_completeness : Circuit.ConstraintsHold.Completeness env ((main input_var).operations offset)) :
-    let output := by sorry
+    let output := env ((main input_var).output offset)
+    IsBool output := by sorry
 
 theorem completeness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields n) (F p))

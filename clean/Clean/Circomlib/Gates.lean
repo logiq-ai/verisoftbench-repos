@@ -571,13 +571,35 @@ lemma soundness_one {p : ℕ} [Fact p.Prime]
   · simp only [h_eval_eq]
     exact h_input0
 
-/-- Soundness for n = 2 case -/
+theorem spec_two_iff_pair_and {p : ℕ} [Fact p.Prime] (input : fields 2 (F p)) (output : F p) (h0 : IsBool input[0]) : Spec 2 input output ↔ (output.val = input[0].val &&& input[1].val ∧ IsBool output) := by
+  have hfold : (input.map (·.val)).foldl (· &&& ·) 1 = input[0].val &&& input[1].val := by
+    rw [Vector.foldl_mk, ← Array.foldl_toList]
+    have h_toList : (input.map (·.val)).toList = [input[0].val, input[1].val] := by
+      rw [Vector.toList_length_two]
+      simp only [Vector.getElem_map]
+    rw [Vector.toList_toArray, h_toList]
+    simp only [List.foldl_cons, List.foldl_nil]
+    rw [one_land_of_IsBool input[0].val (val_of_IsBool h0)]
+  simpa only [Spec, hfold]
+
 lemma soundness_two {p : ℕ} [Fact p.Prime]
     (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields 2) (F p))
     (input : fields 2 (F p)) (h_env : input = eval env input_var)
     (h_assumptions : Assumptions 2 input)
     (h_hold : Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset)) :
-    Spec 2 input (env ((main input_var).output offset)) := by sorry
+    Spec 2 input (env ((main input_var).output offset)) := by
+  have h0 : IsBool input[0] := h_assumptions 0 (by omega)
+  have h1 : IsBool input[1] := h_assumptions 1 (by omega)
+  rw [spec_two_iff_pair_and input (env ((main input_var).output offset)) h0]
+  have h_pair_env : ProvableType.eval (α := fieldPair) env (input_var[0], input_var[1]) = (input[0], input[1]) := by
+    rw [ProvableType.eval_fieldPair]
+    apply Prod.ext
+    · simpa [ProvableType.eval_fields] using congrArg (fun x => x[0]) h_env.symm
+    · simpa [ProvableType.eval_fields] using congrArg (fun x => x[1]) h_env.symm
+  have h_and := AND.circuit.soundness offset env (input_var := (input_var[0], input_var[1]))
+      (input := (input[0], input[1])) h_pair_env ⟨h0, h1⟩ (by simpa [main] using h_hold)
+  simpa [circuit_norm, main] using h_and
+
 
 /-- Completeness for n = 0 case -/
 lemma completeness_zero {p : ℕ} [Fact p.Prime]
@@ -653,7 +675,8 @@ lemma main_output_binary_from_completeness (n : ℕ) (offset : ℕ) (env : Envir
     (h_assumptions : Assumptions n input)
     (h_local_witnesses : env.UsesLocalWitnessesCompleteness offset ((main input_var).operations offset))
     (h_completeness : Circuit.ConstraintsHold.Completeness env ((main input_var).operations offset)) :
-    let output := by sorry
+    let output := env ((main input_var).output offset)
+    IsBool output := by sorry
 
 theorem completeness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields n) (F p))

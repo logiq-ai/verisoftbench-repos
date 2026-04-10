@@ -950,8 +950,61 @@ lemma getBit_eq_pred_getBit_of_div_two {n k : ℕ} (h_k: k > 0) :
   exact Eq.symm (getBit_of_shiftRight (k - 1))
 
 -- TODO: uniqueness of this representation?
+theorem sum_range_succ_getBit_div_two (j ℓ : Nat) : (∑ k ∈ Finset.range ℓ, (getBit (k + 1) j) * 2 ^ (k + 1)) = 2 * ∑ k ∈ Finset.range ℓ, (getBit k (j / 2)) * 2 ^ k := by
+  calc
+    ∑ k ∈ Finset.range ℓ, (getBit (k + 1) j) * 2 ^ (k + 1)
+        = ∑ k ∈ Finset.range ℓ, (getBit k (j / 2)) * 2 ^ (k + 1) := by
+            apply Finset.sum_congr rfl
+            intro k hk
+            rw [getBit_eq_pred_getBit_of_div_two (n := j) (k := k + 1) (h_k := Nat.succ_pos k)]
+            simp only [Nat.add_sub_cancel]
+    _ = ∑ k ∈ Finset.range ℓ, 2 * ((getBit k (j / 2)) * 2 ^ k) := by
+            apply Finset.sum_congr rfl
+            intro k hk
+            rw [Nat.pow_succ, ← mul_assoc, Nat.mul_comm ((getBit k (j / 2)) * 2 ^ k) 2]
+    _ = 2 * ∑ k ∈ Finset.range ℓ, (getBit k (j / 2)) * 2 ^ k := by
+            rw [← Finset.mul_sum]
+
+theorem getBit_repr_range {ℓ : Nat} : ∀ j, j < 2^ℓ → j = ∑ k ∈ Finset.range ℓ, (getBit k j) * 2 ^ k := by
+  induction ℓ with
+  | zero =>
+      intro j hj
+      have hj0 : j = 0 := by
+        omega
+      subst hj0
+      simp
+  | succ ℓ ih =>
+      intro j hj
+      have hdiv : j / 2 < 2 ^ ℓ := by
+        have hj' : j < 2 ^ ℓ * 2 := by
+          simpa [Nat.pow_succ, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using hj
+        omega
+      symm
+      calc
+        ∑ k ∈ Finset.range (ℓ + 1), getBit k j * 2 ^ k
+            = (∑ k ∈ Finset.range ℓ, getBit (k + 1) j * 2 ^ (k + 1)) + getBit 0 j := by
+                rw [Finset.sum_range_succ' (f := fun k => getBit k j * 2 ^ k)]
+                simp
+        _ = 2 * ∑ k ∈ Finset.range ℓ, getBit k (j / 2) * 2 ^ k + getBit 0 j := by
+                rw [sum_range_succ_getBit_div_two]
+        _ = 2 * (j / 2) + getBit 0 j := by
+                rw [← ih (j / 2) hdiv]
+        _ = 2 * (j / 2) + j % 2 := by
+                simp [getBit, Nat.and_one_is_mod]
+        _ = j := by
+                exact Nat.div_add_mod j 2
+
 theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by sorry
+  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
+  intro j hj
+  by_cases hℓ : ℓ = 0
+  · subst hℓ
+    have hj0 : j = 0 := by omega
+    subst hj0
+    simpa using (getBit_zero_eq_zero (k := 0)).symm
+  · rw [← Nat.range_eq_Icc_zero_sub_one ℓ hℓ]
+    exact getBit_repr_range (ℓ := ℓ) j hj
+
 
 theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
   j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by

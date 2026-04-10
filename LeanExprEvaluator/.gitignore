@@ -1,0 +1,8 @@
+/.lake
+.github/workflows/lean_action_ci.yml
+semantic/small_steps.aux
+semantic/small_steps.dvi
+semantic/small_steps.fdb_latexmk
+semantic/small_steps.fls
+semantic/small_steps.log
+semantic/small_steps.synctex.gz

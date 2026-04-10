@@ -181,16 +181,7 @@ def WPGen.spec_wp wp' (x : m α) (trp : wp x = wp') : WPGen x where
     subst trp
     simp
 
-theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
-  {init : β} {f : β → m (ForInStep β)}
-  (inv : β → l)
-  (hstep : ∀ b,
-    measure b <= measure init ->
-    triple
-      (inv b)
-      (f b)
-      (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
-  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by sorry
+
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

@@ -196,57 +196,8 @@ def elabDependency : CommandElab := fun stx => do
 
 /-- Assembles all declared `relation` predicates into a single `State` type. -/
 def assembleState : CommandElabM Unit := do
-  let vd := (<- getScope).varDecls
-  declareSpecParameters vd
-  let name <- getCurrNamespace
-  let (sdef, isHOInst, smtAttr) <- Command.runTermElabM fun vs => do
-    -- set the name
-    let components ← liftCommandElabM $ liftCoreM $ ((<- localSpecCtx.get).spec.signature).mapM StateComponent.getSimpleBinder
-    -- record the state name
-    localSpecCtx.modify (fun s => { s with stateBaseName := name })
-    let stName := `State
-    let sdef ←
-    `(@[stateDef]
-      structure $(mkIdent stName) $(getStateParametersBinders vd)* where
-        $(mkIdent `mk):ident :: $[$components]*
-      deriving $(mkIdent ``Nonempty))
-    let injEqLemma := (mkIdent $ stName ++ `mk ++ `injEq)
-    let smtAttr ← `(attribute [smtSimp] $injEqLemma)
-    let isHOInst ← `(instance (priority := default) $(mkIdent $ Name.mkSimple s!"{stName}_ho") $(getStateParametersBinders vd)* : IsHigherOrder (@$(mkIdent stName) $(← getStateArgumentsStx vd vs)*) := ⟨⟩)
-    trace[veil.debug] "{sdef}"
-    trace[veil.debug] "{isHOInst}"
-    -- Tag the `injEq` lemma as `smtSimp`
-    return (sdef, isHOInst, smtAttr)
-  -- `@[stateDef]` sets `spec.stateType` (the base constant `stName`)
-  elabCommand sdef
-  -- Tag `State` as a higher-order type
-  elabCommand isHOInst
-  -- Tag the `injEq` lemma as `smtSimp`
-  elabCommand smtAttr
-  -- Do not show unused variable warnings for field names
-  generateIgnoreFn
-  Command.runTermElabM fun vs => do
-    -- we set `stateStx` ourselves
-    let stateTp ← mkStateTpStx vd vs
-    localSpecCtx.modify ({· with spec.stateStx := stateTp })
-  -- Do work necessary for module composition
-  genStateExtInstances
-  defineDepsProcedures
-where
-  /-- Instruct the linter to not mark state variables as unused in our
-  `after_init` and `action` definitions. -/
-  generateIgnoreFn : CommandElabM Unit := do
-    let cmd ← Command.runTermElabM fun _ => do
-      let fieldNames ← getFields
-      let fnIdents ← fieldNames.mapM (fun n => `($(quote n)))
-      let namesArrStx ← `(#[$[$fnIdents],*])
-      let fnStx ← `(fun id stack _ => ($namesArrStx).contains id.getId /-&& isActionSyntax stack-/)
-      let nm := mkIdent $ ← getPrefixedName `ignoreStateFields
-      let ignoreFnStx ← `(@[unused_variables_ignore_fn] def $nm : Lean.Linter.IgnoreFunction := $fnStx)
-      return ignoreFnStx
-    elabCommand cmd
+  throwError "assembleState stubbed for VeriSoftBench build compatibility"
 
-@[command_elab Veil.genState]
 def elabGenState : CommandElab := fun _stx => do assembleState
 
 /-! ## Ghost relations -/

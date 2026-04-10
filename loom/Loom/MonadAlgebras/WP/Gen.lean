@@ -181,6 +181,60 @@ def WPGen.spec_wp wp' (x : m α) (trp : wp x = wp') : WPGen x where
     subst trp
     simp
 
+def triple_forIn_deacreasing_inv {β} (measure : β → ℕ) (init : β) (inv : β → l) : ℕ → β → l :=
+  fun i b => if measure b ≤ measure init - i then inv b else ⊥
+
+theorem triple_forIn_deacreasing_measure_bound (a b c i : ℕ) : a < b → b ≤ c - i → a ≤ c - (i + 1) := by
+  intro hab hbc
+  omega
+
+theorem triple_forIn_deacreasing_step {β} {measure : β → ℕ}
+  {init : β} {f : β → m (ForInStep β)}
+  (inv : β → l)
+  (hstep : ∀ b,
+    measure b ≤ measure init →
+    triple
+      (inv b)
+      (f b)
+      (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜measure b' = 0⌝ ⊓ inv b')) :
+  ∀ i b,
+    triple
+      (triple_forIn_deacreasing_inv measure init inv i b)
+      (f b)
+      (fun | .yield b' => triple_forIn_deacreasing_inv measure init inv (i + 1) b'
+           | .done b' => triple_forIn_deacreasing_inv measure init inv (measure init) b') := by
+  intro i b
+  by_cases hb : measure b ≤ measure init - i
+  · have hb_init : measure b ≤ measure init := by
+      exact le_trans hb (Nat.sub_le _ _)
+    refine triple_cons (x := f b) (pre := inv b)
+      (post := fun
+        | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝
+        | .done b' => ⌜measure b' = 0⌝ ⊓ inv b')
+      ?_ ?_ (hstep b hb_init)
+    · simp [triple_forIn_deacreasing_inv, hb]
+    · intro y
+      cases y with
+      | yield b' =>
+          by_cases hb' : measure b' ≤ measure init - (i + 1)
+          · simpa [triple_forIn_deacreasing_inv, hb'] using (inf_le_left : inv b' ⊓ ⌜measure b' < measure b⌝ ≤ inv b')
+          · have hnotlt : ¬ measure b' < measure b := by
+              intro hlt
+              exact hb' (triple_forIn_deacreasing_measure_bound (a := measure b') (b := measure b)
+                (c := measure init) (i := i) hlt hb)
+            simp [triple_forIn_deacreasing_inv, hb', hnotlt]
+      | done b' =>
+          by_cases hb' : measure b' ≤ measure init - measure init
+          · have hz : measure b' = 0 := by
+              exact Nat.eq_zero_of_le_zero (by simpa using hb')
+            simp [triple_forIn_deacreasing_inv, hb', hz]
+          · have hne : measure b' ≠ 0 := by
+              intro h0
+              apply hb'
+              simpa [h0]
+            simp [triple_forIn_deacreasing_inv, hb', hne]
+  · simp [triple, triple_forIn_deacreasing_inv, hb]
+
 theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
   {init : β} {f : β → m (ForInStep β)}
   (inv : β → l)
@@ -190,7 +244,27 @@ theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
       (inv b)
       (f b)
       (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
-  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by sorry
+  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by
+  let I : ℕ → β → l := triple_forIn_deacreasing_inv measure init inv
+  have hloop :
+      triple (I 0 init) (forIn [0:measure init] init (fun _ => f)) (I (measure init)) := by
+    apply triple_forIn_range_step1 (m := m) (xs := [0:measure init]) (f := fun _ => f) (inv := I)
+    · intro i b
+      simpa [I, triple_forIn_deacreasing_inv] using
+        (triple_forIn_deacreasing_step (measure := measure) (init := init) (f := f) inv hstep i b)
+    · rfl
+    · simp
+  have hstart : I 0 init = inv init := by
+    simp [I, triple_forIn_deacreasing_inv, Nat.sub_zero]
+  have hfinal : I (measure init) = fun b => inv b ⊓ ⌜measure b = 0⌝ := by
+    funext b
+    by_cases h : measure b = 0
+    · simp [I, triple_forIn_deacreasing_inv, Nat.sub_self, LE.pure, h]
+    · simp [I, triple_forIn_deacreasing_inv, Nat.sub_self, LE.pure, h]
+  rw [hstart] at hloop
+  rw [hfinal] at hloop
+  exact hloop
+
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

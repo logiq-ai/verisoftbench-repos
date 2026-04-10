@@ -273,7 +273,7 @@ variable (p : PMF α) (x : α)
 
 @[simp] lemma evalDist_eq : evalDist p = liftM p := rfl
 
-theorem probOutput_eq: probOutput p = p := by
+@[simp] theorem probOutput_eq: probOutput p = p := by
   funext y
   simp [probOutput_def, evalDist_eq, PMF.monad_map_eq_map]
   rw [tsum_eq_single y]

@@ -468,12 +468,33 @@ def MemoryAccessList.isConsistentOffline (accesses : MemoryAccessList) (h_sorted
     (if addr1 = addr2 then readValue2 = writeValue1 else readValue2 = 0) ∧
     MemoryAccessList.isConsistentOffline ((t1, addr1, readValue1, writeValue1) :: rest) (List.Sorted.of_cons h_sorted)
 
-theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted
-    (accesses : MemoryAccessList)
+theorem MemoryAccessList.filterAddress_sorted_from_addressStrictTimestampSorted (accesses : MemoryAccessList) (h_sorted : accesses.isAddressStrictTimestampSorted) (addr : ℕ) :
+    (accesses.filterAddress addr).isTimestampSorted := by
+  let p : MemoryAccess → Bool := fun (_t, a, _r, _w) => a = addr
+  have h_pair :
+      accesses.Pairwise (fun x y => p x → p y → timestamp_ordering x y) := by
+    refine List.Pairwise.imp ?_ h_sorted
+    intro x y hxy hx hy
+    obtain ⟨t2, a2, r2, w2⟩ := x
+    obtain ⟨t1, a1, r1, w1⟩ := y
+    have hx' : a2 = addr := by
+      simpa only [p, decide_eq_true_eq] using hx
+    have hy' : a1 = addr := by
+      simpa only [p, decide_eq_true_eq] using hy
+    have hEq : a1 = a2 := hy'.trans hx'.symm
+    simpa only [address_strict_timestamp_ordering, timestamp_ordering, hEq, ↓reduceIte] using hxy
+  have h_filtered : List.Pairwise timestamp_ordering (List.filter p accesses) := by
+    exact (List.pairwise_filter (R := timestamp_ordering) (p := p) (l := accesses)).2 h_pair
+  simpa only [MemoryAccessList.filterAddress, MemoryAccessList.isTimestampSorted, p] using h_filtered
+
+theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted (accesses : MemoryAccessList)
     (h_sorted : accesses.isAddressTimestampSorted)
     (h_nodup : accesses.Notimestampdup)
     (addr : ℕ) :
-    (accesses.filterAddress addr).isTimestampSorted := by sorry
+    (accesses.filterAddress addr).isTimestampSorted := by
+  have h_strict := MemoryAccessList.addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup accesses h_sorted h_nodup
+  exact MemoryAccessList.filterAddress_sorted_from_addressStrictTimestampSorted accesses h_strict addr
+
 
 theorem MemoryAccessList.isConsistentSingleAddress_filterAddress_forall_of_cons
     (head : MemoryAccess) (tail : MemoryAccessList)

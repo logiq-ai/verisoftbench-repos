@@ -706,11 +706,57 @@ instance OFE.ContractiveHom.fixpoint_ne [COFE α] [Inhabited α] :
     | zero => exact H _
     | succ _ IH => exact (H _).trans <| Contractive.succ _ <| IH <| Dist.lt H (Nat.lt_add_one _)
 
-@[elab_as_elim]
+def OFE.ContractiveHom.iterChain [OFE α] (f : α -c> α) (x : α) : Chain α where
+  chain n := Nat.repeat f.f n.succ x
+  cauchy {n} := by
+    induction n with
+    | zero =>
+        simp [Nat.repeat]
+    | succ n IH =>
+        rintro (_|i)
+        · simp
+        · intro H
+          simpa [Nat.repeat] using Contractive.succ f.f (IH (Nat.le_of_succ_le_succ H))
+
+theorem OFE.ContractiveHom.iterChain_compl_fixed [COFE α] (f : α -c> α) (x : α) : COFE.compl (OFE.ContractiveHom.iterChain f x) ≡ f (COFE.compl (OFE.ContractiveHom.iterChain f x)) := by
+  refine equiv_dist.mpr fun n => ?_
+  apply COFE.conv_compl.trans
+  refine .trans ?_ (NonExpansive.ne COFE.conv_compl.symm)
+  induction n with
+  | zero =>
+      simpa [OFE.ContractiveHom.iterChain, Nat.repeat] using (Contractive.zero f.f : f (x := x) ≡{0}≡ f (y := f x))
+  | succ _ IH =>
+      simpa [OFE.ContractiveHom.iterChain, Nat.repeat] using (Contractive.succ f.f IH.symm).symm
+
+theorem OFE.ContractiveHom.iterChain_compl_eq_fixpoint [COFE α] [Inhabited α] (f : α -c> α) (x : α) : COFE.compl (OFE.ContractiveHom.iterChain f x) ≡ f.fixpoint := by
+  simpa [OFE.ContractiveHom.fixpoint] using
+    (fixpoint_unique (f := f) (x := COFE.compl (OFE.ContractiveHom.iterChain f x))
+      (H := OFE.ContractiveHom.iterChain_compl_fixed (f := f) (x := x)))
+
+theorem OFE.ContractiveHom.iterChain_prop [OFE α] (f : α -c> α) (P : α → Prop) (x : α) (Hbase : P x) (Hind : ∀ x, P x → P (f x)) : ∀ n, P (OFE.ContractiveHom.iterChain f x n) := by
+  have Hiter : ∀ k, P (Nat.repeat f.f k x) := by
+    intro k
+    induction k with
+    | zero =>
+        simpa using Hbase
+    | succ k IH =>
+        simpa [Nat.repeat] using Hind _ IH
+  intro n
+  simpa [OFE.ContractiveHom.iterChain] using Hiter n.succ
+
 theorem OFE.ContractiveHom.fixpoint_ind [COFE α] [Inhabited α] (f : α -c> α)
     (P : α → Prop) (HProper : ∀ A B : α, A ≡ B → P A → P B) (x : α) (Hbase : P x)
     (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) :
-    P f.fixpoint := by sorry
+    P f.fixpoint := by
+  let c := OFE.ContractiveHom.iterChain f x
+  have Hc : ∀ n, P (c n) := by
+    intro n
+    simpa [c] using OFE.ContractiveHom.iterChain_prop f P x Hbase Hind n
+  have Hcompl : P (COFE.compl c) := Hlim c Hc
+  have Heq : COFE.compl c ≡ f.fixpoint := by
+    simpa [c] using OFE.ContractiveHom.iterChain_compl_eq_fixpoint f x
+  exact HProper _ _ Heq Hcompl
+
 
 end Fixpoint
 

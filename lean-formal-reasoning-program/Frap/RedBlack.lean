@@ -248,12 +248,27 @@ To recursively destruct an inductively defined object, we can use the `rcases` t
 We can give names to parameters in each case, so that we can refer to them later.
 -/
 
+theorem bst_recolor {α : Type _} {c c' : Color} {l : Tree α} {k : Nat} {v : α} {r : Tree α} : BST (tree c l k v r) → BST (tree c' l k v r) := by
+  intro h
+  cases h
+  constructor <;> assumption
+
+theorem forallTree_recolor {α : Type _} {P : Nat → α → Prop} {c c' : Color} {l : Tree α} {k : Nat} {v : α} {r : Tree α} : ForallTree P (tree c l k v r) → ForallTree P (tree c' l k v r) := by
+  intro h
+  cases h
+  constructor <;> assumption
+
 theorem balance_BST {α : Type u} c (l : Tree α) k vk (r : Tree α)
     : ForallTree (fun x _ => x < k) l
       -> ForallTree (fun x _ => x > k) r
       -> BST l
       -> BST r
-      -> BST (balance c l k vk r) := by sorry
+      -> BST (balance c l k vk r) := by
+  intro hlk hkr hbl hbr
+  cases c <;> simp [balance]
+  · exact BST.tree red l k vk r hlk hkr hbl hbr
+  · sorry
+
 
 /-
 exercise (2-star)

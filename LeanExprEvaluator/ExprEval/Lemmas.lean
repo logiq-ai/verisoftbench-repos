@@ -1,9 +1,8 @@
 import ExprEval.Expr
 import ExprEval.Steps
+theorem arstep_preserve_eval (e e': ArExpr V): (ArStep V val) e e' -> eval V val e = eval V val e' := by sorry
+
 mutual
-
-    theorem arstep_preserve_eval (e e': ArExpr V): (ArStep V val) e e' -> eval V val e = eval V val e' := by sorry
-
     theorem arstepstar_preserves_eval (e e': ArExpr V) :
             ArStepStar V val e e' -> eval V val e = eval V val e' := by
             intro h

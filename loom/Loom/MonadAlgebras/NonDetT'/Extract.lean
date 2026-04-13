@@ -359,8 +359,47 @@ def ExtractNonDet.prop {α : Type u} (s : NonDetT m α) :  ExtractNonDet WeakFin
 
 namespace DemonicChoice
 
+theorem pickCont_select_le {τ : Type u} (p : τ → Prop) (A B : τ → l) {y : τ} : p y -> (⨅ t, ⌜p t⌝ ⇨ A t) ⊓ ((⨅ t, ⌜p t⌝ ⇨ B t) ⊓ (⨆ t, ⌜p t⌝)) <= A y ⊓ B y := by
+  intro hy
+  let Ainf : l := ⨅ t, ⌜p t⌝ ⇨ A t
+  let Binf : l := ⨅ t, ⌜p t⌝ ⇨ B t
+  have hA : Ainf ≤ A y := by
+    refine iInf_le_of_le y ?_
+    simp [Ainf, hy]
+  have hB : Binf ≤ B y := by
+    refine iInf_le_of_le y ?_
+    simp [Binf, hy]
+  have hdrop : Ainf ⊓ (Binf ⊓ ⨆ t, ⌜p t⌝) ≤ Ainf ⊓ Binf := by
+    exact inf_le_inf_left _ inf_le_left
+  exact le_trans hdrop (inf_le_inf hA hB)
+
 lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
-  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by sorry
+  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+  unhygienic induction inst
+  · simpa [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, wp_pure, Pure.pure] using (inf_le_left : post x ⊓ ⊤ ≤ post x)
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_vis, wp_bind, monadLift_self]
+    rw [inf_comm, wlp_join_wp]
+    apply wp_cons
+    intro y
+    simpa [inf_comm] using a_ih y
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.wp_pickCont, NonDetT.prop]
+    split
+    · rename_i _ hfind
+      have hnone := Findable.find_none (p := p) (by simpa [hfind])
+      have hpfalse : ∀ x, p x = False := by
+        simpa using hnone
+      simp [hpfalse]
+    · rename_i _ y hy
+      have hpy : p y := Findable.find_some_p (p := p) hy
+      refine le_trans ?_ (show wp (f y) post ⊓ (f y).prop ⊤ <= wp (f y).extract post from a_ih y)
+      exact pickCont_select_le (p := p) (A := fun t => wp (f t) post) (B := fun t => (f t).prop ⊤) (y := y) hpy
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.wp_pickCont, NonDetT.prop]
+    split_ifs with h
+    · rw [iInf_unique, iInf_unique, iSup_unique]
+      simpa [h, inf_comm, inf_left_comm, inf_assoc] using a_ih PUnit.unit
+    · rw [iInf_unique, iInf_unique, iSup_unique]
+      simp [h]
+
 
 lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
   triple pre s post ->

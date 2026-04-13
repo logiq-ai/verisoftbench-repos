@@ -248,6 +248,14 @@ To recursively destruct an inductively defined object, we can use the `rcases` t
 We can give names to parameters in each case, so that we can refer to them later.
 -/
 
+theorem balance_BST {α : Type u} c (l : Tree α) k vk (r : Tree α)
+    : ForallTree (fun x _ => x < k) l
+      -> ForallTree (fun x _ => x > k) r
+      -> BST l
+      -> BST r
+      -> BST (balance c l k vk r) := by
+  sorry
+
 
 
 /-

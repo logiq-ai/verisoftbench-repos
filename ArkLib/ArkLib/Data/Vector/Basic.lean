@@ -85,14 +85,31 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
+theorem tail_toList_eq {α} {n : ℕ} (v : Vector α n) : v.tail.toList = v.toList.tail := by
+  rw [tail_eq_cast_extract, toList_cast, toList_extract]
+  rw [List.drop_one]
+  rw [List.take_of_length_le]
+  rw [List.length_tail, length_toList]
 
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
+  rfl
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rw [foldl_eq_toList_foldl, foldl_eq_toList_foldl, tail_toList_eq]
+  have h0 : 0 < v.toList.length := by
+    simpa [length_toList] using Nat.pos_of_neZero n
+  have hcons : v.toList[0] :: v.toList.tail = v.toList := by
+    simpa [List.drop_one] using
+      (List.getElem_cons_drop_succ_eq_drop (as := v.toList) (i := 0) h0)
+  rw [← hcons]
+  have hhead : v.toList[0] = v.head := by
+    simpa [Vector.head] using
+      (getElem_toList (xs := v) (i := 0) h0)
+  rw [hhead]
   rfl
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)

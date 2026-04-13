@@ -10,6 +10,8 @@ import Mathlib.Algebra.Order.Sub.Basic
 import Mathlib.Data.Matrix.Mul
 import ToMathlib.General
 
+import Batteries.Data.Vector.Lemmas
+import ArkLib.Data.List.Lemmas
 /-!
 # Definitions and lemmas for `Vector`
 -/
@@ -85,15 +87,26 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
-
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
   rfl
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rw [Vector.foldl_eq_toList_foldl, Vector.foldl_eq_toList_foldl]
+  have hne : v.toList ≠ [] := by
+    intro hnil
+    have hlen := congrArg List.length hnil
+    exact (NeZero.ne n) (by simpa [Vector.length_toList] using hlen)
+  rw [List.foldl_split_inner (f:=f) (init:=init) (l:=v.toList) hne]
+  rw [Vector.toList_tail]
+  have hhead : v.toList.head hne = v.head := by
+    rw [List.head_eq_getElem hne]
+    rw [Vector.getElem_toList]
+    simp [Vector.head]
+  rw [hhead]
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)
 

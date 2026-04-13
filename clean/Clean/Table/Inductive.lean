@@ -134,12 +134,281 @@ lemma traceInputs_length {N : ℕ} (trace : TraceOfLength F (ProvablePair State 
     (traceInputs trace).length = N := by
   rw [traceInputs, List.length_map, trace.val.toList_length, trace.prop]
 
+theorem inductiveConstraint_finalAssignment_curr_cell (table : InductiveTable F State Input)
+  (i : ℕ) (hi : i < size (ProvablePair State Input))
+  (hfinal : i < table.inductiveConstraint.finalAssignment.offset) :
+  table.inductiveConstraint.finalAssignment.vars[i] =
+    Cell.input { row := 0, column := ⟨i, hi⟩ } := by
+  let as : CellAssignment 2 (ProvablePair State Input) := (CellAssignment.empty 2).pushRow 0
+  let ops :=
+    (table.step (varFromOffset (ProvablePair State Input) 0).1
+      (varFromOffset (ProvablePair State Input) 0).2
+      (size (ProvablePair State Input))).2
+  have hprefix_vars := CellAssignment.assignmentFromCircuit_vars (as := as) (ops := ops)
+  have hprefix_offset := CellAssignment.assignmentFromCircuit_offset (as := as) (ops := ops)
+  simp [as, ops, table_assignment_norm] at hprefix_vars hprefix_offset
+  simp [ProvablePair.instance, varFromOffset_pair, zero_add] at hprefix_vars hprefix_offset
+  simp [InductiveTable.inductiveConstraint, TableConstraint.finalAssignment,
+    table_assignment_norm, circuit_norm, ProvablePair.instance, varFromOffset_pair, zero_add,
+    Vector.mapRange_zero, Vector.append_empty, hprefix_vars]
+  rw [Vector.getElem_append_left]
+  · rw [Vector.getElem_cast]
+    rw [Vector.getElem_append_left]
+    · simpa [Vector.getElem_cast] using
+        (Vector.getElem_mapFinRange (create := fun col => Cell.input { row := 0, column := col }) i hi)
+    · simpa using hi
+  · have hi' : i < size State + size Input := by
+      simpa [ProvablePair.instance] using hi
+    rw [CellAssignment.assignmentFromCircuit_offset]
+    simp [table_assignment_norm]
+    omega
+
+theorem inductiveConstraint_finalAssignment_offset (table : InductiveTable F State Input) :
+  table.inductiveConstraint.finalAssignment.offset =
+    size State + size Input +
+      Operations.localLength
+        (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+          (size State + size Input)).2 +
+      (size State + size Input) := by
+  simp [InductiveTable.inductiveConstraint, TableConstraint.finalAssignment,
+    table_assignment_norm, circuit_norm, CellAssignment.assignmentFromCircuit_offset,
+    add_assoc]
+
+theorem inductiveConstraint_step_ops_pair_eq (table : InductiveTable F State Input) :
+  (table.step (varFromOffset (ProvablePair State Input) 0).1
+    (varFromOffset (ProvablePair State Input) 0).2
+    (size State + size Input)).2 =
+  (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+    (size State + size Input)).2 := by
+  simpa [varFromOffset_pair, zero_add]
+
+theorem inductiveConstraint_finalAssignment_next_cell (table : InductiveTable F State Input)
+  (i : ℕ) (hi : i < size State + size Input)
+  (hfinal :
+    size State + size Input +
+      Operations.localLength
+        (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+          (size State + size Input)).2 + i <
+      table.inductiveConstraint.finalAssignment.offset) :
+  table.inductiveConstraint.finalAssignment.vars[
+    size State + size Input +
+      Operations.localLength
+        (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+          (size State + size Input)).2 + i] =
+    Cell.input { row := 1, column := ⟨i, by simpa [ProvablePair.instance] using hi⟩ } := by
+  let as : CellAssignment 2 (ProvablePair State Input) := (CellAssignment.empty 2).pushRow 0
+  let ops :=
+    (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+      (size State + size Input)).2
+  have hprefix_vars := CellAssignment.assignmentFromCircuit_vars (as := as) (ops := ops)
+  have hprefix_offset := CellAssignment.assignmentFromCircuit_offset (as := as) (ops := ops)
+  simp [as, ops, table_assignment_norm, ProvablePair.instance,
+    varFromOffset_pair, zero_add] at hprefix_vars hprefix_offset
+  have hvars := by
+    simpa [as, ops] using hprefix_vars
+  have hoff := by
+    simpa [as, ops] using hprefix_offset
+  simp [InductiveTable.inductiveConstraint, TableConstraint.finalAssignment,
+    table_assignment_norm, circuit_norm, ProvablePair.instance,
+    varFromOffset_pair, zero_add, Vector.mapRange_zero, Vector.append_empty,
+    inductiveConstraint_step_ops_pair_eq, hvars, hoff]
+
+theorem inductiveConstraint_windowEnv_curr_coord (table : InductiveTable F State Input)
+  (curr next : State F × Input F) (aux_env : Environment F)
+  (i : ℕ) (hi : i < size (ProvablePair State Input)) :
+  (windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env).get i =
+    (toElements (M := ProvablePair State Input) curr)[i] := by
+  have hiRow : i < size State + size Input := by
+    simpa [ProvablePair.instance] using hi
+  have h_off : i < table.inductiveConstraint.finalAssignment.offset := by
+    rw [inductiveConstraint_finalAssignment_offset (table := table)]
+    omega
+  have hcell := inductiveConstraint_finalAssignment_curr_cell table i hi h_off
+  simp [windowEnv, h_off, hcell, TraceOfLength.get, Trace.getLeFromBottom,
+    _root_.Row.get, Vector.mapRange_zero, Vector.append_empty, ProvablePair.instance]
+  rfl
+
+theorem inductiveConstraint_windowEnv_curr_pair (table : InductiveTable F State Input)
+  (curr next : State F × Input F) (aux_env : Environment F) :
+  eval (windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env)
+    (varFromOffset (ProvablePair State Input) 0) = curr := by
+  rw [ProvableType.ext_iff]
+  intro i hi
+  rw [ProvableType.eval_varFromOffset,
+    ProvableType.toElements_fromElements,
+    Vector.getElem_mapRange, zero_add]
+  exact inductiveConstraint_windowEnv_curr_coord table curr next aux_env i hi
+
+theorem inductiveConstraint_windowEnv_next_coord (table : InductiveTable F State Input)
+  (curr next : State F × Input F) (aux_env : Environment F)
+  (i : ℕ) (hi : i < size State) :
+  (windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env).get
+    (size State + size Input +
+      Operations.localLength
+        (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+          (size State + size Input)).2 + i) =
+    (toElements next.1)[i] := by
+  have hiRow : i < size State + size Input := by
+    omega
+  have hiPair : i < size (ProvablePair State Input) := by
+    simpa [ProvablePair.instance] using hiRow
+  have hlt :
+      size State + size Input +
+        Operations.localLength
+          (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+            (size State + size Input)).2 + i <
+        table.inductiveConstraint.finalAssignment.offset := by
+    rw [inductiveConstraint_finalAssignment_offset (table := table)]
+    omega
+  have hcell := inductiveConstraint_finalAssignment_next_cell table i hiRow hlt
+  unfold windowEnv
+  simp [hlt, hcell]
+  change _root_.Row.get (S := ProvablePair State Input) next ⟨i, hiPair⟩ = (toElements next.1)[i]
+  simp [_root_.Row.get, ProvablePair.instance, Vector.getElem_append_left, hi]
+
+theorem inductiveConstraint_windowEnv_next_state (table : InductiveTable F State Input)
+  (curr next : State F × Input F) (aux_env : Environment F) :
+  eval (windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env)
+    (varFromOffset State
+      (size State + size Input +
+        Operations.localLength
+          (table.step (varFromOffset State 0) (varFromOffset Input (size State))
+            (size State + size Input)).2)) = next.1 := by
+  rw [ProvableType.ext_iff]
+  intro i hi
+  rw [ProvableType.eval_varFromOffset,
+    ProvableType.toElements_fromElements,
+    Vector.getElem_mapRange]
+  exact inductiveConstraint_windowEnv_next_coord table curr next aux_env i hi
+
+theorem inductiveConstraint_soundness (table : InductiveTable F State Input) (initialState : State F)
+  (xs : List (Input F)) (i : ℕ) (hxs : xs.length = i)
+  (curr next : State F × Input F) (aux_env : Environment F) :
+  table.Spec initialState xs i hxs curr.1 →
+  Circuit.ConstraintsHold.Soundness
+    (windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env)
+    (table.inductiveConstraint .empty).2.circuit →
+  table.Spec initialState (xs.concat curr.2) (i + 1) (hxs ▸ List.length_concat) next.1 := by
+  intro hspec hsound
+  set env' := windowEnv table.inductiveConstraint ⟨<+> +> curr +> next, rfl⟩ aux_env
+  simp only [InductiveTable.inductiveConstraint, table_norm, table_assignment_norm, circuit_norm] at hsound
+  rcases hsound with ⟨hs_step, hs_eq⟩
+  have hcurr : eval env' (varFromOffset (ProvablePair State Input) 0) = curr := by
+    simpa [env'] using inductiveConstraint_windowEnv_curr_pair table curr next aux_env
+  have hcurr' := hcurr
+  rw [varFromOffset_pair, eval_pair] at hcurr'
+  have hacc : eval env' (varFromOffset State 0) = curr.1 := by
+    exact congrArg Prod.fst hcurr'
+  have hx : eval env' (varFromOffset Input (0 + size State)) = curr.2 := by
+    exact congrArg Prod.snd hcurr'
+  have hnext_state :
+      eval env'
+        (varFromOffset State
+          (size State + size Input +
+            Operations.localLength
+              (table.step (varFromOffset State 0) (varFromOffset Input (0 + size State))
+                (size State + size Input)).2)) = next.1 := by
+    simpa [env', zero_add] using inductiveConstraint_windowEnv_next_state table curr next aux_env
+  have hs_step' :=
+    table.soundness initialState i env' (varFromOffset State 0)
+      (varFromOffset Input (0 + size State)) curr.1 curr.2 xs hxs ⟨hacc, hx⟩
+      (by simpa [Circuit.operations] using hs_step) hspec
+  have hout :
+      eval env'
+        ((table.step (varFromOffset State 0) (varFromOffset Input (0 + size State))).output
+          (size State + size Input)) = next.1 := by
+    simpa [Circuit.output, zero_add] using hs_eq.symm.trans hnext_state
+  exact hout ▸ hs_step'
+
+theorem tableConstraintsHold_lastRow_eq (table : InductiveTable F State Input) (input output : State F)
+  (N : ℕ+) (trace : TraceOfLength F (ProvablePair State Input) N) (env : ℕ → ℕ → Environment F) :
+  TableConstraintsHold (table.tableConstraints input output) trace env →
+    trace.lastRow.1 = output := by
+  intro h_constraints
+  induction N, trace using TraceOfLength.everyRowTwoRowsInduction' with
+  | one row =>
+      simp +arith [table_norm, InductiveTable.tableConstraints] at h_constraints
+      exact (InductiveTable.equalityConstraint.soundness (Input := Input) (row := row)
+        (input_state := output) (env := env 2 0)).mp h_constraints.2
+  | more N curr next rest ih =>
+      simp +arith [table_norm, InductiveTable.tableConstraints] at h_constraints
+      have h_end : Circuit.ConstraintsHold.Soundness
+          (windowEnv (equalityConstraint Input output) ⟨<+> +> next, rfl⟩ (env 2 (N + 1)))
+          (equalityConstraint Input output { circuit := [], assignment := CellAssignment.empty 1 }).2.circuit := by
+        simpa [rest.property] using h_constraints.2.1 rest.property
+      set_option maxHeartbeats 400000 in
+      have h_eq := (InductiveTable.equalityConstraint.soundness (Input := Input) (row := next)
+        (input_state := output) (env := env 2 (N + 1))).mp h_end
+      simpa [table_norm] using h_eq
+
+theorem traceInputs_snoc (N : ℕ) (trace : TraceOfLength F (ProvablePair State Input) N) (row : State F × Input F) :
+  traceInputs (N := N + 1) ⟨trace.val +> row, by simp [Trace.len, trace.property]⟩ = (traceInputs trace).concat row.2 := by
+  simp [traceInputs, Trace.toList, List.map_concat]
+
+theorem table_soundness_rows (table : InductiveTable F State Input) (input output : State F)
+  (N : ℕ+) (trace : TraceOfLength F (ProvablePair State Input) N) (env : ℕ → ℕ → Environment F) :
+  table.Spec input [] 0 rfl input →
+  TableConstraintsHold (table.tableConstraints input output) trace env →
+    trace.ForAllRowsWithPrevious (fun row i rest => table.Spec input (traceInputs rest) i (traceInputs_length rest) row.1) := by
+  intro h_input
+  let cs := (table.tableConstraints input output).mapIdx (fun i cs => (cs, env i))
+  let P : Trace F (ProvablePair State Input) → Prop :=
+    fun trace =>
+      TableConstraintsHold.foldl N cs trace cs →
+        trace.ForAllRowsWithPrevious (fun row rest =>
+          table.Spec input (traceInputs ⟨rest, rfl⟩) rest.len (traceInputs_length ⟨rest, rfl⟩) row.1)
+  have h_main : P trace.val := by
+    induction trace.val using Trace.every_row_two_rows_induction with
+    | zero =>
+        intro _
+        trivial
+    | one row =>
+        intro h_constraints
+        simp [P, TableConstraintsHold.foldl, cs, tableConstraints, TableConstraint.ConstraintsHoldOnWindow,
+          equalityConstraint.soundness, Trace.ForAllRowsWithPrevious] at h_constraints ⊢
+        have h_eq : row.1 = input := by
+          exact (equalityConstraint.soundness (Input := Input) (row := row) (input_state := input)
+            (env := env 1 0)).1 (h_constraints.1 rfl)
+        simpa [traceInputs, h_eq] using h_input
+    | more curr next rest ih_rest ih_curr =>
+        intro h_constraints
+        simp [P, TableConstraintsHold.foldl, cs, tableConstraints, TableConstraint.ConstraintsHoldOnWindow,
+          equalityConstraint.soundness, Trace.ForAllRowsWithPrevious] at h_constraints ⊢
+        let restTrace : TraceOfLength F (ProvablePair State Input) rest.len := ⟨rest, rfl⟩
+        let currTrace : TraceOfLength F (ProvablePair State Input) (rest.len + 1) :=
+          ⟨rest +> curr, by simp [Trace.len]⟩
+        have h_prev := ih_curr h_constraints.2.2.2
+        have h_prefix :
+            table.Spec input (traceInputs restTrace) rest.len (traceInputs_length restTrace) curr.1 := by
+          have h_pair :
+              table.Spec input (traceInputs restTrace) rest.len (traceInputs_length restTrace) curr.1 ∧
+                rest.ForAllRowsWithPrevious (fun row rest =>
+                  table.Spec input (traceInputs ⟨rest, rfl⟩) rest.len (traceInputs_length ⟨rest, rfl⟩) row.1) := by
+            simpa [P, Trace.ForAllRowsWithPrevious, restTrace] using ih_curr h_constraints.2.2.2
+          exact h_pair.1
+        have h_next0 :=
+          inductiveConstraint_soundness table input (traceInputs restTrace) rest.len
+            (traceInputs_length restTrace) curr next (env 0 (rest.len + 1)) h_prefix
+            (by simpa [TableConstraint.operations] using h_constraints.1)
+        have h_snoc : traceInputs currTrace = (traceInputs restTrace).concat curr.2 := by
+          simpa [currTrace, restTrace, Trace.len] using (traceInputs_snoc rest.len restTrace curr)
+        have h_next :
+            table.Spec input (traceInputs currTrace) (rest.len + 1) (traceInputs_length currTrace) next.1 := by
+          simpa [h_snoc, currTrace, restTrace] using h_next0
+        exact ⟨h_next, h_prev⟩
+  simpa [P, cs, TraceOfLength.ForAllRowsWithPrevious] using h_main
+
 lemma table_soundness_aux (table : InductiveTable F State Input) (input output : State F)
   (N : ℕ+) (trace : TraceOfLength F (ProvablePair State Input) N) (env : ℕ → ℕ → Environment F) :
   table.Spec input [] 0 rfl input →
   TableConstraintsHold (table.tableConstraints input output) trace env →
     trace.ForAllRowsWithPrevious (fun row i rest => table.Spec input (traceInputs rest) i (traceInputs_length rest) row.1)
-    ∧ trace.lastRow.1 = output := by sorry
+    ∧ trace.lastRow.1 = output := by
+  intro h_input h_constraints
+  constructor
+  · exact table_soundness_rows table input output N trace env h_input h_constraints
+  · exact tableConstraintsHold_lastRow_eq table input output N trace env h_constraints
+
 
 theorem table_soundness (table : InductiveTable F State Input) (input output : State F)
   (N : ℕ+) (trace : TraceOfLength F (ProvablePair State Input) N) (env : ℕ → ℕ → Environment F) :

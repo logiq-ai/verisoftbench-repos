@@ -85,15 +85,30 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
-
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
   rfl
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rcases Nat.exists_eq_succ_of_ne_zero (NeZero.ne n) with ⟨m, rfl⟩
+  have hcons : Vector.cons v.head v.tail = v := by
+    apply (Vector.toArray_inj).mp
+    simp [Vector.cons, Vector.tail, Vector.head, Vector.extract, Vector.cast]
+    have hsingle : #[v[0]] = v.toArray.extract 0 1 := by
+      apply Array.ext_getElem?
+      intro i
+      cases i <;> simp
+    calc
+      #[v[0]] ++ v.toArray.extract 1 (m + 1)
+          = v.toArray.extract 0 1 ++ v.toArray.extract 1 (m + 1) := by rw [hsingle]
+      _ = v.toArray.extract 0 (m + 1) := by simpa using (Array.extract_append_extract (as := v.toArray) (i := 0) (j := 1) (k := m + 1))
+      _ = v.toArray := by simpa using (Array.extract_size (xs := v.toArray))
+  rw [← hcons]
+  simp_rw [Vector.foldl_eq_toList_foldl, Vector.tail_cons, Vector.head_cons,
+    Vector.cons_toList_eq_List_cons, List.foldl_cons]
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)
 

@@ -209,8 +209,33 @@ lemma Value.Approx.invert {v v'} :
   intro h
   invert (h 0) <;> constructor <;> aesop
 
-@[trans]
-lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by sorry
+lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  intro h12 h23
+  exact Nat.strongRecOn (motive := fun n => ∀ {v₁ v₂ v₃ : Value}, v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃) n (fun n ih => by
+    intro v₁ v₂ v₃ h12 h23
+    invert h12
+    case unit =>
+      invert (h23 0)
+      exact Value.Approx.Indexed.unit
+    case const =>
+      invert (h23 0)
+      exact Value.Approx.Indexed.const
+    case constr_app hargs =>
+      obtain ⟨args₃, rfl, hargs23⟩ := Value.Approx.constr_app_inv_right h23
+      apply Value.Approx.Indexed.constr_app
+      intro k hk
+      exact Juvix.Utils.forall₂_trans' (P := Value.Approx.Indexed k) (Q := Value.Approx) (R := Value.Approx.Indexed k) (fun x y z hxy hyz => ih k hk hxy hyz) (hargs k hk) hargs23
+    case closure hcl =>
+      obtain ⟨env₃, body₃, rfl, hbody23⟩ := Value.Approx.closure_inv_right h23
+      apply Value.Approx.Indexed.closure
+      intro n₁ n₂ hn a₁ a₃ r₁ h13 heval1
+      obtain ⟨r₂, heval2, h12'⟩ := hcl n₁ n₂ hn a₁ a₃ r₁ h13 heval1
+      obtain ⟨r₃, heval3, h23'⟩ := hbody23 a₃ a₃ (Value.Approx.refl a₃) r₂ heval2
+      have hn₂ : n₂ < n := by
+        linarith
+      exact ⟨r₃, heval3, ih n₂ hn₂ h12' h23'⟩
+  ) h12 h23
+
 
 @[trans]
 lemma Value.Approx.trans {v₁ v₂ v₃} : v₁ ≲ᵥ v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ v₃ := by

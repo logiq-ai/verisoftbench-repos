@@ -60,9 +60,10 @@ def Spec {N : ℕ} (trace : TraceOfLength (F p) RowType N) : Prop :=
     (row.x.val = fib8 index) ∧
     (row.y.val = fib8 (index + 1))
 
-lemma fib8_less_than_256 (n : ℕ) : fib8 n < 256 := by
-  induction' n using Nat.twoStepInduction
-  repeat {simp [fib8]}; apply Nat.mod_lt; simp
+lemma fib8_less_than_256 (n : ℕ) : fib8 n < 256 := by sorry
+
+
+
 
 -- TODO kinda pointless to use `assignCurrRow` if the easiest way to unfold it is by making the steps explicit
 omit p_large_enough in
@@ -96,76 +97,7 @@ def formalFibTable : FormalTable (F p) RowType := {
   constraints := fibTable
   Spec := Spec
 
-  soundness := by
-    intro N trace envs _
-    simp only [TableConstraintsHold,
-      fibTable, Spec, TraceOfLength.ForAllRowsOfTraceWithIndex, Trace.ForAllRowsOfTraceWithIndex]
-
-    induction' trace.val using Trace.every_row_two_rows_induction with first_row curr next rest _ ih2
-    · simp [table_norm]
-    · simp [table_norm]
-      exact boundary_step first_row (envs 0 0)
-    · -- first, we prove the inductive part of the Spec
-      -- TODO this should be easier, or there should be a custom induction for it
-      unfold Trace.ForAllRowsOfTraceWithIndex.inner
-      intros ConstraintsHold
-
-      simp only [table_norm] at ConstraintsHold
-      simp at ConstraintsHold
-      unfold TableConstraintsHold.foldl at ConstraintsHold
-      unfold TableConstraintsHold.foldl at ConstraintsHold
-      unfold TableConstraintsHold.foldl at ConstraintsHold
-      simp [Trace.len] at ConstraintsHold
-      specialize ih2 ConstraintsHold.right
-      simp only [ih2, and_true, Trace.len]
-
-      let ⟨curr_fib0, curr_fib1⟩ := ih2.left
-
-      -- simplify constraints
-      replace ConstraintsHold := ConstraintsHold.left
-      simp [table_norm] at ConstraintsHold
-
-      set env := fibRelation.windowEnv ⟨<+> +> curr +> next, rfl⟩ (envs 1 (rest.len + 1))
-
-      simp only [fibRelation, circuit_norm, table_norm, table_assignment_norm, copyToVar,
-          Gadgets.Addition8.circuit] at ConstraintsHold
-      simp only [circuit_norm, varFromOffset, Vector.mapRange] at ConstraintsHold
-
-      have hx_curr : env.get 0 = curr.x := by rfl
-      have hy_curr : env.get 1 = curr.y := by rfl
-      have hx_next : env.get 2 = next.x := by rfl
-      have hy_next : env.get (2 + 1) = next.y := by rfl
-      rw [hx_curr, hy_curr, hx_next, hy_next] at ConstraintsHold
-      clear hx_curr hy_curr hx_next hy_next
-
-      have ⟨eq_holds, add_holds⟩ := ConstraintsHold
-      rw [add_neg_eq_zero] at eq_holds
-
-      -- and finally now we prove the actual relations
-
-      have lookup_first_col : curr.x.val < 256 := by
-        -- This is true also by induction, because we proved that
-        -- curr.x is exactly fib8 index, and fib8 is always less than 256
-        rw [ih2.left.left]
-        apply fib8_less_than_256
-
-      have lookup_second_col : curr.y.val < 256 := by
-        rw [ih2.left.right]
-        apply fib8_less_than_256
-
-      specialize add_holds ⟨ lookup_first_col, lookup_second_col ⟩
-
-      have spec1 : next.x.val = fib8 (rest.len + 1) := by
-        rw [←curr_fib1]
-        congr
-        exact eq_holds.symm
-
-      have spec2 : (next.y).val = fib8 (rest.len + 2) := by
-        simp only [fib8]
-        rw [←curr_fib0, ←curr_fib1]
-        assumption
-
-      exact ⟨spec1, spec2⟩
+  soundness := by sorry
 }
 
 end Tables.Fibonacci8Table

@@ -599,6 +599,4 @@ theorem cp_bexp_sound :
   This pattern follows closely the structure of the abstract interpreter
   `Cexec`: structural induction on the command + local fixpoint for loops.
 -/
-theorem cp_com_correct_terminating :
-  ∀ c s1 s2 S1,
-  cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by sorry
+

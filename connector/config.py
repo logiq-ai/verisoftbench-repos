@@ -60,3 +60,7 @@ MAX_SUBMIT_RETRIES = 10
 SUBMIT_RETRY_DELAY = 30       # seconds
 POLL_INTERVAL = 60             # seconds
 MAX_POLL_TIME = 7200           # seconds (2 hours)
+
+# Proof request retries: resubmit tasks that fail at prover level
+# (sorry in patch, timeout, build error)
+MAX_PROOF_RETRIES = 2          # 0 = no retries

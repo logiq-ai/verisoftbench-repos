@@ -9,6 +9,7 @@ Usage:
 
 import argparse
 import json
+import logging
 import os
 import sys
 import time
@@ -16,6 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+
+log = logging.getLogger(__name__)
 
 from connector.config import (
     ALEPH_API_KEY_ENV, ALEPH_API_URL, BRANCH, DEFAULT_COST_BUDGET_USD,
@@ -65,13 +68,13 @@ def submit_task(task, api_url, api_key):
                 "submitted_at": datetime.now(timezone.utc).isoformat(),
             }
         elif resp.status_code == 402:
-            print(".", end="", flush=True)
+            log.debug(f"[{tid}] 402 concurrent limit, retry {attempt+1}/{MAX_SUBMIT_RETRIES}")
             time.sleep(SUBMIT_RETRY_DELAY)
         else:
-            print(f"\n[{tid}] HTTP {resp.status_code}: {resp.text[:100]}", file=sys.stderr)
+            log.error(f"[{tid}] HTTP {resp.status_code}: {resp.text[:100]}")
             return None
 
-    print(f"\n[{tid}] gave up after {MAX_SUBMIT_RETRIES} retries", file=sys.stderr)
+    log.error(f"[{tid}] gave up after {MAX_SUBMIT_RETRIES} retries")
     return None
 
 

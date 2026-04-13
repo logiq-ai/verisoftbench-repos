@@ -181,6 +181,33 @@ def WPGen.spec_wp wp' (x : m α) (trp : wp x = wp') : WPGen x where
     subst trp
     simp
 
+theorem triple_forIn_deacreasing_step {β} {measure : β -> ℕ} {init : β} {f : β → m (ForInStep β)}
+  (inv : β → l)
+  (hstep : ∀ b,
+    measure b <= measure init ->
+    triple
+      (inv b)
+      (f b)
+      (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b'))
+  (i : ℕ) (b : β) :
+  triple
+    (inv b ⊓ ⌜measure b ≤ measure init - i⌝)
+    (f b)
+    (fun | .yield b' => inv b' ⊓ ⌜measure b' ≤ measure init - (i + 1)⌝ | .done b' => inv b' ⊓ ⌜ measure b' = 0 ⌝) := by
+  rw [triple, pure_intro_l]
+  intro hmeas
+  have hb : measure b ≤ measure init := le_trans hmeas (Nat.sub_le _ _)
+  apply le_trans (hstep b hb)
+  apply wp_cons
+  intro y
+  cases y with
+  | yield b' =>
+      exact inf_le_inf_left _ <| LE.pure_imp _ _ (by
+        intro hlt
+        omega)
+  | done b' =>
+      simpa [inf_comm]
+
 theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
   {init : β} {f : β → m (ForInStep β)}
   (inv : β → l)
@@ -190,7 +217,17 @@ theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
       (inv b)
       (f b)
       (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
-  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by sorry
+  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by
+  simpa [Nat.sub_self, Nat.le_zero] using
+    (triple_forIn_range_step1 (xs := [0:measure init]) (init := init) (f := fun _ b => f b)
+      (inv := fun i b => inv b ⊓ ⌜measure b ≤ measure init - i⌝)
+      (by
+        intro i b
+        simpa [Nat.sub_self, Nat.le_zero] using
+          (triple_forIn_deacreasing_step (inv := inv) hstep i b))
+      rfl
+      (by simp))
+
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

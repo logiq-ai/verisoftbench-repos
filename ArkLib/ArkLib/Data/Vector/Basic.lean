@@ -10,6 +10,9 @@ import Mathlib.Algebra.Order.Sub.Basic
 import Mathlib.Data.Matrix.Mul
 import ToMathlib.General
 
+import Init.Data.List.Lemmas
+import Init.Data.Vector.Lemmas
+import Batteries.Data.Vector.Lemmas
 /-!
 # Definitions and lemmas for `Vector`
 -/
@@ -84,16 +87,29 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   rw [Array.toList_insertIdx]
   simp only [List.insertIdx_zero]
 
--- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
-
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
   rfl
+
+-- TODO: this theorem should not be so hard...
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rw [foldl_eq_toList_foldl, foldl_eq_toList_foldl, Vector.toList_tail]
+  have hne : v.toList ≠ [] := by
+    intro hnil
+    exact NeZero.ne n ((Vector.toList_eq_nil_iff (xs := v)).mp hnil)
+  have hhead : v.toList.head hne = v.head := by
+    rw [List.head_eq_getElem]
+    simp [Vector.head]
+  cases h : v.toList with
+  | nil =>
+      exfalso
+      exact hne h
+  | cons x xs =>
+      simp [h, List.foldl] at hhead ⊢
+      rw [hhead]
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)
 

@@ -599,6 +599,106 @@ theorem cp_bexp_sound :
   This pattern follows closely the structure of the abstract interpreter
   `Cexec`: structural induction on the command + local fixpoint for loops.
 -/
-theorem cp_com_correct_terminating :
-  ∀ c s1 s2 S1,
-  cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by sorry
+theorem Le_trans (S1 S2 S3 : Store) : Le S1 S2 -> Le S2 S3 -> Le S1 S3 := by
+  intro h12 h23 x n hx
+  exact h12 x n (h23 x n hx)
+
+theorem Cexec_while_postfix (S : Store) (b : bexp) (c : com) (sfix : Store) : sfix = Cexec S (.WHILE b c) -> Le S sfix ∧ Le (Cexec sfix c) sfix := by
+  intro hsfix
+  subst hsfix
+  let F : Store → Store := fun x => Join S (Cexec x c)
+  have hfix : Le (Join S (Cexec (fixpoint F S) c)) (fixpoint F S) := by
+    simpa [F] using (@fixpoint_sound (fixpoint F S) F S rfl)
+  constructor
+  · exact Le_trans _ _ _ (Le_Join_l _ _) hfix
+  · exact Le_trans _ _ _ (Le_Join_r _ _) hfix
+
+theorem cp_com_correct_while_aux (b : bexp) (c : com) (IHc : ∀ (s1 s2 : store) (S : Store), cexec s1 c s2 -> matches' s1 S -> cexec s1 (cp_com S c) s2) (s1 s2 : store) (S1 : Store) : cexec s1 (.WHILE b c) s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 (.WHILE b c)) s2 := by
+  intro hexec hmatch1
+  let sfix : Store := Cexec S1 (.WHILE b c)
+  have hpost := Cexec_while_postfix S1 b c sfix rfl
+  have hinit : Le S1 sfix := hpost.1
+  have hstep : Le (Cexec sfix c) sfix := hpost.2
+  have hmatch0 : matches' s1 sfix := matches_Le s1 S1 sfix hinit hmatch1
+  have INNER :
+      ∀ sA cA sB,
+        cexec sA cA sB ->
+        cA = .WHILE b c ->
+        matches' sA sfix ->
+        cexec sA (mk_WHILE (cp_bexp sfix b) (cp_com sfix c)) sB := by
+    intro sA cA sB hExec
+    induction hExec with
+    | cexec_skip =>
+        intro hEq
+        cases hEq
+    | cexec_assign =>
+        intro hEq
+        cases hEq
+    | cexec_seq =>
+        intro hEq
+        cases hEq
+    | cexec_ifthenelse =>
+        intro hEq
+        cases hEq
+    | cexec_while_done =>
+        intro hEq hmatch
+        rename_i sA b' c' hbe
+        cases hEq
+        have hbe' : beval sA (cp_bexp sfix b) = false := by
+          rw [cp_bexp_sound sA sfix hmatch b]
+          exact hbe
+        exact cexec_mk_WHILE_done sA (cp_bexp sfix b) (cp_com sfix c) hbe'
+    | cexec_while_loop =>
+        intro hEq hmatch
+        rename_i sA b' c' sMid sB hcond hbody htail ihBody ihTail
+        cases hEq
+        have hcond' : beval sA (cp_bexp sfix b) = true := by
+          rw [cp_bexp_sound sA sfix hmatch b]
+          exact hcond
+        have hbody' : cexec sA (cp_com sfix c) sMid := IHc sA sMid sfix hbody hmatch
+        have hmid1 : matches' sMid (Cexec sfix c) := Cexec_sound c sA sMid sfix hbody hmatch
+        have hmid : matches' sMid sfix := matches_Le sMid (Cexec sfix c) sfix hstep hmid1
+        have htail' : cexec sMid (mk_WHILE (cp_bexp sfix b) (cp_com sfix c)) sB := ihTail rfl hmid
+        exact cexec_mk_WHILE_loop (cp_bexp sfix b) (cp_com sfix c) sA sMid sB hcond' hbody' htail'
+  simpa [cp_com, sfix] using INNER s1 (.WHILE b c) s2 hexec rfl hmatch0
+
+theorem cp_com_correct_terminating (c : com) (s1 s2 : store) (S1 : Store) : cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by
+  intro hexec hmatch
+  induction c generalizing s1 s2 S1 with
+  | SKIP =>
+      cases hexec
+      simpa [cp_com] using (cexec.cexec_skip (s := s1))
+  | ASSIGN x a =>
+      cases hexec
+      simpa [cp_com, cp_aexp_sound s1 S1 hmatch a] using
+        (cexec.cexec_assign (s := s1) (x := x) (a := cp_aexp S1 a))
+  | SEQ c1 c2 ih1 ih2 =>
+      cases hexec with
+      | cexec_seq h1 h2 =>
+          apply cexec.cexec_seq
+          · exact ih1 _ _ _ h1 hmatch
+          · exact ih2 _ _ _ h2 (Cexec_sound c1 s1 _ S1 h1 hmatch)
+  | IFTHENELSE b c1 c2 ih1 ih2 =>
+      have hcond : beval s1 (cp_bexp S1 b) = beval s1 b :=
+        cp_bexp_sound s1 S1 hmatch b
+      apply cexec_mk_IFTHENELSE
+      cases hb : beval s1 b
+      · have hcp : beval s1 (cp_bexp S1 b) = false := by
+          simpa [hb] using hcond
+        rw [hcp]
+        cases hexec with
+        | cexec_ifthenelse h =>
+            have h' : cexec s1 c2 s2 := by
+              simpa [hb] using h
+            exact ih2 _ _ _ h' hmatch
+      · have hcp : beval s1 (cp_bexp S1 b) = true := by
+          simpa [hb] using hcond
+        rw [hcp]
+        cases hexec with
+        | cexec_ifthenelse h =>
+            have h' : cexec s1 c1 s2 := by
+              simpa [hb] using h
+            exact ih1 _ _ _ h' hmatch
+  | WHILE b c ih =>
+      exact cp_com_correct_while_aux b c ih s1 s2 S1 hexec hmatch
+

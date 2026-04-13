@@ -248,12 +248,62 @@ To recursively destruct an inductively defined object, we can use the `rcases` t
 We can give names to parameters in each case, so that we can refer to them later.
 -/
 
-theorem balance_BST {α : Type u} c (l : Tree α) k vk (r : Tree α)
-    : ForallTree (fun x _ => x < k) l
-      -> ForallTree (fun x _ => x > k) r
-      -> BST l
-      -> BST r
-      -> BST (balance c l k vk r) := by sorry
+theorem balance_BST_ll {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < z) (tree red (tree red a x vx b) y vy c) -> ForallTree (fun n _ => n > z) d -> BST (tree red (tree red a x vx b) y vy c) -> BST d -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlz hdz hbstl hbstd
+  cases hlz with
+  | tree _ _ _ _ _ hy_lt_z hleft_lt_z hc_lt_z =>
+    cases hbstl with
+    | tree _ _ _ _ _ hleft_lt_y hc_gt_y hbstleft hbstc =>
+      cases hbstleft with
+      | tree _ _ _ _ _ ha_lt_x hb_gt_x hbsta hbstb =>
+        cases hleft_lt_y with
+        | tree _ _ _ _ _ hx_lt_y ha_lt_y hb_lt_y =>
+          have hz_gt_y : z > y := hy_lt_z
+          have hd_gt_y : ForallTree (fun n _ => n > y) d := forallTree_gt d z y hdz hz_gt_y
+          exact BST.tree red (tree black a x vx b) y vy (tree black c z vz d)
+            (ForallTree.tree black a x vx b hx_lt_y ha_lt_y hb_lt_y)
+            (ForallTree.tree black c z vz d hz_gt_y hc_gt_y hd_gt_y)
+            (BST.tree black a x vx b ha_lt_x hb_gt_x hbsta hbstb)
+            (BST.tree black c z vz d hc_lt_z hdz hbstc hbstd)
+
+theorem balance_BST_lr {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < z) (tree red a x vx (tree red b y vy c)) -> ForallTree (fun n _ => n > z) d -> BST (tree red a x vx (tree red b y vy c)) -> BST d -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlz hdz hbstl hbstd
+  match hlz with
+  | ForallTree.tree _ _ _ _ _ hx_lt_z ha_lt_z hmid_lt_z =>
+    have _ := hx_lt_z
+    have _ := ha_lt_z
+    have _ := hmid_lt_z
+    sorry
+
+theorem balance_BST_rl {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < x) a -> ForallTree (fun n _ => n > x) (tree red (tree red b y vy c) z vz d) -> BST a -> BST (tree red (tree red b y vy c) z vz d) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  sorry
+
+theorem balance_BST_rr {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun n _ => n < x) a -> ForallTree (fun n _ => n > x) (tree red b y vy (tree red c z vz d)) -> BST a -> BST (tree red b y vy (tree red c z vz d)) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hax hrightx hbsta hbstr
+  sorry
+
+theorem balance_BST {α : Type u} c (l : Tree α) k vk (r : Tree α) : ForallTree (fun x _ => x < k) l -> ForallTree (fun x _ => x > k) r -> BST l -> BST r -> BST (balance c l k vk r) := by
+  intro hlk hkr hbl hbr
+  cases c with
+  | red =>
+      exact BST.tree red l k vk r hlk hkr hbl hbr
+  | black =>
+      simp only [balance]
+      split
+      · rename_i a x vx b y vy c z vz d hEq
+        cases hEq
+        exact balance_BST_ll a b c r x y k vx vy vk hlk hkr hbl hbr
+      · rename_i a x vx b y vy c z vz d _ hEq
+        cases hEq
+        exact balance_BST_lr a b c r x y k vx vy vk hlk hkr hbl hbr
+      · rename_i a x vx b y vy c z vz d _ _ hEq
+        cases hEq
+        exact balance_BST_rl l b c d k y z vk vy vz hlk hkr hbl hbr
+      · rename_i a x vx b y vy c z vz d _ _ _ hEq
+        cases hEq
+        exact balance_BST_rr l b c d k y z vk vy vz hlk hkr hbl hbr
+      · exact BST.tree black l k vk r hlk hkr hbl hbr
+
 
 /-
 exercise (2-star)

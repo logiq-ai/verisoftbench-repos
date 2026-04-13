@@ -66,7 +66,14 @@ lemma findNat_some_p (p : Nat -> Prop) [DecidablePred p] (i : Nat) :
   apply findNat.aux.partial_correctness; aesop
 
 lemma p_findNat_some (p : Nat -> Prop) [DecidablePred p] (i : Nat) :
-  p i -> ∃ j, p j ∧ j <= i ∧ findNat p = some j := by sorry
+  p i -> ∃ j, p j ∧ j <= i ∧ findNat p = some j := by
+  intro pi
+  have hs : (findNat p).isSome := (exists_findNat p).mp ⟨i, pi⟩
+  rcases Option.isSome_iff_exists.mp hs with ⟨j, hj⟩
+  refine ⟨j, findNat_some_p p j hj, ?_, hj⟩
+  by_contra hji
+  have hij : i < j := Nat.lt_of_not_ge hji
+  exact (findNat_aux_some_le p 0 hj i (Nat.zero_le i) hij) pi
 
 def find [Encodable α] (p : α -> Prop) [DecidablePred p] : Option α :=
   findNat (fun x => (Encodable.decode x).any (p ·)) |>.bind Encodable.decode
@@ -360,7 +367,36 @@ def ExtractNonDet.prop {α : Type u} (s : NonDetT m α) :  ExtractNonDet WeakFin
 namespace DemonicChoice
 
 lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
-  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by sorry
+  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+  unhygienic induction inst
+  { simp [wp_pure, NonDetT.extract, NonDetT.extractGen, NonDetT.prop] }
+  { simp only [NonDetT.extract, NonDetT.extractGen, monadLift_self, wp_bind, NonDetT.wp_vis, NonDetT.prop]
+    rw [inf_comm, wlp_join_wp]
+    apply wp_cons
+    intro y
+    simpa [inf_comm] using a_ih y }
+  { simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.wp_pickCont, NonDetT.prop]
+    split
+    { rename_i h
+      have hnone : (Findable.find p ()).isNone := by
+        simpa [Option.isNone_iff_eq_none] using h
+      have hnone := Findable.find_none (p := p) hnone
+      simp [hnone] }
+    rename_i y h
+    have hy : p y := Findable.find_some_p (p := p) h
+    refine le_trans ?_ (a_ih y)
+    refine le_trans (inf_le_inf_left _ inf_le_left) ?_
+    apply inf_le_inf
+    { refine iInf_le_of_le y ?_
+      simp [hy] }
+    refine iInf_le_of_le y ?_
+    simp [hy] }
+  { simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.wp_pickCont, NonDetT.prop]
+    split_ifs with hp
+    · simpa [iSup_unique, iInf_unique, hp, inf_assoc, inf_left_comm, inf_comm] using a_ih PUnit.unit
+    · simp [iSup_unique, iInf_unique, hp] }
+
+
 
 lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
   triple pre s post ->
@@ -385,7 +421,25 @@ lemma wp_bot [∀ α, CCPO (m α)] [MAlgPartial m]:
 
 omit [MAlgDet m l] in
 lemma ExtractNonDet.extract_refines_wp_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
-  wp s post <= wp s.extractWeak post := by sorry
+  wp s post <= wp s.extractWeak post := by
+  unhygienic induction inst
+  { simp [wp_pure, NonDetT.extractWeak, NonDetT.extractGen] }
+  { simp only [NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind, NonDetT.wp_vis]
+    apply wp_cons
+    intro y
+    exact a_ih y }
+  { simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+    split
+    { simp [CCPOBotLawful.prop, wp_bot] }
+    rename_i y h
+    refine le_trans ?_ (a_ih y)
+    refine iInf_le_of_le y ?_
+    have hy : p y := WeakFindable.find_some_p (p := p) h
+    simp [hy] }
+  { simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+    split_ifs with hp
+    · simpa [iInf_unique, hp] using a_ih PUnit.unit
+    · simp [iInf_unique, hp, CCPOBotLawful.prop, wp_bot] }
 
 
 omit [MAlgDet m l] in

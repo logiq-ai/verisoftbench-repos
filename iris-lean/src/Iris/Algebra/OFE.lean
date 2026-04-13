@@ -706,11 +706,51 @@ instance OFE.ContractiveHom.fixpoint_ne [COFE α] [Inhabited α] :
     | zero => exact H _
     | succ _ IH => exact (H _).trans <| Contractive.succ _ <| IH <| Dist.lt H (Nat.lt_add_one _)
 
-@[elab_as_elim]
+def OFE.ContractiveHom.fixpointApprox [OFE α] (f : α -c> α) (x : α) : Chain α where
+  chain n := Nat.repeat f n.succ x
+  cauchy {n} := by
+    induction n with
+    | zero =>
+        simp [Nat.repeat]
+    | succ n IH =>
+        rintro (_|i) <;> simp [Nat.repeat]
+        intro H
+        apply Contractive.distLater_dist
+        intro _ Hm
+        exact (IH H).le (Nat.le_of_lt_succ Hm)
+
+theorem OFE.ContractiveHom.fixpointApprox_compl_eq_fixpoint [COFE α] [Inhabited α] (f : α -c> α) (x : α) : COFE.compl (OFE.ContractiveHom.fixpointApprox f x) ≡ f.fixpoint := by
+  let c := OFE.ContractiveHom.fixpointApprox f x
+  have hfix : COFE.compl c ≡ f (COFE.compl c) := by
+    apply OFE.equiv_dist.mpr
+    intro n
+    have h1 : COFE.compl c ≡{n}≡ c n := COFE.conv_compl (c := c) (n := n)
+    have h2 : c n ≡{n}≡ c n.succ := (c.cauchy (Nat.le_succ n)).symm
+    have h3 : c n.succ ≡{n}≡ f (c n) := by
+      simpa [c, OFE.ContractiveHom.fixpointApprox, Nat.repeat]
+    have h4 : f (c n) ≡{n}≡ f (COFE.compl c) := f.ne.ne (COFE.conv_compl (c := c) (n := n)).symm
+    exact h1.trans (h2.trans (h3.trans h4))
+  -- try unqualified unique theorem
+  exact fixpoint_unique (f := f) hfix
+
 theorem OFE.ContractiveHom.fixpoint_ind [COFE α] [Inhabited α] (f : α -c> α)
     (P : α → Prop) (HProper : ∀ A B : α, A ≡ B → P A → P B) (x : α) (Hbase : P x)
     (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) :
-    P f.fixpoint := by sorry
+    P f.fixpoint := by
+  let c := OFE.ContractiveHom.fixpointApprox f x
+  have hc : ∀ n, P (c n) := by
+    intro n
+    induction n with
+    | zero =>
+        exact (by
+          simpa [c, OFE.ContractiveHom.fixpointApprox, Nat.repeat] using Hind x Hbase)
+    | succ n ih =>
+        exact (by
+          simpa [c, OFE.ContractiveHom.fixpointApprox, Nat.repeat] using Hind (c n) ih)
+  have hcompl : P (COFE.compl c) := Hlim c hc
+  have hEq : COFE.compl c ≡ f.fixpoint := OFE.ContractiveHom.fixpointApprox_compl_eq_fixpoint (f := f) (x := x)
+  exact HProper (COFE.compl c) f.fixpoint hEq hcompl
+
 
 end Fixpoint
 

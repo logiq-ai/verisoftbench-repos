@@ -17,7 +17,40 @@ from pathlib import Path
 from connector.config import (
     DOCKER_CONTAINER, EVAL_RESULTS_DIR, EXTRACTION_MODEL, NUM_SAMPLES,
     OPENAI_API_KEY_ENV, PATCHES_DIR, REPO_ROOT, RESULTS_JSON, TASKS_JSON,
+    THEOREM_NAME_OVERRIDES,
 )
+
+
+def _ensure_compat_results(patches_dir):
+    """Generate a results JSON compatible with PatchProverInterface.
+
+    PatchProverInterface expects {thm_name, task_id, status, request_id, ...}.
+    Build it from aristotle_tasks.json + available patches.
+    """
+    with open(TASKS_JSON) as f:
+        tasks = json.load(f)
+
+    entries = []
+    for t in tasks:
+        tid = t["id"]
+        patch_file = patches_dir / f"task_{tid:03d}.patch"
+        theorem_name = THEOREM_NAME_OVERRIDES.get(tid, t["theorem_name"])
+        entries.append({
+            "task_id": tid,
+            "thm_name": theorem_name,
+            "lean_root": t["lean_root"],
+            "rel_path": t["file_path"],
+            "status": "completed" if patch_file.exists() else "pending",
+            "request_id": "",
+            "api_url": "",
+            "env": "eval",
+        })
+
+    out_path = EVAL_RESULTS_DIR / "eval_results_compat.json"
+    EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w") as f:
+        json.dump(entries, f, indent=2)
+    return out_path
 
 
 def get_all_task_ids():
@@ -38,12 +71,18 @@ def get_task_ids_with_patches(patches_dir):
 
 def write_eval_config(patches_dir, output_path):
     """Write a temporary evaluation config for VeriSoftBench."""
+    # PatchProverInterface reads results_json to map thm_name -> task_id.
+    # Our results.json uses 'theorem_name', but the prover expects 'thm_name'.
+    # Point to verisoftbench_final_results.json which has the right schema,
+    # or generate a compatible file.
+    compat_results = _ensure_compat_results(patches_dir)
+
     config = {
         "model_name": "patch",
         "model_id": "aleph-prover-patch",
         "extraction_model_id": EXTRACTION_MODEL,
         "num_samples": NUM_SAMPLES,
-        "results_json": str(RESULTS_JSON),
+        "results_json": str(compat_results),
         "patches_dir": str(patches_dir),
         "fix_enabled": False,
         "mode": "filtered_context",

@@ -80,6 +80,9 @@ def run_collect(task_ids):
     import time
     from connector.config import POLL_INTERVAL, MAX_POLL_TIME
 
+    # Wait briefly for newly submitted tasks to register
+    time.sleep(10)
+
     results = load_results()
     by_id = {}
     for r in results:
@@ -91,19 +94,22 @@ def run_collect(task_ids):
         logging.info("All tasks already completed/failed")
         return
 
+    import os
+    from connector.config import ALEPH_API_KEY_ENV
+    api_key = os.environ.get(ALEPH_API_KEY_ENV)
+
     start = time.time()
+    first_poll = True
     while True:
-        completed = running = failed = 0
+        completed = running = failed = pending = 0
         for tid in sorted(check_ids):
             entry = by_id.get(tid)
             if not entry:
                 continue
-            import os
-            from connector.config import ALEPH_API_KEY_ENV
-            api_key = os.environ.get(ALEPH_API_KEY_ENV)
             base_url = get_base_url(entry)
             data = fetch_status(entry["request_id"], base_url, api_key)
             if not data:
+                pending += 1
                 continue
 
             status = data.get("status", "?")
@@ -118,17 +124,20 @@ def run_collect(task_ids):
                     logging.info(f"[{tid:>3}] completed, patch: {patch.name}")
                 else:
                     logging.warning(f"[{tid:>3}] completed but patch download failed")
-            elif status == "running":
+            elif status in ("running", "submitted"):
                 running += 1
             elif status == "failed":
                 failed += 1
                 logging.warning(f"[{tid:>3}] failed at {data.get('stage', '?')}")
+            else:
+                pending += 1
 
         save_results(list(by_id.values()))
-        logging.info(f"Status: completed={completed} running={running} failed={failed}")
+        logging.info(f"Status: completed={completed} running={running} failed={failed} pending={pending}")
 
-        if running == 0:
+        if running == 0 and pending == 0 and not first_poll:
             break
+        first_poll = False
         if time.time() - start > MAX_POLL_TIME:
             logging.warning(f"Timeout after {MAX_POLL_TIME}s, {running} still running")
             break
@@ -172,8 +181,8 @@ def run_evaluate(task_ids):
     results = {}
     results_dir = eval_repo / "results" / "data"
     if results_dir.exists():
-        # Find latest run
-        runs = sorted(results_dir.iterdir(), key=lambda p: p.name)
+        # Find latest run directory (not log files)
+        runs = sorted([d for d in results_dir.iterdir() if d.is_dir()], key=lambda p: p.name)
         if runs:
             details_dir = runs[-1] / "details"
             if details_dir.exists():

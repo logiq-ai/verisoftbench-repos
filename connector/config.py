@@ -34,7 +34,7 @@ THEOREM_NAME_OVERRIDES = {132: "bitwise_componentwise"}
 # Budgets
 # ---------------------------------------------------------------------------
 DEFAULT_TIME_BUDGET_MINUTES = 120
-DEFAULT_COST_BUDGET_USD = 50
+DEFAULT_COST_BUDGET_USD = 100
 
 # ---------------------------------------------------------------------------
 # Prompt
@@ -59,7 +59,7 @@ DOCKER_CONTAINER = "verisoftbench-lean"
 MAX_SUBMIT_RETRIES = 10
 SUBMIT_RETRY_DELAY = 30       # seconds
 POLL_INTERVAL = 60             # seconds
-MAX_POLL_TIME = 7200           # seconds (2 hours)
+MAX_POLL_TIME = 14400          # seconds (4 hours)
 
 # Proof request retries: resubmit tasks that fail at prover level
 # (sorry in patch, timeout, build error)

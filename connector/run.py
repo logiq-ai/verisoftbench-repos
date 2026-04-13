@@ -177,30 +177,36 @@ def run_evaluate(task_ids):
     ]
     subprocess.run(cmd, cwd=str(eval_repo))
 
-    # Parse results
+    # Parse results — scan ALL run dirs for the latest results per theorem
     results = {}
     results_dir = eval_repo / "results" / "data"
     if results_dir.exists():
-        # Find latest run directory (not log files)
-        runs = sorted([d for d in results_dir.iterdir() if d.is_dir()], key=lambda p: p.name)
-        if runs:
-            details_dir = runs[-1] / "details"
-            if details_dir.exists():
-                for f in details_dir.glob("*.json"):
-                    try:
-                        d = json.loads(f.read_text())
-                        # Map thm_name back to task_id
-                        results[d.get("thm_name", "")] = d.get("success", False)
-                        if d.get("success"):
-                            # Log which sample succeeded
-                            proofs = d.get("generated_proofs", [])
-                            for i, p in enumerate(proofs):
-                                if p.get("err_msg") is None:
-                                    if i > 0:
-                                        logging.info(f"  {d['thm_name']}: passed on sample {i} (earlier samples failed)")
-                                    break
-                    except Exception:
-                        pass
+        for run_dir in sorted([d for d in results_dir.iterdir() if d.is_dir()], key=lambda p: p.name):
+            details_dir = run_dir / "details"
+            if not details_dir.exists():
+                continue
+            for f in details_dir.glob("*.json"):
+                try:
+                    d = json.loads(f.read_text())
+                    thm = d.get("thm_name", "")
+                    success = d.get("success", False)
+                    results[thm] = success
+
+                    if success:
+                        proofs = d.get("generated_proofs", [])
+                        for i, p in enumerate(proofs):
+                            if p.get("err_msg") is None:
+                                if i > 0:
+                                    logging.info(f"  {thm}: passed on sample {i} (earlier samples failed)")
+                                else:
+                                    logging.info(f"  {thm}: passed")
+                                break
+                    else:
+                        proofs = d.get("generated_proofs", [])
+                        err = proofs[0].get("err_msg", "")[:80] if proofs else "no proof"
+                        logging.info(f"  {thm}: FAILED — {err}")
+                except Exception:
+                    pass
 
     passed = sum(1 for v in results.values() if v)
     total = len(results)

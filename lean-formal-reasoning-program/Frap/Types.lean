@@ -246,7 +246,78 @@ exercise (3-star)
 Complete the formal proof of the `progress` property.
 -/
 theorem progress t T
-    : HasType t T → value t ∨ ∃ t', Step t t' := by sorry
+    : HasType t T → value t ∨ ∃ t', Step t t' := by
+  intro hT
+  induction hT with
+  | t_true =>
+      left
+      left
+      exact bv_true
+  | t_false =>
+      left
+      left
+      exact bv_false
+  | t_0 =>
+      left
+      right
+      exact nv_0
+  | t_if t₁ t₂ t₃ T hcond hthen helse ihCond ihThen ihElse =>
+      cases ihCond with
+      | inl hv =>
+          have hb : BValue t₁ := bool_canonical t₁ hcond hv
+          cases hb with
+          | bv_true =>
+              right
+              exact ⟨t₂, st_ifTrue t₂ t₃⟩
+          | bv_false =>
+              right
+              exact ⟨t₃, st_ifFalse t₂ t₃⟩
+      | inr hs =>
+          rcases hs with ⟨c', hc⟩
+          right
+          exact ⟨ite c' t₂ t₃, st_if t₁ c' t₂ t₃ hc⟩
+  | t_succ t₁ ht ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ ht hv
+          left
+          right
+          exact nv_succ t₁ hn
+      | inr hs =>
+          rcases hs with ⟨t₁', hstep⟩
+          right
+          exact ⟨scc t₁', st_succ t₁ t₁' hstep⟩
+  | t_pred t₁ ht ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ ht hv
+          cases hn with
+          | nv_0 =>
+              right
+              exact ⟨zro, st_pred0⟩
+          | nv_succ v hvv =>
+              right
+              exact ⟨v, st_predSucc v hvv⟩
+      | inr hs =>
+          rcases hs with ⟨t₁', hstep⟩
+          right
+          exact ⟨prd t₁', st_pred t₁ t₁' hstep⟩
+  | t_iszero t₁ ht ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ ht hv
+          cases hn with
+          | nv_0 =>
+              right
+              exact ⟨tru, st_iszero0⟩
+          | nv_succ v hvv =>
+              right
+              exact ⟨fls, st_iszeroSucc v hvv⟩
+      | inr hs =>
+          rcases hs with ⟨t₁', hstep⟩
+          right
+          exact ⟨iszero t₁', st_iszero t₁ t₁' hstep⟩
+
 
 /-
 exercise (2-star)

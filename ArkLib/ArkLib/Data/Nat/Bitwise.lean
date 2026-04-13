@@ -21,6 +21,7 @@ import Mathlib.Data.ENat.Basic
 import Mathlib.Data.ENNReal.Inv
 import Mathlib.Data.Nat.GCD.Basic
 
+import Batteries.Data.Nat.Lemmas
 /-!
 # Bit operations on natural numbers
 
@@ -1129,9 +1130,101 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
       _      < 2^n                         := by exact h_lt
   exact ⟨i_of_m, h_i_lt⟩
 
+theorem ofBits_eq_sum_two_pow_mul_toNat {n : ℕ} (f : Fin n → Bool) : Nat.ofBits f = ∑ j : Fin n, (2 ^ j.val) * (f j).toNat := by
+  induction n with
+  | zero =>
+      rfl
+  | succ n ih =>
+      unfold Nat.ofBits
+      rw [Fin.foldr_succ]
+      have hfold : Fin.foldr n (fun i v => 2 * v + (f i.succ).toNat) 0 = Nat.ofBits (f ∘ Fin.succ) := by
+        rfl
+      rw [hfold]
+      rw [Fin.sum_univ_succ, ih (f := f ∘ Fin.succ)]
+      rw [Fin.val_zero, Nat.pow_zero, one_mul, add_comm]
+      congr 1
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro j hj
+      rw [Fin.val_succ, Nat.pow_succ]
+      ac_rfl
+
 lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
     ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by sorry
+      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
+  revert m h_binary
+  induction n with
+  | zero =>
+      intro m h_binary k
+      have hval : (binaryFinMapToNat m h_binary).val = 0 := by
+        rfl
+      rw [hval, Nat.getBit_zero_eq_zero]
+      simp
+  | succ n ih =>
+      intro m h_binary k
+      let m' : Fin n → ℕ := fun j => m j.succ
+      have h_binary' : ∀ j : Fin n, m' j ≤ 1 := by
+        intro j
+        exact h_binary j.succ
+      have hm0lt : m 0 < 2 := by
+        have hm0le : m 0 ≤ 1 := h_binary 0
+        omega
+      rcases Nat.eq_zero_or_eq_one_of_lt_two hm0lt with hm0 | hm0
+      · have hsplit : (binaryFinMapToNat m h_binary).val = 2 * (binaryFinMapToNat m' h_binary').val := by
+          calc
+            (binaryFinMapToNat m h_binary).val = ∑ j : Fin (n + 1), (2 ^ j.val) * m j := by
+              rfl
+            _ = m 0 + ∑ j : Fin n, (2 ^ j.succ.val) * m j.succ := by
+              simpa using (Fin.sum_univ_succ (f := fun j : Fin (n + 1) => (2 ^ j.val) * m j))
+            _ = 0 + ∑ j : Fin n, (2 ^ j.succ.val) * m j.succ := by
+              rw [hm0]
+            _ = ∑ j : Fin n, (2 ^ j.succ.val) * m j.succ := by
+              rw [zero_add]
+            _ = ∑ j : Fin n, 2 * ((2 ^ j.val) * m j.succ) := by
+              apply Finset.sum_congr rfl
+              intro j hj
+              simp [Nat.pow_succ, Nat.mul_assoc, Nat.mul_left_comm, Nat.mul_comm]
+            _ = 2 * ∑ j : Fin n, (2 ^ j.val) * m j.succ := by
+              rw [Finset.mul_sum]
+            _ = 2 * (binaryFinMapToNat m' h_binary').val := by
+              rfl
+        cases k with
+        | zero =>
+            rw [hsplit, Nat.getBit_zero_of_two_mul]
+            simp [hm0]
+        | succ k =>
+            rw [hsplit, Nat.getBit_eq_succ_getBit_of_mul_two]
+            simpa [m', Nat.succ_lt_succ_iff] using ih m' h_binary' k
+      · have hsplit : (binaryFinMapToNat m h_binary).val = 2 * (binaryFinMapToNat m' h_binary').val + 1 := by
+          calc
+            (binaryFinMapToNat m h_binary).val = ∑ j : Fin (n + 1), (2 ^ j.val) * m j := by
+              rfl
+            _ = m 0 + ∑ j : Fin n, (2 ^ j.succ.val) * m j.succ := by
+              simpa using (Fin.sum_univ_succ (f := fun j : Fin (n + 1) => (2 ^ j.val) * m j))
+            _ = 1 + ∑ j : Fin n, (2 ^ j.succ.val) * m j.succ := by
+              rw [hm0]
+            _ = 1 + ∑ j : Fin n, 2 * ((2 ^ j.val) * m j.succ) := by
+              congr 1
+              apply Finset.sum_congr rfl
+              intro j hj
+              simp [Nat.pow_succ, Nat.mul_assoc, Nat.mul_left_comm, Nat.mul_comm]
+            _ = 1 + 2 * ∑ j : Fin n, (2 ^ j.val) * m j.succ := by
+              rw [Finset.mul_sum]
+            _ = 2 * ∑ j : Fin n, (2 ^ j.val) * m j.succ + 1 := by
+              omega
+            _ = 2 * (binaryFinMapToNat m' h_binary').val + 1 := by
+              rfl
+        cases k with
+        | zero =>
+            rw [hsplit]
+            simp [hm0]
+            unfold Nat.getBit
+            rw [Nat.shiftRight_zero, Nat.and_one_is_mod]
+            omega
+        | succ k =>
+            rw [hsplit, Nat.getBit_eq_succ_getBit_of_mul_two_add_one]
+            simpa [m', Nat.succ_lt_succ_iff] using ih m' h_binary' k
+
 
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=

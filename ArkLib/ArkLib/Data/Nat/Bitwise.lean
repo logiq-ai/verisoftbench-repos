@@ -1129,9 +1129,69 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
       _      < 2^n                         := by exact h_lt
   exact ⟨i_of_m, h_i_lt⟩
 
+theorem binaryFinMapToNat_val_eq_sum {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j : Fin n, m j ≤ 1) : (binaryFinMapToNat m h_binary).val = ∑ j : Fin n, (2 ^ j.val) * m j :=   rfl
+
+theorem binaryFinMapToNat_split_last {n : ℕ} (m : Fin (n + 1) → ℕ) (h_binary : ∀ j : Fin (n + 1), m j ≤ 1) : (binaryFinMapToNat m h_binary).val = (binaryFinMapToNat (fun i : Fin n => m i.castSucc) (fun i : Fin n => h_binary i.castSucc)).val + 2 ^ n * m (Fin.last n) := by
+  rw [binaryFinMapToNat_val_eq_sum, binaryFinMapToNat_val_eq_sum]
+  rw [Fin.sum_univ_castSucc]
+  simp
+
+theorem getBit_of_le_one (a : ℕ) (ha : a ≤ 1) : ∀ k : ℕ, Nat.getBit k a = if k = 0 then a else 0 := by
+  intro k
+  cases k with
+  | zero =>
+      have hlt : a < 2 := by omega
+      simpa only [if_pos rfl] using Nat.getBit_zero_eq_self hlt
+  | succ k =>
+      have hlt : a < 2 := by omega
+      have hzero : Nat.getBit (Nat.succ k) a = 0 := by
+        simpa using (Nat.getBit_of_lt_two_pow (n := 1) (a := (⟨a, hlt⟩ : Fin (2 ^ 1))) (k := Nat.succ k))
+      simpa only [if_neg (Nat.succ_ne_zero k)] using hzero
+
 lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
     ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by sorry
+      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
+  revert h_binary
+  revert m
+  induction n with
+  | zero =>
+      intro m h_binary k
+      have hval : (binaryFinMapToNat m h_binary).val = 0 := by
+        rw [binaryFinMapToNat_val_eq_sum]
+        simp
+      rw [hval, Nat.getBit_zero_eq_zero]
+      have hk : ¬ k < 0 := by omega
+      simp [hk]
+  | succ n ih =>
+      intro m h_binary k
+      let lowm : Fin n → ℕ := fun i => m i.castSucc
+      let lowh : ∀ i : Fin n, lowm i ≤ 1 := fun i => h_binary i.castSucc
+      let low : Fin (2 ^ n) := binaryFinMapToNat lowm lowh
+      have hlow :
+          Nat.getBit k low.val = if h_k : k < n then m ⟨k, by omega⟩ else 0 := by
+        simpa [low, lowm, lowh] using ih lowm lowh k
+      have hsplit :
+          (binaryFinMapToNat m h_binary).val = low.val + 2 ^ n * m (Fin.last n) := by
+        simpa [low, lowm, lowh] using
+          (binaryFinMapToNat_split_last (m := m) (h_binary := h_binary))
+      rw [hsplit]
+      rw [Nat.add_comm, Nat.two_pow_add_eq_or_of_lt low.isLt (m (Fin.last n))]
+      rw [Nat.getBit_of_or, Nat.getBit_of_multiple_of_power_of_two, hlow]
+      by_cases hk : k < n
+      · have hk1 : k < n + 1 := by omega
+        simp [hk, hk1]
+      · by_cases hk1 : k < n + 1
+        · have hk_eq : k = n := by omega
+          subst k
+          simp [hk]
+          simpa [Fin.last] using
+            (getBit_of_le_one (m (Fin.last n)) (h_binary (Fin.last n)) 0)
+        · have hk_sub_ne : k - n ≠ 0 := by omega
+          have hbit : Nat.getBit (k - n) (m (Fin.last n)) = 0 := by
+            rw [getBit_of_le_one (m (Fin.last n)) (h_binary (Fin.last n)) (k - n)]
+            simp [hk_sub_ne]
+          simp [hk, hk1, hbit]
+
 
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=

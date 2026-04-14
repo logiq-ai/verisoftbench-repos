@@ -209,8 +209,42 @@ lemma Value.Approx.invert {v v'} :
   intro h
   invert (h 0) <;> constructor <;> aesop
 
-@[trans]
-lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by sorry
+lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  let P : Nat → Prop := fun n => ∀ v₁ v₂ v₃, v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃
+  have hmain : ∀ n, P n := by
+    intro n
+    refine Nat.strong_induction_on n ?_
+    intro n ih v₁ v₂ v₃ h₁ h₂
+    invert h₁
+    case unit =>
+      have hv₃ : v₃ = Value.unit := (Value.Approx.unit_right).mp h₂
+      subst hv₃
+      exact Value.Approx.Indexed.unit
+    case const c =>
+      have hv₃ : v₃ = Value.const c := (Value.Approx.const_right).mp h₂
+      subst hv₃
+      exact Value.Approx.Indexed.const
+    case constr_app ctr_name args_rev args_rev' hargs₁₂ =>
+      rcases Value.Approx.constr_app_inv_right h₂ with ⟨args_rev'', rfl, hargs₂₃⟩
+      apply Value.Approx.Indexed.constr_app
+      intro k hk
+      apply Utils.forall₂_trans'
+      · intro a b c hab hbc
+        exact ih k hk a b c hab hbc
+      · exact hargs₁₂ k hk
+      · exact hargs₂₃
+    case closure env₁ body₁ env₂ body₂ hcl₁₂ =>
+      rcases Value.Approx.closure_inv_right h₂ with ⟨env₃, body₃, rfl, hcl₂₃⟩
+      apply Value.Approx.Indexed.closure
+      intro n₁ n₂ hn a₁ a₃ r₁ ha₁₃ heval₁
+      obtain ⟨r₂, heval₂, hr₁₂⟩ := hcl₁₂ n₁ n₂ hn a₁ a₃ r₁ ha₁₃ heval₁
+      obtain ⟨r₃, heval₃, hr₂₃⟩ := hcl₂₃ a₃ a₃ (Value.Approx.refl a₃) r₂ heval₂
+      have hn₂ : n₂ < n := by
+        linarith
+      refine ⟨r₃, heval₃, ?_⟩
+      exact ih n₂ hn₂ r₁ r₂ r₃ hr₁₂ hr₂₃
+  exact hmain n v₁ v₂ v₃
+
 
 @[trans]
 lemma Value.Approx.trans {v₁ v₂ v₃} : v₁ ≲ᵥ v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ v₃ := by

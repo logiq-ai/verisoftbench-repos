@@ -15,7 +15,7 @@
 model_name: patch
 model_id: aleph-prover-patch
 extraction_model_id: gpt-5.4
-num_samples: 1
+num_samples: 3
 
 # Paths (adjust to your setup)
 results_json: ../verisoftbench-repos/verisoftbench_final_results.json

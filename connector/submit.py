@@ -39,12 +39,16 @@ def submit_task(task, api_url, api_key):
     theorem_name = THEOREM_NAME_OVERRIDES.get(tid, task["theorem_name"])
     file_path = f"{task['lean_root']}/{task['file_path']}"
 
+    # Combine task-specific hints from the benchmark with the generic eval prompt
+    task_hints = task.get("hints", "")
+    hints = f"{task_hints}\n\n{EVAL_PROMPT}" if task_hints else EVAL_PROMPT
+
     payload = {
         "repository_url": REPO_URL,
         "branch": BRANCH,
         "file_path": file_path,
         "theorem_name": theorem_name,
-        "hints": EVAL_PROMPT,
+        "hints": hints,
         "time_budget_minutes": DEFAULT_TIME_BUDGET_MINUTES,
         "cost_budget_usd": DEFAULT_COST_BUDGET_USD,
     }
@@ -67,8 +71,8 @@ def submit_task(task, api_url, api_key):
                 "status": "submitted",
                 "submitted_at": datetime.now(timezone.utc).isoformat(),
             }
-        elif resp.status_code == 402:
-            log.debug(f"[{tid}] 402 concurrent limit, retry {attempt+1}/{MAX_SUBMIT_RETRIES}")
+        elif resp.status_code in (402, 500, 502, 503, 504):
+            log.warning(f"[{tid}] HTTP {resp.status_code}, retry {attempt+1}/{MAX_SUBMIT_RETRIES}")
             time.sleep(SUBMIT_RETRY_DELAY)
         else:
             log.error(f"[{tid}] HTTP {resp.status_code}: {resp.text[:100]}")

@@ -39,6 +39,8 @@ def setup_logging():
             logging.FileHandler(log_file),
         ],
     )
+    # Also capture warnings from third-party libraries
+    logging.captureWarnings(True)
     logging.info(f"Log file: {log_file}")
     return log_file
 
@@ -109,6 +111,11 @@ def run_collect(task_ids):
         for tid in sorted(check_ids):
             entry = by_id.get(tid)
             if not entry or not entry.get("request_id"):
+                # Task was never submitted successfully — count as failed
+                if tid not in downloaded:
+                    logging.warning(f"[{tid:>3}] no submission record, skipping")
+                    downloaded.add(tid)
+                    failed += 1
                 continue
 
             # Skip already-downloaded tasks
@@ -190,15 +197,24 @@ def run_evaluate(task_ids):
         "--save-debug-lean",
         "--refresh-cache",
     ]
-    subprocess.run(cmd, cwd=str(eval_repo))
+    # Pipe stderr to stdout so all output is captured in logs
+    proc = subprocess.run(cmd, cwd=str(eval_repo), stderr=subprocess.STDOUT)
+    logging.info(f"Evaluation subprocess exited with code {proc.returncode}")
 
-    # Parse results from the latest run directory
+    # Parse results from the latest aleph-prover-eval run directory
+    # Filter by run_name prefix to avoid picking up old runs with different names
+    RUN_PREFIX = "aleph-prover-eval_"
     results = {}
     results_dir = eval_repo / "results" / "data"
     if results_dir.exists():
-        run_dirs = sorted([d for d in results_dir.iterdir() if d.is_dir()], key=lambda p: p.name)
+        run_dirs = sorted(
+            [d for d in results_dir.iterdir() if d.is_dir() and d.name.startswith(RUN_PREFIX)],
+            key=lambda p: p.name,
+        )
         if run_dirs:
-            details_dir = run_dirs[-1] / "details"
+            latest = run_dirs[-1]
+            logging.info(f"Reading results from {latest.name}")
+            details_dir = latest / "details"
             if details_dir.exists():
                 for f in details_dir.glob("*.json"):
                     try:
@@ -220,8 +236,12 @@ def run_evaluate(task_ids):
                         else:
                             err = proofs[0].get("err_msg", "")[:80] if proofs else "no proof"
                             logging.info(f"  {thm}: FAIL ({n_samples} samples) — {err}")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.warning(f"  Failed to parse {f.name}: {e}")
+        else:
+            logging.error(f"No run directories matching '{RUN_PREFIX}*' found in {results_dir}")
+    else:
+        logging.error(f"Results directory not found: {results_dir}")
 
     passed = sum(1 for v in results.values() if v)
     total = len(results)
@@ -268,6 +288,9 @@ def main():
     task_ids = args.task_ids
     max_retries = 0 if args.no_retries else MAX_PROOF_RETRIES
 
+    # Accumulate results across retry attempts
+    all_results = {}  # thm_name -> passed (updated each attempt)
+
     for attempt in range(1 + max_retries):
         if attempt > 0:
             logging.info(f"\n{'='*60}")
@@ -299,6 +322,9 @@ def main():
             logging.warning("No evaluation results")
             break
 
+        # Merge into accumulated results
+        all_results.update(eval_results)
+
         # Check for failures to retry
         failed_ids = get_failed_task_ids(eval_results)
 
@@ -308,8 +334,8 @@ def main():
         logging.info(f"{len(failed_ids)} tasks failed, will retry: {failed_ids}")
         task_ids = failed_ids
 
-    passed = sum(1 for v in eval_results.values() if v) if eval_results else 0
-    total = len(eval_results) if eval_results else 0
+    passed = sum(1 for v in all_results.values() if v)
+    total = len(all_results)
     logging.info(f"\n{'='*60}")
     logging.info(f"FINAL RESULT: {passed}/{total} passed")
     logging.info(f"Log: {log_file}")

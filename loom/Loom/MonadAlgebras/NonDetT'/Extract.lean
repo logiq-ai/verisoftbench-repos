@@ -360,7 +360,33 @@ def ExtractNonDet.prop {α : Type u} (s : NonDetT m α) :  ExtractNonDet WeakFin
 namespace DemonicChoice
 
 lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
-  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by sorry
+  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+  unhygienic induction inst
+  · simp [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, wp_pure]
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, monadLift_self, wp_bind, NonDetT.wp_vis]
+    rw [inf_comm, wlp_join_wp]
+    apply wp_cons
+    intro y
+    simpa [inf_comm, NonDetT.extract] using a_ih y
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_pickCont]
+    split
+    · have hnone : ∀ t, ¬ p t := Findable.find_none (p := p) (by simp [*])
+      simp [*, hnone]
+    · rename_i t hfind
+      have hp : p t := Findable.find_some_p (p := p) hfind
+      refine le_trans ?_ (a_ih t)
+      refine le_inf ?_ ?_
+      · exact le_trans inf_le_left <| by
+          simpa [hp] using (iInf_le (fun a => ⌜p a⌝ ⇨ wp (f a) post) t)
+      · exact le_trans inf_le_right <| le_trans inf_le_left <| by
+          simpa [hp] using (iInf_le (fun a => ⌜p a⌝ ⇨ (f a).prop ⊤) t)
+  · simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_pickCont]
+    have hpunit : ∀ a : PUnit, p a = p .unit := by intro a; cases a; rfl
+    have hfunit : ∀ a : PUnit, f a = f .unit := by intro a; cases a; rfl
+    simp only [hpunit, hfunit, ge_iff_le]
+    split_ifs <;> simp [iInf_const, iSup_const, *]
+    exact a_ih PUnit.unit
+
 
 lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
   triple pre s post ->

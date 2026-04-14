@@ -246,7 +246,28 @@ exercise (3-star)
 Complete the formal proof of the `progress` property.
 -/
 theorem progress t T
-    : HasType t T → value t ∨ ∃ t', Step t t' := by sorry
+    : HasType t T → value t ∨ ∃ t', Step t t' := by
+  intro ht
+  induction ht with
+  | t_pred t₁ h ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := by
+            apply nat_canonical
+            · exact h
+            · exact hv
+          cases hn with
+          | nv_0 =>
+              sorry
+          | nv_succ =>
+              rename_i v hnv
+              have _ : NValue v := hnv
+              sorry
+      | inr hs =>
+          sorry
+  | _ =>
+      sorry
+
 
 /-
 exercise (2-star)

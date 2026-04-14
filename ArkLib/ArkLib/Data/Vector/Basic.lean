@@ -84,16 +84,31 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   rw [Array.toList_insertIdx]
   simp only [List.insertIdx_zero]
 
--- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
-
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
   rfl
+
+-- TODO: this theorem should not be so hard...
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  cases n with
+  | zero =>
+      cases (NeZero.ne (n := 0) rfl)
+  | succ n =>
+      rw [foldl_eq_toList_foldl]
+      have htail : v.tail.toList = v.toList.tail := by
+        rw [Vector.tail_eq_cast_extract, toList_cast, toList_extract, List.drop_one]
+        apply List.take_of_length_le
+        simp [length_toList]
+      have hcons : v.toList = v.head :: v.tail.toList := by
+        symm
+        rw [htail]
+        simpa [Vector.head, List.drop_one] using
+          (List.getElem_cons_drop (l := v.toList) (i := 0)
+            (by simpa [length_toList] using (Nat.succ_pos n)))
+      rw [hcons, List.foldl_cons, foldl_eq_toList_foldl]
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)
 
@@ -211,7 +226,10 @@ theorem dotProduct_eq_root_dotProduct (a b : Vector R n) :
   refine induction₂ ?_ (fun hd tl hd' tl' ih => ?_) a b
   · simp [dotProduct, _root_.dotProduct]
   · simp [Vector.cast]
-    sorry
+    simpa [cons, Vector.insertIdx] using
+      (show dotProduct (cons hd tl) (cons hd' tl') =
+          _root_.dotProduct (cons hd tl).get (cons hd' tl').get from by
+        rw [Vector.dotProduct_cons, _root_.dotProduct_cons, ih])
     -- suffices h : ((#v[hd] ++ tl) *ᵥ (#v[hd'] ++ tl')) =
     --   (_root_.dotProduct (#v[hd] ++ tl).get (#v[hd'] ++ tl').get) by
     --   simp at h

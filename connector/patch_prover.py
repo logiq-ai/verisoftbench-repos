@@ -244,6 +244,7 @@ IMPORTANT:
                 response = self.client.responses.create(
                     model=self.model_id,
                     input=EXTRACTION_SYSTEM_PROMPT + "\n\n" + user_prompt,
+                    reasoning={"effort": "xhigh"},
                 )
                 return response.output_text
             except Exception as e:

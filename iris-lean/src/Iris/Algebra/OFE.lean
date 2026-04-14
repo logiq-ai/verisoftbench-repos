@@ -706,11 +706,45 @@ instance OFE.ContractiveHom.fixpoint_ne [COFE α] [Inhabited α] :
     | zero => exact H _
     | succ _ IH => exact (H _).trans <| Contractive.succ _ <| IH <| Dist.lt H (Nat.lt_add_one _)
 
-@[elab_as_elim]
+def Fixpoint.chainFrom [OFE α] (f : α → α) [Contractive f] (x : α) : Chain α where
+  chain n := Nat.repeat f (n + 1) x
+  cauchy {n} := by
+    induction n with simp [Nat.repeat] | succ n IH
+    rintro (_|i) <;> simp
+    intro H
+    apply Contractive.distLater_dist
+    intro _ Hm
+    exact (IH H).le (Nat.le_of_lt_succ Hm)
+
+theorem Fixpoint.chainFrom_compl_fixed [COFE α] (f : α -c> α) (x : α) : COFE.compl (Fixpoint.chainFrom f x) ≡ f (COFE.compl (Fixpoint.chainFrom f x)) := by
+  refine equiv_dist.mpr fun n => ?_
+  apply COFE.conv_compl.trans
+  refine .trans ?_ (NonExpansive.ne COFE.conv_compl.symm)
+  induction n with
+  | zero =>
+      exact Contractive.zero f.f
+  | succ _ IH =>
+      exact (Contractive.succ f.f IH.symm).symm
+
+theorem Fixpoint.chainFrom_compl_eq_fixpoint [COFE α] [Inhabited α] (f : α -c> α) (x : α) : COFE.compl (Fixpoint.chainFrom f x) ≡ f.fixpoint := by
+  have hfixed : COFE.compl (Fixpoint.chainFrom f x) ≡ f (COFE.compl (Fixpoint.chainFrom f x)) :=
+    Fixpoint.chainFrom_compl_fixed f x
+  exact fixpoint_unique (f := f) (x := COFE.compl (Fixpoint.chainFrom f x)) hfixed
+
 theorem OFE.ContractiveHom.fixpoint_ind [COFE α] [Inhabited α] (f : α -c> α)
     (P : α → Prop) (HProper : ∀ A B : α, A ≡ B → P A → P B) (x : α) (Hbase : P x)
     (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) :
-    P f.fixpoint := by sorry
+    P f.fixpoint := by
+  have Hiter : ∀ n, P ((Fixpoint.chainFrom f x).chain n) := by
+    intro n
+    induction n with
+    | zero =>
+        simpa [Fixpoint.chainFrom, Nat.repeat] using Hind x Hbase
+    | succ n IH =>
+        simpa [Fixpoint.chainFrom, Nat.repeat] using Hind ((Fixpoint.chainFrom f x).chain n) IH
+  have Hcompl : P (COFE.compl (Fixpoint.chainFrom f x)) := Hlim (Fixpoint.chainFrom f x) Hiter
+  exact HProper _ _ (Fixpoint.chainFrom_compl_eq_fixpoint f x) Hcompl
+
 
 end Fixpoint
 

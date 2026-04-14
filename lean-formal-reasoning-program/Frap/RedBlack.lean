@@ -248,12 +248,128 @@ To recursively destruct an inductively defined object, we can use the `rcases` t
 We can give names to parameters in each case, so that we can refer to them later.
 -/
 
+theorem balance_BST_black_branch_default {α : Type _} (l : Tree α) (k : Nat) (vk : α) (r : Tree α) : ForallTree (fun x _ => x < k) l -> ForallTree (fun x _ => x > k) r -> BST l -> BST r -> BST (tree black l k vk r) := by
+  intro hlk hkr hbl hbr
+  constructor <;> assumption
+
+theorem balance_BST_rotate {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < x) a -> ForallTree (fun w _ => w > x) b -> ForallTree (fun w _ => w < y) b -> ForallTree (fun w _ => w > y) c -> ForallTree (fun w _ => w < z) c -> ForallTree (fun w _ => w > z) d -> x < y -> y < z -> BST a -> BST b -> BST c -> BST d -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hax hbx hby hcy hcz hdz hxy hyz hBa hBb hBc hBd
+  constructor
+  · constructor
+    · exact hxy
+    · exact forallTree_lt a x y hax hxy
+    · exact hby
+  · constructor
+    · omega
+    · exact hcy
+    · exact forallTree_gt d z y hdz (by omega)
+  · constructor
+    · exact hax
+    · exact hbx
+    · exact hBa
+    · exact hBb
+  · constructor
+    · exact hcz
+    · exact hdz
+    · exact hBc
+    · exact hBd
+
+theorem balance_BST_left_left {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < z) (tree red (tree red a x vx b) y vy c) -> ForallTree (fun w _ => w > z) d -> BST (tree red (tree red a x vx b) y vy c) -> BST d -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlz hdz hbstl hbd
+  cases hbstl with
+  | tree _ _ _ _ _ hleft_lt_y hc_gt_y hbst_left hbc =>
+    cases hbst_left with
+    | tree _ _ _ _ _ hax hbx hba hbb =>
+      cases hleft_lt_y with
+      | tree _ _ _ _ _ hxy _ hby =>
+        cases hlz with
+        | tree _ _ _ _ _ hyz _ hcz =>
+          exact balance_BST_rotate a b c d x y z vx vy vz hax hbx hby hc_gt_y hcz hdz hxy hyz hba hbb hbc hbd
+
+theorem balance_BST_black_branch_left_left {α : Type _} (l : Tree α) (k : Nat) (vk : α) (r : Tree α) (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < k) l -> ForallTree (fun w _ => w > k) r -> BST l -> BST r -> (l, k, vk, r) = (tree red (tree red a x vx b) y vy c, z, vz, d) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr heq
+  cases heq
+  simpa using (balance_BST_left_left a b c r x y k vx vy vk hlk hkr hbl hbr)
+
+theorem balance_BST_left_right {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < z) (tree red a x vx (tree red b y vy c)) -> ForallTree (fun w _ => w > z) d -> BST (tree red a x vx (tree red b y vy c)) -> BST d -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlz hdz hbstl hbd
+  cases hbstl with
+  | tree _ _ _ _ _ hax hright_gt_x hba hbst_right =>
+      cases hbst_right with
+      | tree _ _ _ _ _ hby hc_gt_y hbb hbc =>
+          cases hright_gt_x with
+          | tree _ _ _ _ _ hxy hbx _ =>
+              cases hlz with
+              | tree _ _ _ _ _ _ _ hright_lt_z =>
+                  cases hright_lt_z with
+                  | tree _ _ _ _ _ hyz _ hcz =>
+                      exact balance_BST_rotate a b c d x y z vx vy vz hax hbx hby hc_gt_y hcz hdz hxy hyz hba hbb hbc hbd
+
+theorem balance_BST_black_branch_left_right {α : Type _} (l : Tree α) (k : Nat) (vk : α) (r : Tree α) (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < k) l -> ForallTree (fun w _ => w > k) r -> BST l -> BST r -> (l, k, vk, r) = (tree red a x vx (tree red b y vy c), z, vz, d) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr heq
+  cases heq
+  simpa using (balance_BST_left_right a b c r x y k vx vy vk hlk hkr hbl hbr)
+
+theorem balance_BST_right_left {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < x) a -> ForallTree (fun w _ => w > x) (tree red (tree red b y vy c) z vz d) -> BST a -> BST (tree red (tree red b y vy c) z vz d) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hax hright_gt_x hba hbst_right
+  sorry
+
+theorem balance_BST_black_branch_right_left {α : Type _} (l : Tree α) (k : Nat) (vk : α) (r : Tree α) (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < k) l -> ForallTree (fun w _ => w > k) r -> BST l -> BST r -> (l, k, vk, r) = (a, x, vx, tree red (tree red b y vy c) z vz d) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr heq
+  cases heq
+  simpa using (balance_BST_right_left l b c d k y z vk vy vz hlk hkr hbl hbr)
+
+theorem balance_BST_right_right {α : Type _} (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < x) a -> ForallTree (fun w _ => w > x) (tree red b y vy (tree red c z vz d)) -> BST a -> BST (tree red b y vy (tree red c z vz d)) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hax hright_gt_x hba hbst_right
+  cases hbst_right with
+  | tree _ _ _ _ _ hby hright_gt_y hbb hbst_rr =>
+      cases hbst_rr with
+      | tree _ _ _ _ _ hcz hdz hbc hbd =>
+          cases hright_gt_x with
+          | tree _ _ _ _ _ hy_gt_x hbx _ =>
+              cases hright_gt_y with
+              | tree _ _ _ _ _ hz_gt_y hc_gt_y _ =>
+                  have hxy : x < y := by
+                    omega
+                  have hyz : y < z := by
+                    omega
+                  exact balance_BST_rotate a b c d x y z vx vy vz hax hbx hby hc_gt_y hcz hdz hxy hyz hba hbb hbc hbd
+
+theorem balance_BST_black_branch_right_right {α : Type _} (l : Tree α) (k : Nat) (vk : α) (r : Tree α) (a b c d : Tree α) (x y z : Nat) (vx vy vz : α) : ForallTree (fun w _ => w < k) l -> ForallTree (fun w _ => w > k) r -> BST l -> BST r -> (l, k, vk, r) = (a, x, vx, tree red b y vy (tree red c z vz d)) -> BST (tree red (tree black a x vx b) y vy (tree black c z vz d)) := by
+  intro hlk hkr hbl hbr heq
+  cases heq
+  simpa using (balance_BST_right_right l b c d k y z vk vy vz hlk hkr hbl hbr)
+
+theorem balance_BST_black {α : Type _} (l : Tree α) (k : Nat) (vk : α) (r : Tree α) : ForallTree (fun x _ => x < k) l -> ForallTree (fun x _ => x > k) r -> BST l -> BST r -> BST (balance black l k vk r) := by
+  intro hlk hkr hbl hbr
+  unfold balance
+  repeat' split
+  case h_1 c1 hc1 =>
+    cases hc1
+  case h_2.h_1 c1 hc1 tup1 a x vx b y vy c z vz d heq =>
+    exact balance_BST_black_branch_left_left l k vk r a b c d x y z vx vy vz hlk hkr hbl hbr heq
+  case h_2.h_2 c1 hc1 tup1 a x vx b y vy c z vz d hno heq =>
+    exact balance_BST_black_branch_left_right l k vk r a b c d x y z vx vy vz hlk hkr hbl hbr heq
+  case h_2.h_3 c1 hc1 tup1 a x vx b y vy c z vz d hno1 hno2 heq =>
+    exact balance_BST_black_branch_right_left l k vk r a b c d x y z vx vy vz hlk hkr hbl hbr heq
+  case h_2.h_4 c1 hc1 tup1 a x vx b y vy c z vz d hno1 hno2 hno3 heq =>
+    exact balance_BST_black_branch_right_right l k vk r a b c d x y z vx vy vz hlk hkr hbl hbr heq
+  case h_2.h_5 c1 hc1 tup1 hno1 hno2 hno3 hno4 =>
+    exact balance_BST_black_branch_default l k vk r hlk hkr hbl hbr
+
 theorem balance_BST {α : Type u} c (l : Tree α) k vk (r : Tree α)
     : ForallTree (fun x _ => x < k) l
       -> ForallTree (fun x _ => x > k) r
       -> BST l
       -> BST r
-      -> BST (balance c l k vk r) := by sorry
+      -> BST (balance c l k vk r) := by
+  intro hlk hkr hbl hbr
+  cases c with
+  | red =>
+      simpa [balance] using (BST.tree red l k vk r hlk hkr hbl hbr)
+  | black =>
+      exact balance_BST_black l k vk r hlk hkr hbl hbr
+
 
 /-
 exercise (2-star)

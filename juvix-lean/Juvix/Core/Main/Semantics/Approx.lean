@@ -209,8 +209,36 @@ lemma Value.Approx.invert {v v'} :
   intro h
   invert (h 0) <;> constructor <;> aesop
 
-@[trans]
-lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by sorry
+theorem Value.Approx.Indexed.args_trans_of_lt (n k : Nat) (args₁ args₂ args₃ : List Value) : (∀ m, m < n → ∀ {v₁ v₂ v₃}, v₁ ≲ᵥ(m) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(m) v₃) → k < n → args₁ ≲ₐ(k) args₂ → args₂ ≲ₐ args₃ → args₁ ≲ₐ(k) args₃ := by
+  intro ih hk h12 h23
+  exact Juvix.Utils.forall₂_trans' (P := Value.Approx.Indexed k) (Q := Value.Approx)
+    (R := Value.Approx.Indexed k) (fun a b c hab hbc => ih k hk hab hbc) h12 h23
+
+theorem Value.Approx.Indexed.trans_step (n : Nat) (v₁ v₂ v₃ : Value) : (∀ m, m < n → ∀ {u₁ u₂ u₃}, u₁ ≲ᵥ(m) u₂ → u₂ ≲ᵥ u₃ → u₁ ≲ᵥ(m) u₃) → v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  intro ih h₁₂ h₂₃
+  invert h₁₂
+  · exact h₂₃ n
+  · exact h₂₃ n
+  · rename_i ctr_name args₁ args₂ hargs
+    obtain ⟨args₃, rfl, h₂₃args⟩ := Value.Approx.constr_app_inv_right h₂₃
+    apply Value.Approx.Indexed.constr_app
+    intro k hk
+    exact Value.Approx.Indexed.args_trans_of_lt n k args₁ args₂ args₃ ih hk (hargs k hk) h₂₃args
+  · rename_i env₁ body₁ env₂ body₂ hbody₁₂
+    obtain ⟨env₃, body₃, rfl, hbody₂₃⟩ := Value.Approx.closure_inv_right h₂₃
+    apply Value.Approx.Indexed.closure
+    intro n₁ n₂ hlt a₁ a₃ r₁ ha₁₃ heval₁
+    obtain ⟨r₂, heval₂, hr₁₂⟩ := hbody₁₂ n₁ n₂ hlt a₁ a₃ r₁ ha₁₃ heval₁
+    obtain ⟨r₃, heval₃, hr₂₃⟩ := hbody₂₃ a₃ a₃ (by rfl) r₂ heval₂
+    have hn₂ : n₂ < n := by linarith
+    refine ⟨r₃, heval₃, ?_⟩
+    exact ih n₂ hn₂ hr₁₂ hr₂₃
+
+lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  exact Nat.strong_induction_on (p := fun n => ∀ {u₁ u₂ u₃}, u₁ ≲ᵥ(n) u₂ → u₂ ≲ᵥ u₃ → u₁ ≲ᵥ(n) u₃) n
+    (fun n ih u₁ u₂ u₃ h₁₂ h₂₃ =>
+      Value.Approx.Indexed.trans_step n u₁ u₂ u₃ (fun m hm => ih m hm) h₁₂ h₂₃)
+
 
 @[trans]
 lemma Value.Approx.trans {v₁ v₂ v₃} : v₁ ≲ᵥ v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ v₃ := by

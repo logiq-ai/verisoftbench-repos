@@ -706,11 +706,48 @@ instance OFE.ContractiveHom.fixpoint_ne [COFE α] [Inhabited α] :
     | zero => exact H _
     | succ _ IH => exact (H _).trans <| Contractive.succ _ <| IH <| Dist.lt H (Nat.lt_add_one _)
 
-@[elab_as_elim]
+def fixpoint_ind_chain [OFE α] (f : α -c> α) (x : α) : Chain α where
+  chain n := Nat.repeat f (n + 1) x
+  cauchy {n} := by
+    induction n with
+    | zero =>
+        simp [Nat.repeat]
+    | succ n IH =>
+        rintro (_ | i) <;> simp [Nat.repeat]
+        intro H
+        apply Contractive.distLater_dist
+        intro _ Hm
+        exact (IH H).le (Nat.le_of_lt_succ Hm)
+
+theorem fixpoint_ind_chain_prop [OFE α] (f : α -c> α) (P : α → Prop) (x : α) (Hbase : P x) (Hind : ∀ x, P x → P (f x)) : ∀ n, P (fixpoint_ind_chain f x n) := by
+  intro n
+  induction n with
+  | zero =>
+      simpa only [fixpoint_ind_chain, Nat.repeat] using Hind x Hbase
+  | succ n ih =>
+      simpa only [fixpoint_ind_chain, Nat.repeat] using Hind _ ih
+
+theorem fixpoint_ind_chain_unfold [COFE α] (f : α -c> α) (x : α) : COFE.compl (fixpoint_ind_chain f x) ≡ f (COFE.compl (fixpoint_ind_chain f x)) := by
+  refine equiv_dist.mpr (fun n => ?_)
+  apply COFE.conv_compl.trans
+  refine Dist.trans ?_ (NonExpansive.ne COFE.conv_compl.symm)
+  induction n with
+  | zero =>
+      exact Contractive.zero f.f
+  | succ _ IH =>
+      exact (Contractive.succ f.f IH.symm).symm
+
 theorem OFE.ContractiveHom.fixpoint_ind [COFE α] [Inhabited α] (f : α -c> α)
     (P : α → Prop) (HProper : ∀ A B : α, A ≡ B → P A → P B) (x : α) (Hbase : P x)
     (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) :
-    P f.fixpoint := by sorry
+    P f.fixpoint := by
+  have hP : P (COFE.compl (fixpoint_ind_chain f x)) := by
+    exact Hlim (fixpoint_ind_chain f x) (fixpoint_ind_chain_prop f P x Hbase Hind)
+  have hEq : COFE.compl (fixpoint_ind_chain f x) ≡ f.fixpoint := by
+    apply fixpoint_unique (f := f)
+    exact fixpoint_ind_chain_unfold f x
+  exact HProper _ _ hEq hP
+
 
 end Fixpoint
 

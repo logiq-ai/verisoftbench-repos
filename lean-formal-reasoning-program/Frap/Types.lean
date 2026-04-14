@@ -246,7 +246,71 @@ exercise (3-star)
 Complete the formal proof of the `progress` property.
 -/
 theorem progress t T
-    : HasType t T → value t ∨ ∃ t', Step t t' := by sorry
+    : HasType t T → value t ∨ ∃ t', Step t t' := by
+  intro ht
+  induction ht with
+  | t_true =>
+      left
+      unfold value
+      left
+      exact bv_true
+  | t_false =>
+      left
+      unfold value
+      left
+      exact bv_false
+  | t_if t₁ t₂ t₃ T hcond hthen helse ih₁ ih₂ ih₃ =>
+      rcases ih₁ with hval | ⟨t₁', hstep⟩
+      · have hb : BValue t₁ := by
+          apply bool_canonical <;> assumption
+        right
+        cases hb with
+        | bv_true =>
+            exact ⟨t₂, st_ifTrue _ _⟩
+        | bv_false =>
+            exact ⟨t₃, st_ifFalse _ _⟩
+      · right
+        exact ⟨ite t₁' t₂ t₃, st_if _ _ _ _ hstep⟩
+  | t_0 =>
+      left
+      unfold value
+      right
+      exact nv_0
+  | t_succ t hnat ih =>
+      rcases ih with hval | ⟨t', hstep⟩
+      · have hn : NValue t := by
+          apply nat_canonical <;> assumption
+        left
+        unfold value
+        right
+        exact nv_succ _ hn
+      · right
+        exact ⟨scc t', st_succ _ _ hstep⟩
+  | t_pred t hnat ih =>
+      rcases ih with hval | ⟨t', hstep⟩
+      · have hn : NValue t := by
+          apply nat_canonical <;> assumption
+        right
+        cases hn with
+        | nv_0 =>
+            exact ⟨zro, st_pred0⟩
+        | nv_succ v hv =>
+            exact ⟨v, st_predSucc _ hv⟩
+      · right
+        exact ⟨prd t', st_pred _ _ hstep⟩
+  | t_iszero t hnat ih =>
+      rcases ih with hval | ⟨t', hstep⟩
+      · have hn : NValue t := by
+          apply nat_canonical <;> assumption
+        right
+        cases hn with
+        | nv_0 =>
+            exact ⟨tru, st_iszero0⟩
+        | nv_succ v hv =>
+            exact ⟨fls, st_iszeroSucc _ hv⟩
+      · right
+        exact ⟨iszero t', st_iszero _ _ hstep⟩
+
 
 /-
 exercise (2-star)

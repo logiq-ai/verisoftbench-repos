@@ -46,8 +46,23 @@ lemma initialState_normalized : (initialState (p:=p)).Normalized := by
 def formalTable (output : KeccakState (F p)) := table.toFormal initialState output
 
 -- The table's statement implies that the output state is the result of keccak-hashing some list of input blocks
+def tableStatementBlocks {n : ℕ} (trace : TraceOfLength (F p) (ProvablePair KeccakState KeccakBlock) n) : List (Vector ℕ RATE) :=
+  (InductiveTable.traceInputs trace.tail).map KeccakBlock.value
+
 theorem tableStatement (output : KeccakState (F p)) : ∀ n > 0, ∀ trace, ∃ blocks, blocks.length = n - 1 ∧
   (formalTable output).statement n trace →
-    output.Normalized ∧ output.value = absorbBlocks blocks := by sorry
+    output.Normalized ∧ output.value = absorbBlocks blocks := by
+  intro n hn trace
+  refine ⟨tableStatementBlocks trace, ?_⟩
+  intro h
+  have hstmt : (formalTable output).statement n trace := h.2
+  simp only [FormalTable.statement, formalTable, InductiveTable.toFormal, table] at hstmt
+  replace hstmt := hstmt ⟨hn, by
+    constructor
+    · exact initialState_normalized
+    · rw [initialState_value]
+      rfl⟩
+  simpa [tableStatementBlocks] using hstmt
+
 
 end Tables.KeccakInductive

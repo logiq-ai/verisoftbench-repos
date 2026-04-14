@@ -1129,10 +1129,6 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
       _      < 2^n                         := by exact h_lt
   exact ⟨i_of_m, h_i_lt⟩
 
-lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
-    ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by sorry
-
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=
   getLowBits (numLowBits:=len) (n:=n >>> offset)
@@ -1194,6 +1190,71 @@ lemma getBit_joinBits {n m k : ℕ} (low : Fin (2 ^ n)) (high : Fin (2 ^ m)) :
   split_ifs with h_k
   · simp only [zero_or]
   · simp only [Nat.or_zero]
+
+theorem binaryFinMapToNat_succ_val (n : ℕ) (m : Fin (n + 1) → ℕ) (h_binary : ∀ j : Fin (n + 1), m j ≤ 1) :
+    (binaryFinMapToNat m h_binary).val =
+      (joinBits (n := 1) (m := n)
+        ⟨m 0, by
+          have h0 := h_binary 0
+          omega⟩
+        (binaryFinMapToNat (fun j : Fin n => m j.succ) (fun j : Fin n => h_binary j.succ))).val := by
+  let high := binaryFinMapToNat (fun j : Fin n => m j.succ) (fun j : Fin n => h_binary j.succ)
+  have hm0lt2 : m 0 < 2 := by
+    have h0 := h_binary 0
+    omega
+  have hand : (high.val <<< 1) &&& m 0 = 0 := by
+    simpa using and_shl_eq_zero_of_lt_two_pow (a := high.val) (n := 1) (b := m 0) hm0lt2
+  have hand' : ((∑ j : Fin n, 2 ^ j.val * m j.succ) <<< 1) &&& m 0 = 0 := by
+    simpa [high, binaryFinMapToNat] using hand
+  have hsum : (∑ x : Fin n, 2 ^ (x.val + 1) * m x.succ) = ∑ i : Fin n, 2 ^ i.val * m i.succ * 2 := by
+    apply Finset.sum_congr rfl
+    intro j hj
+    simpa [pow_succ, Nat.mul_assoc, Nat.mul_left_comm, Nat.mul_comm]
+  unfold binaryFinMapToNat joinBits
+  dsimp [high]
+  rw [←Nat.sum_of_and_eq_zero_is_or hand', Nat.shiftLeft_eq, pow_one, Fin.sum_univ_succ, Finset.sum_mul]
+  simp only [Fin.val_zero, Fin.val_succ, pow_zero, one_mul]
+  rw [hsum]
+  omega
+
+lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
+    ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
+      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
+  induction n with
+  | zero =>
+      intro k
+      rw [show binaryFinMapToNat m h_binary = (0 : Fin (2 ^ 0)) by rfl]
+      exact Nat.getBit_zero_eq_zero
+  | succ n ih =>
+      intro k
+      rw [binaryFinMapToNat_succ_val n m h_binary]
+      rw [Nat.getBit_joinBits]
+      by_cases h0k : k < 1
+      · have hk0 : k = 0 := by omega
+        subst hk0
+        rw [if_pos (by omega)]
+        have hm0lt2 : m 0 < 2 := by
+          have h0 := h_binary 0
+          omega
+        rw [Nat.getBit_zero_eq_self hm0lt2]
+        have hk : 0 < n + 1 := Nat.zero_lt_succ n
+        rw [dif_pos hk]
+        have hfin0 : (0 : Fin (n + 1)) = ⟨0, hk⟩ := by
+          apply Fin.eq_of_val_eq
+          rfl
+        rw [hfin0]
+      · have hk1 : 1 ≤ k := by omega
+        rw [if_neg h0k]
+        rw [ih (fun j : Fin n => m j.succ) (fun j : Fin n => h_binary j.succ) (k - 1)]
+        by_cases hk : k < n + 1
+        · have hk' : k - 1 < n := by omega
+          rw [dif_pos hk', dif_pos hk]
+          have hfin : (⟨k - 1, hk'⟩ : Fin n).succ = ⟨k, hk⟩ := by
+            apply Fin.eq_of_val_eq
+            simp [Fin.val_succ, hk1]
+          rw [hfin]
+        · have hk' : ¬ (k - 1 < n) := by omega
+          rw [dif_neg hk', dif_neg hk]
 
 /-- Low n bits of joinBits are exactly low. -/
 lemma getLowBits_joinBits {n m : ℕ} (low : Fin (2 ^ n)) (high : Fin (2 ^ m)) :

@@ -65,7 +65,23 @@ theorem Flat.chain_some {c : Chain (Flat _)} {a b : α}
     rw [si, sj] at h₀
     injection h₀ (by simp)
 
-theorem Flat.sup_some {c : Chain _} {a : α} : (∃ k, c.act k = .some a) ↔ (flat_sup c = .some a) := by sorry
+theorem Flat.sup_some {c : Chain _} {a : α} : (∃ k, c.act k = .some a) ↔ (flat_sup c = .some a) := by
+  constructor
+  · intro h
+    rcases h with ⟨k, hk⟩
+    let q : ∃ a' n, c.act n = .some a' := ⟨a, k, hk⟩
+    simp only [flat_sup, dif_pos q]
+    have hq : ∃ j, c.act j = .some q.choose := ⟨q.choose_spec.choose, q.choose_spec.choose_spec⟩
+    have hEq : a = q.choose := Flat.chain_some ⟨k, hk⟩ hq
+    exact congrArg Flat.some hEq.symm
+  · intro h
+    by_cases q : ∃ a' n, c.act n = .some a'
+    · simp only [flat_sup, dif_pos q] at h
+      cases h
+      exact ⟨q.choose_spec.choose, q.choose_spec.choose_spec⟩
+    · simp only [flat_sup, dif_neg q] at h
+      cases h
+
 
 noncomputable instance : Domain (Flat α) where
   bot := .none

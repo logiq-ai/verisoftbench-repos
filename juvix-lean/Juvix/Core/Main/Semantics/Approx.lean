@@ -209,8 +209,40 @@ lemma Value.Approx.invert {v v'} :
   intro h
   invert (h 0) <;> constructor <;> aesop
 
-@[trans]
-lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by sorry
+lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  intro h₁ h₂
+  have htrans : ∀ n, ∀ {v₁ v₂ v₃ : Value}, v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+    intro n
+    induction n using Nat.strong_induction_on with
+    | h n ih =>
+      intro v₁ v₂ v₃ h₁₂ h₂₃
+      invert h₁₂
+      case unit =>
+        invert h₂₃
+        exact Value.Approx.Indexed.unit
+      case const =>
+        invert h₂₃
+        exact Value.Approx.Indexed.const
+      case constr_app hargs₁ =>
+        invert h₂₃
+        case constr_app hargs₂ =>
+          apply Value.Approx.Indexed.constr_app
+          intro k hk
+          exact Utils.forall₂_trans' (P := Value.Approx.Indexed k) (Q := Value.Approx)
+            (R := Value.Approx.Indexed k) (fun x y z hx hy => ih k hk hx hy) (hargs₁ k hk) hargs₂
+      case closure hcl₁ =>
+        invert h₂₃
+        case closure hcl₂ =>
+          apply Value.Approx.Indexed.closure
+          intro n₁ n₂ hn a₁ a₃ r₁ ha heval₁
+          obtain ⟨r₂, heval₂, happrox₁₂⟩ := hcl₁ n₁ n₂ hn a₁ a₃ r₁ ha heval₁
+          have hrefl : a₃ ≲ᵥ a₃ := Value.Approx.refl a₃
+          obtain ⟨r₃, heval₃, happrox₂₃⟩ := hcl₂ a₃ a₃ hrefl r₂ heval₂
+          have hn₂ : n₂ < n := by
+            linarith
+          exact ⟨r₃, heval₃, ih n₂ hn₂ happrox₁₂ happrox₂₃⟩
+  exact htrans n h₁ h₂
+
 
 @[trans]
 lemma Value.Approx.trans {v₁ v₂ v₃} : v₁ ≲ᵥ v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ v₃ := by

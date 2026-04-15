@@ -315,6 +315,14 @@ def main():
     p.add_argument("--no-retries", action="store_true", help="Disable proof request retries")
     args = p.parse_args()
 
+    # Validate skip flag combinations:
+    # --skip-collect requires --skip-submit (can't skip collecting without skipping submit)
+    # --skip-extraction requires --skip-collect (extractions must match the patches)
+    if args.skip_collect and not args.skip_submit:
+        p.error("--skip-collect requires --skip-submit")
+    if args.skip_extraction and not args.skip_collect:
+        p.error("--skip-extraction requires --skip-collect")
+
     # Set up run directory and override config paths
     resuming = args.skip_submit or args.skip_collect or args.skip_extraction
     run_dir = setup_run_dir(args.run_dir, resuming=resuming)

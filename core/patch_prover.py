@@ -94,6 +94,13 @@ class PatchProverInterface(ProverInterface):
         # Docker container name for reading source files
         self.docker_container = model_config.get("docker_container", "verisoftbench-lean")
 
+        # Extractions directory: save/load GPT extraction results
+        extractions_dir = model_config.get("extractions_dir")
+        self.extractions_dir = Path(extractions_dir) if extractions_dir else None
+        self.skip_extraction = model_config.get("skip_extraction", False)
+        if self.extractions_dir:
+            self.extractions_dir.mkdir(parents=True, exist_ok=True)
+
         # Caches
         self._extraction_cache: Dict[int, str] = {}
 
@@ -244,6 +251,7 @@ IMPORTANT:
                 response = self.client.responses.create(
                     model=self.model_id,
                     input=EXTRACTION_SYSTEM_PROMPT + "\n\n" + user_prompt,
+                    reasoning={"effort": "xhigh"},
                 )
                 return response.output_text
             except Exception as e:
@@ -290,10 +298,22 @@ IMPORTANT:
             print(f"  [PatchProver] No patch for task {task_id} ({thm_name}), status={status}")
             return [self._empty_response()]
 
-        # Check extraction cache
+        # Check extraction cache (memory)
         if task_id in self._extraction_cache:
             print(f"  [PatchProver] Using cached extraction for task {task_id}")
             return [self._extraction_cache[task_id]]
+
+        # Check extraction cache (disk)
+        if self.extractions_dir:
+            extraction_file = self.extractions_dir / f"task_{task_id:03d}.xml"
+            if extraction_file.exists():
+                print(f"  [PatchProver] Loading saved extraction for task {task_id} from {extraction_file.name}")
+                result = extraction_file.read_text()
+                self._extraction_cache[task_id] = result
+                return [result]
+            elif self.skip_extraction:
+                print(f"  [PatchProver] skip_extraction=true but no saved extraction for task {task_id}")
+                return [self._empty_response()]
 
         # Get verification context
         verif_context = theorem_entry.get("verif_local_ctxs", "")
@@ -325,6 +345,12 @@ IMPORTANT:
         try:
             result = self._extract_proof_from_patch(patch, thm_name, thm_stmt, verif_context, post_code)
             self._extraction_cache[task_id] = result
+
+            # Save extraction to disk for review and replay
+            if self.extractions_dir:
+                extraction_file = self.extractions_dir / f"task_{task_id:03d}.xml"
+                extraction_file.write_text(result)
+                print(f"  [PatchProver] Saved extraction to {extraction_file.name}")
 
             timestamp = self._log_prompt(f"[PATCH EXTRACTION] task={task_id} thm={thm_name}\n\n{patch}")
             self._log_outputs(timestamp, [result])

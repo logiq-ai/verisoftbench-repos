@@ -112,7 +112,7 @@ All settings live in `config.py`:
 |---|---|---|
 | `ALEPH_API_URL` | `https://alephprover.logicalintelligence.com` | API endpoint |
 | `BRANCH` | `clean-eval-v3` | Branch with proofs stripped to `by sorry` |
-| `DEFAULT_TIME_BUDGET_MINUTES` | 120 | Proving time limit per task |
+| `DEFAULT_TIME_BUDGET_MINUTES` | 180 | Proving time limit per task |
 | `DEFAULT_COST_BUDGET_USD` | 100 | Cost limit per task |
 | `EXTRACTION_MODEL` | `gpt-5.4` | Model for proof extraction |
 | `NUM_SAMPLES` | 3 | Extraction attempts per task |

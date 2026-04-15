@@ -68,7 +68,10 @@ def merge_config_with_args(config: Dict[str, Any], args: argparse.Namespace) -> 
         'refresh_cache': 'refresh_cache',
         'save_debug_lean': 'save_debug_lean',
         'lean_backend': 'lean_backend',
-        'docker_container': 'docker_container'
+        'docker_container': 'docker_container',
+        'patches_dir': 'patches_dir',
+        'results_json': 'results_json',
+        'extraction_model_id': 'extraction_model_id',
     }
 
     for config_key, arg_key in config_to_arg_map.items():
@@ -320,6 +323,12 @@ def create_model_config(args) -> Dict[str, Any]:
 
     if args.api_key:
         config["api_key"] = args.api_key
+
+    # Pass through patch-prover specific keys
+    for key in ("patches_dir", "results_json", "extraction_model_id"):
+        val = getattr(args, key, None)
+        if val is not None:
+            config[key] = str(val) if isinstance(val, Path) else val
 
     return config
 

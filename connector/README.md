@@ -35,7 +35,6 @@ If the run directory already contains data from a previous run, you'll be prompt
 | `evaluate.py` | **Evaluate.** Generates a VeriSoftBench-compatible config and runs the benchmark's `evaluate.py` as a subprocess. Parses per-theorem pass/fail results from the output. |
 | `config.py` | **Configuration.** All constants in one place: API URLs, budgets, prompts, retry settings, model config. |
 | `patch_prover.py` | **Proof extraction.** `PatchProverInterface` — reads `.patch` files and uses GPT-5.4 (xhigh reasoning, 3 samples) to extract proof body + auxiliary lemmas into XML format for the benchmark. |
-| `aleph_patch.yaml` | **Standalone config.** Alternative to running through `run.py` — can be passed directly to VeriSoftBench's `evaluate.py`. |
 
 ## How It Works
 

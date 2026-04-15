@@ -1,6 +1,6 @@
 # VeriSoftBench — Aleph Prover Evaluation
 
-Evaluation of [Aleph Prover](https://alephprover.logicalintelligence.com) on the [VeriSoftBench](https://github.com/utopia-group/VeriSoftBench) benchmark (Aristotle subset, 100 Lean 4 theorem proving tasks).
+Evaluation of [Aleph Prover](https://alephprover.logicalintelligence.com) on the [VeriSoftBench](https://github.com/utopia-group/VeriSoftBench) benchmark (Aristotle subset, 100 tasks).
 
 ## Results
 
@@ -12,221 +12,82 @@ Evaluation of [Aleph Prover](https://alephprover.logicalintelligence.com) on the
 | Aristotle (with local lemmas) | 69% (Pass@8) |
 | Gemini-3-Pro | 65% (Pass@8) |
 
-## Repository Layout
+## Key Files
 
-```
-verisoftbench-repos/
-├── connector/                  # Evaluation pipeline (submit → collect → evaluate)
-│   ├── config.py               # All constants: API URLs, budgets, prompts, retry settings
-│   ├── run.py                  # Main orchestrator — runs full pipeline with retries
-│   ├── submit.py               # Submit tasks to AlephProver API
-│   ├── collect.py              # Poll for results, download patches
-│   ├── evaluate.py             # Run VeriSoftBench evaluation on collected patches
-│   ├── patch_prover.py         # PatchProverInterface — GPT-5.4 proof extraction
-│   └── aleph_patch.yaml        # Standalone evaluation config (alternative to connector)
-├── aristotle_tasks.json        # 100 tasks: theorem names, file paths, hints
-├── patches/                    # Downloaded proof patches (task_NNN.patch)
-├── results.json                # Submission tracking (request IDs, statuses)
-└── eval_results/               # Logs and evaluation configs
-```
-
-### Branches
-
-| Branch | Purpose |
+| File | Description |
 |---|---|
-| `clean-eval-v3` | 11 Lean repos with benchmark overlays, proofs stripped to `by sorry` |
-| `strip-ground-truth-proofs` | Same + connector pipeline code |
-| `verisoftbench` | Fork of [utopia-group/VeriSoftBench](https://github.com/utopia-group/VeriSoftBench) with PatchProverInterface and evaluation fixes |
+| `successful_submissions.json` | 91 successful proof requests with request IDs, API URLs, PR links, and hints used |
+| `aristotle_tasks.json` | 100 Aristotle tasks with metadata, theorem names, file paths, and hints |
+| `submit.py` | Submit tasks to AlephProver API (uses GitHub repo URL endpoint) |
+| `download_patches.py` | Download .patch files from API to local disk |
+| `update_results.py` | Check proof request status, update results JSON, download patches |
 
-## Quick Start — Full Evaluation
+## Branches
 
-Run all 100 tasks end-to-end with a single command:
+- **`main`** — Lean project repos (proofs stripped to `by sorry`), results, scripts
+- **`verisoftbench`** — fork of [utopia-group/VeriSoftBench](https://github.com/utopia-group/VeriSoftBench) with evaluation connector pre-applied
 
-```bash
-cd verisoftbench-repos
+## Reproducing the Evaluation
 
-ALEPH_API_KEY="sk-aleph-..." \
-OPENAI_API_KEY="sk-proj-..." \
-python3 -m connector.run
-```
+### Prerequisites
 
-This will:
-1. Submit all 100 tasks to AlephProver (each gets up to 2h and $100 budget)
-2. Poll until all proofs complete (~30 min per task, up to 4h timeout)
-3. Download proof patches
-4. Run VeriSoftBench evaluation (GPT-5.4 extracts proofs, Lean verifies in Docker)
-5. Retry failed tasks up to 2 times
-6. Log everything to `eval_results/run_*.log`
+- Docker (130 GB disk for Lean image)
+- Python 3.10+ with `pip install pyyaml openai anthropic google-genai tqdm requests`
+- `OPENAI_API_KEY` environment variable (for GPT-5.4 proof extraction)
 
-## Prerequisites
-
-### 1. Clone Repositories
+### Steps
 
 ```bash
-# Main repo (tasks, patches, connector)
-git clone -b strip-ground-truth-proofs \
-  https://github.com/logiq-ai/verisoftbench-repos.git
+# 1. Clone repos
+git clone https://github.com/logiq-ai/verisoftbench-repos.git
+git clone -b verisoftbench https://github.com/logiq-ai/verisoftbench-repos.git VeriSoftBench-eval
 
-# VeriSoftBench evaluation framework (fork with PatchProverInterface)
-git clone -b verisoftbench \
-  https://github.com/logiq-ai/verisoftbench-repos.git VeriSoftBench-eval
-```
-
-The connector expects the evaluation repo at `../VeriSoftBench-eval/` or `../VeriSoftBench-clean/` relative to `verisoftbench-repos/`.
-
-### 2. Build Docker Image
-
-The benchmark compiles proofs against a clean Docker container with all 11 Lean repos pre-built. This is a one-time setup (~1 hour, ~130 GB disk).
-
-```bash
+# 2. Build Docker (one-time, ~1 hour)
 cd VeriSoftBench-eval
 docker build -t verisoftbench/lean:latest .
 docker run -d --name verisoftbench-lean verisoftbench/lean:latest
+
+# 3. Submit all 100 tasks to AlephProver
+#    (ALREADY DONE — skip for reproducing existing results, see successful_submissions.json)
+#    cd ../verisoftbench-repos
+#    export ALEPH_API_KEY=sk-aleph-...
+#    python3 submit.py $(jq '.[].id' aristotle_tasks.json) --env prod -o runs.json
+
+# 4. Download patches (fetches .patch files from API using request IDs in successful_submissions.json)
+cd ../verisoftbench-repos
+export ALEPH_API_KEY=sk-aleph-...
+python3 download_patches.py
+
+# 5. Evaluate
+cd ../VeriSoftBench-eval
+export OPENAI_API_KEY=sk-proj-...
+python3 evaluate.py \
+    --config configs/aleph_patch.yaml \
+    --task-ids "4,5,14,15,29,121,122,123,124,125,126,127,128,129,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,152,153,154,155,156,157,158,159,160,161,163,164,165,168,169,171,176,178,194,222,245,246,247,249,250,265,266,268,271,272,273,274,275,277,281,356,357,359,361,378,381,392,396,444,445,446,447,450,451,452,453,454,455,456,457,458,459,460,462,466,467,468,469,471,472,473" \
+    --save-debug-lean \
+    --refresh-cache
 ```
 
-Verify the container is running:
+### Submitting New Tasks
 
 ```bash
-docker ps --filter name=verisoftbench-lean
+export ALEPH_API_KEY=sk-aleph-...
+python3 submit.py 4 --env prod                    # submit single task
+python3 submit.py 4 --env dev --hints "extra hint" # with hints
+python3 submit.py 4 -o runs.json                   # track submission
 ```
 
-### 3. Install Python Dependencies
+## How Evaluation Works
 
-```bash
-pip install pyyaml openai requests tqdm
-```
-
-### 4. Environment Variables
-
-| Variable | Required For | Description |
-|---|---|---|
-| `ALEPH_API_KEY` | Submit + Collect | AlephProver API key |
-| `OPENAI_API_KEY` | Evaluate | GPT-5.4 proof extraction |
-
-## Running the Pipeline
-
-### Full Run (All 100 Tasks)
-
-```bash
-ALEPH_API_KEY="sk-aleph-..." \
-OPENAI_API_KEY="sk-proj-..." \
-python3 -m connector.run
-```
-
-### Specific Tasks
-
-```bash
-python3 -m connector.run --task-ids 4 29 277
-```
-
-### Skip Steps (Resume)
-
-```bash
-# Already submitted — skip to collect + evaluate
-python3 -m connector.run --task-ids 4 29 --skip-submit
-
-# Patches already downloaded — skip to evaluate
-python3 -m connector.run --task-ids 4 29 --skip-submit --skip-collect
-
-# No retries
-python3 -m connector.run --no-retries
-```
-
-### Run Steps Independently
-
-```bash
-# Submit only
-python3 -m connector.submit --task-ids 4 29
-
-# Collect only (polls until done)
-python3 -m connector.collect --task-ids 4 29
-
-# Evaluate only (requires patches/ on disk + Docker running)
-python3 -m connector.evaluate --task-ids 4 29
-```
-
-## How It Works
-
-### Pipeline Flow
-
-```
-                    ┌──────────────────────────────────────────┐
-                    │              connector/run.py             │
-                    │         (orchestrator + retry loop)       │
-                    └──────┬───────────┬───────────┬───────────┘
-                           │           │           │
-                    ┌──────▼──┐  ┌─────▼────┐  ┌──▼────────┐
-                    │ submit  │  │ collect   │  │ evaluate  │
-                    │         │  │           │  │           │
-                    │ POST    │  │ GET /api  │  │ GPT-5.4   │
-                    │ /api/v1 │  │ /v1/req/  │  │ extracts  │
-                    │ /req    │  │ {id}      │  │ proof     │
-                    │         │  │           │  │ from diff │
-                    │ → req ID│  │ → .patch  │  │ → XML     │
-                    └─────────┘  └──────────┘  │           │
-                                                │ Lean      │
-                                                │ compiles  │
-                                                │ in Docker │
-                                                └───────────┘
-```
-
-### Step 1: Submit
-
-For each task, sends a `POST /api/v1/requests` to AlephProver with:
-- **Repository**: `https://github.com/logiq-ai/verisoftbench-repos` branch `clean-eval-v3`
-- **File path** and **theorem name** from `aristotle_tasks.json`
-- **Hints**: task-specific context (relevant lemmas, definitions) + generic evaluation prompt
-- **Budget**: 120 min, $100 per task
-
-Retries on HTTP 402 (concurrent limit) and 5xx errors.
-
-### Step 2: Collect
-
-Polls `GET /api/v1/requests/{id}` every 60 seconds until all tasks complete or 4-hour timeout. Downloads proof patches (git diffs) to `patches/task_NNN.patch`.
-
-### Step 3: Evaluate
-
-1. Generates a VeriSoftBench-compatible config pointing to the downloaded patches
-2. Runs `VeriSoftBench-eval/evaluate.py` as a subprocess
-3. **PatchProverInterface** reads each `.patch` file and sends it to GPT-5.4 (xhigh reasoning, 3 samples) to extract:
-   - Proof body (everything after `:=` / `by` / `where`)
-   - Auxiliary lemmas (new definitions the proof depends on)
-4. The extracted proof is compiled against the clean Docker container
-5. Pass = compiles without errors or `sorry`
-
-### Retries
-
-If evaluation fails for a task (GPT extraction error, prover timeout, etc.), the orchestrator:
-1. Deletes the old patch
-2. Resubmits the task to AlephProver for a fresh proof
-3. Re-evaluates
-
-Up to 2 retries (configurable via `MAX_PROOF_RETRIES` in `config.py`).
-
-## Configuration
-
-All settings are in `connector/config.py`:
-
-| Setting | Default | Description |
-|---|---|---|
-| `ALEPH_API_URL` | `https://alephprover.logicalintelligence.com` | AlephProver API endpoint |
-| `BRANCH` | `clean-eval-v3` | Git branch with stripped proofs |
-| `DEFAULT_TIME_BUDGET_MINUTES` | 120 | Max proving time per task |
-| `DEFAULT_COST_BUDGET_USD` | 100 | Max cost per task |
-| `EXTRACTION_MODEL` | `gpt-5.4` | Model for proof extraction from patches |
-| `NUM_SAMPLES` | 3 | GPT extraction attempts per task |
-| `MAX_PROOF_RETRIES` | 2 | Full resubmit retries for failed tasks |
-| `POLL_INTERVAL` | 60s | Seconds between status checks |
-| `MAX_POLL_TIME` | 14400s (4h) | Max wait for all tasks to complete |
-
-## Task 132 Override
-
-The benchmark JSONL has the wrong fully-qualified name `U32.ByteVector.bitwise_componentwise` for task 132. The actual name in the source is `bitwise_componentwise` (the namespace was closed). This is handled automatically via `THEOREM_NAME_OVERRIDES` in `config.py`.
+1. Each task has a `.patch` file (diff from AlephProver showing the proven theorem)
+2. GPT-5.4 extracts proof body + auxiliary lemmas from the patch into XML format
+3. The benchmark compiles the proof against a clean Docker container with all Lean repos pre-built
+4. Pass = compiles without `sorry`
 
 ## Unsolved Tasks (9/100)
 
 | Task | Theorem | Reason |
 |---|---|---|
 | 121 | InductiveTable.table_soundness_aux | Prover produced incomplete proof (sorry) |
-| 122, 127, 155, 161, 171 | Circomlib.MultiAND.* | Namespace shadowing (`open Circuit` resolves to wrong namespace) |
-| 265, 266, 268 | eval_*_completeness, arstep_preserve_eval | Theorems inside `mutual` block, extraction not supported |
+| 122, 127, 155, 161, 171 | Circomlib.MultiAND.* | Namespace shadowing bug prevents blueprint compilation |
+| 265, 266, 268 | eval_*_completeness, arstep_preserve_eval | Theorems inside `mutual` block, extraction fails |

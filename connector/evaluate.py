@@ -69,7 +69,7 @@ def get_task_ids_with_patches(patches_dir):
     return sorted(ids)
 
 
-def write_eval_config(patches_dir, output_path):
+def write_eval_config(patches_dir, output_path, extractions_dir=None, skip_extraction=False):
     """Write a temporary evaluation config for VeriSoftBench."""
     # PatchProverInterface reads results_json to map thm_name -> task_id.
     # Our results.json uses 'theorem_name', but the prover expects 'thm_name'.
@@ -92,6 +92,10 @@ def write_eval_config(patches_dir, output_path):
         "docker_container": DOCKER_CONTAINER,
         "run_name": "aleph-prover-eval",
     }
+    if extractions_dir:
+        config["extractions_dir"] = str(extractions_dir)
+    if skip_extraction:
+        config["skip_extraction"] = True
 
     # Write as YAML
     with open(output_path, "w") as f:

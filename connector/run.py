@@ -23,7 +23,7 @@ import connector.config as config
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 
 
-def setup_run_dir(run_dir, skip_submit, skip_collect):
+def setup_run_dir(run_dir, resuming=False):
     """Set up the run directory, overriding config paths.
 
     Returns the run_dir Path. Prompts for confirmation if the directory
@@ -36,7 +36,6 @@ def setup_run_dir(run_dir, skip_submit, skip_collect):
         (run_dir / "results.json").exists()
         or (run_dir / "patches").exists() and any((run_dir / "patches").glob("task_*.patch"))
     )
-    resuming = skip_submit or skip_collect
 
     if has_data and not resuming:
         print(f"Run directory '{run_dir}' already contains data.")
@@ -199,7 +198,7 @@ def run_collect(task_ids):
     logging.info(f"Collection done: {len(downloaded)} tasks resolved, {len(list(config.PATCHES_DIR.glob('task_*.patch')))} patches on disk")
 
 
-def run_evaluate(task_ids):
+def run_evaluate(task_ids, skip_extraction=False):
     """Run evaluation, return dict of {thm_name: passed}."""
     logging.info("Evaluating patches")
     from connector.evaluate import get_task_ids_with_patches, write_eval_config, find_eval_repo
@@ -216,8 +215,11 @@ def run_evaluate(task_ids):
         return {}
 
     config.EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    extractions_dir = config.EVAL_RESULTS_DIR / "extractions"
     config_path = config.EVAL_RESULTS_DIR / "eval_config.yaml"
-    write_eval_config(config.PATCHES_DIR, config_path)
+    write_eval_config(config.PATCHES_DIR, config_path,
+                      extractions_dir=extractions_dir,
+                      skip_extraction=skip_extraction)
 
     task_ids_str = ",".join(str(t) for t in ids)
     logging.info(f"Evaluating {len(ids)} tasks")
@@ -308,11 +310,14 @@ def main():
     p.add_argument("--api-url", default=config.ALEPH_API_URL)
     p.add_argument("--skip-submit", action="store_true")
     p.add_argument("--skip-collect", action="store_true")
+    p.add_argument("--skip-extraction", action="store_true",
+                    help="Use saved GPT extractions from a previous run instead of calling GPT again")
     p.add_argument("--no-retries", action="store_true", help="Disable proof request retries")
     args = p.parse_args()
 
     # Set up run directory and override config paths
-    run_dir = setup_run_dir(args.run_dir, args.skip_submit, args.skip_collect)
+    resuming = args.skip_submit or args.skip_collect or args.skip_extraction
+    run_dir = setup_run_dir(args.run_dir, resuming=resuming)
 
     log_file = setup_logging()
     logging.info(f"Pipeline started. API: {args.api_url}")
@@ -349,7 +354,7 @@ def main():
 
         # Step 3: Evaluate
         logging.info(f"\n{'='*60}\nSTEP 3: Evaluate\n{'='*60}")
-        eval_results = run_evaluate(task_ids)
+        eval_results = run_evaluate(task_ids, skip_extraction=args.skip_extraction)
 
         if not eval_results:
             logging.warning("No evaluation results")

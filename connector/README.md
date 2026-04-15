@@ -34,7 +34,7 @@ If the run directory already contains data from a previous run, you'll be prompt
 | `collect.py` | **Collect.** Polls `GET /api/v1/requests/{id}` every 60s until all tasks complete or 4h timeout. Downloads proof patches (git diffs) to `patches/task_NNN.patch`. |
 | `evaluate.py` | **Evaluate.** Generates a VeriSoftBench-compatible config and runs the benchmark's `evaluate.py` as a subprocess. Parses per-theorem pass/fail results from the output. |
 | `config.py` | **Configuration.** All constants in one place: API URLs, budgets, prompts, retry settings, model config. |
-| `patch_prover.py` | **Proof extraction.** `PatchProverInterface` — reads `.patch` files and uses GPT-5.4 (xhigh reasoning, 3 samples) to extract proof body + auxiliary lemmas into XML format for the benchmark. |
+| `patch_prover.py` | **Proof extraction.** `PatchProverInterface` — reads `.patch` files and uses GPT-5.4 (xhigh reasoning, 3 samples) to extract proof body + auxiliary lemmas into XML format for the benchmark. Extractions are saved to `{run-dir}/extractions/` for human review and replay. |
 
 ## How It Works
 
@@ -53,7 +53,9 @@ If the run directory already contains data from a previous run, you'll be prompt
 
 3. **Evaluate**: The patch is a raw diff, but VeriSoftBench expects proofs in a specific XML format (`<lean4_proof>` + `<lean4_invented_lemmas>`). `PatchProverInterface` sends each patch to GPT-5.4 which extracts the proof body and any auxiliary declarations. The benchmark then compiles this against a clean Docker container with all Lean repos pre-built. Pass = compiles without errors or `sorry`.
 
-4. **Retry**: If evaluation fails (bad extraction, prover timeout, etc.), the orchestrator deletes the old patch, resubmits to AlephProver for a fresh proof, and re-evaluates. Up to `MAX_PROOF_RETRIES` (default 2) rounds.
+4. **Import injection**: AlephProver may add new `import` statements to the source file. These are not part of the proof body, but the benchmark needs them in the verification context. `PatchProverInterface` detects imports added by the patch and injects them into the theorem's `verif_local_ctxs` before compilation. This is deterministic (reads the patch) and happens regardless of whether extractions are cached.
+
+5. **Retry**: If evaluation fails (bad extraction, prover timeout, etc.), the orchestrator deletes the old patch, resubmits to AlephProver for a fresh proof, and re-evaluates. Up to `MAX_PROOF_RETRIES` (default 2) rounds.
 
 ## Prerequisites
 
@@ -87,6 +89,9 @@ python3 -m connector.run --run-dir runs/test3 --skip-submit
 
 # Resume from evaluate (patches already downloaded)
 python3 -m connector.run --run-dir runs/test3 --skip-submit --skip-collect
+
+# Re-evaluate using saved GPT extractions (no OpenAI calls)
+python3 -m connector.run --run-dir runs/test3 --skip-submit --skip-collect --skip-extraction
 
 # No retries
 python3 -m connector.run --run-dir runs/full --no-retries
@@ -125,6 +130,7 @@ All artifacts are stored in the `--run-dir` directory:
 
 - **`results.json`** — request IDs, statuses, timestamps for each submitted task
 - **`patches/task_NNN.patch`** — downloaded proof patches, one per task
+- **`extractions/task_NNN.xml`** — GPT-5.4 extracted proofs (XML with `<lean4_proof>` + `<lean4_invented_lemmas>`) for human review
 - **`run_*.log`** — full pipeline log (also printed to stdout)
 - **`eval_config.yaml`** — generated VeriSoftBench config for this run
 

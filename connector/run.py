@@ -3,7 +3,7 @@
 
 Usage:
     python3 -m connector.run
-    python3 -m connector.run --skip-submit
+    python3 -m connector.run --run-dir runs/my_experiment
     python3 -m connector.run --skip-submit --skip-collect
     python3 -m connector.run --task-ids 4 29 122
     python3 -m connector.run --no-retries
@@ -18,18 +18,56 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from connector.config import (
-    ALEPH_API_KEY_ENV, ALEPH_API_URL, EVAL_RESULTS_DIR, MAX_POLL_TIME,
-    MAX_PROOF_RETRIES, PATCHES_DIR, POLL_INTERVAL, RESULTS_JSON,
-)
+import connector.config as config
 
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 
 
+def setup_run_dir(run_dir, skip_submit, skip_collect):
+    """Set up the run directory, overriding config paths.
+
+    Returns the run_dir Path. Prompts for confirmation if the directory
+    already has data and we're not resuming.
+    """
+    run_dir = Path(run_dir)
+
+    # Check if directory has existing data from a previous run
+    has_data = (
+        (run_dir / "results.json").exists()
+        or (run_dir / "patches").exists() and any((run_dir / "patches").glob("task_*.patch"))
+    )
+    resuming = skip_submit or skip_collect
+
+    if has_data and not resuming:
+        print(f"Run directory '{run_dir}' already contains data.")
+        answer = input("Overwrite? [y/N] ").strip().lower()
+        if answer != "y":
+            print("Aborted.")
+            sys.exit(0)
+        # Clean previous data
+        if (run_dir / "results.json").exists():
+            (run_dir / "results.json").unlink()
+        patches_dir = run_dir / "patches"
+        if patches_dir.exists():
+            for p in patches_dir.glob("task_*.patch"):
+                p.unlink()
+
+    # Create directories
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "patches").mkdir(exist_ok=True)
+
+    # Override config paths so all modules use this run directory
+    config.RESULTS_JSON = run_dir / "results.json"
+    config.PATCHES_DIR = run_dir / "patches"
+    config.EVAL_RESULTS_DIR = run_dir
+
+    return run_dir
+
+
 def setup_logging():
-    EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    config.EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = EVAL_RESULTS_DIR / f"run_{timestamp}.log"
+    log_file = config.EVAL_RESULTS_DIR / f"run_{timestamp}.log"
 
     logging.basicConfig(
         level=logging.INFO,
@@ -39,7 +77,6 @@ def setup_logging():
             logging.FileHandler(log_file),
         ],
     )
-    # Also capture warnings from third-party libraries
     logging.captureWarnings(True)
     logging.info(f"Log file: {log_file}")
     return log_file
@@ -49,13 +86,13 @@ def run_submit(task_ids, api_url):
     logging.info(f"Submitting {len(task_ids) if task_ids else 'all'} tasks to {api_url}")
     from connector.submit import load_tasks, submit_task, save_results
 
-    api_key = os.environ.get(ALEPH_API_KEY_ENV)
+    api_key = os.environ.get(config.ALEPH_API_KEY_ENV)
     tasks = load_tasks()
     ids = task_ids or sorted(tasks.keys())
 
     results = []
-    if RESULTS_JSON.exists():
-        with open(RESULTS_JSON) as f:
+    if config.RESULTS_JSON.exists():
+        with open(config.RESULTS_JSON) as f:
             results = json.load(f)
 
     submitted = 0
@@ -68,7 +105,7 @@ def run_submit(task_ids, api_url):
         if result:
             logging.info(f"[{tid:>3}] submitted: {result['request_id']}")
             results.append(result)
-            save_results(results, RESULTS_JSON)
+            save_results(results, config.RESULTS_JSON)
             submitted += 1
         else:
             logging.error(f"[{tid:>3}] submission failed")
@@ -82,10 +119,9 @@ def run_collect(task_ids):
     logging.info("Collecting results and downloading patches")
     from connector.collect import get_base_url, fetch_status, download_patch
 
-    api_key = os.environ.get(ALEPH_API_KEY_ENV)
+    api_key = os.environ.get(config.ALEPH_API_KEY_ENV)
 
-    # Load results and build task map
-    with open(RESULTS_JSON) as f:
+    with open(config.RESULTS_JSON) as f:
         results = json.load(f)
 
     # Deduplicate: keep latest entry per task_id
@@ -93,7 +129,6 @@ def run_collect(task_ids):
     for r in results:
         by_id[r["task_id"]] = r
 
-    # Determine which tasks to track
     if task_ids:
         check_ids = set(task_ids)
     else:
@@ -111,14 +146,12 @@ def run_collect(task_ids):
         for tid in sorted(check_ids):
             entry = by_id.get(tid)
             if not entry or not entry.get("request_id"):
-                # Task was never submitted successfully — count as failed
                 if tid not in downloaded:
                     logging.warning(f"[{tid:>3}] no submission record, skipping")
                     downloaded.add(tid)
                     failed += 1
                 continue
 
-            # Skip already-downloaded tasks
             if tid in downloaded:
                 completed += 1
                 continue
@@ -126,7 +159,7 @@ def run_collect(task_ids):
             base_url = get_base_url(entry)
             data = fetch_status(entry["request_id"], base_url, api_key)
             if not data:
-                running += 1  # Assume still running if we can't reach API
+                running += 1
                 continue
 
             status = data.get("status", "?")
@@ -142,29 +175,28 @@ def run_collect(task_ids):
                     completed += 1
                 else:
                     logging.warning(f"[{tid:>3}] completed but patch download failed")
-                    running += 1  # Retry download next poll
+                    running += 1
             elif status == "failed":
                 failed += 1
-                downloaded.add(tid)  # Don't retry
+                downloaded.add(tid)
                 logging.warning(f"[{tid:>3}] failed at {data.get('stage', '?')}")
             else:
                 running += 1
 
-        # Save updated statuses
-        with open(RESULTS_JSON, "w") as f:
+        with open(config.RESULTS_JSON, "w") as f:
             json.dump(list(by_id.values()), f, indent=2)
 
         logging.info(f"Status: completed={completed} running={running} failed={failed} (downloaded={len(downloaded)}/{len(check_ids)})")
 
         if len(downloaded) >= len(check_ids):
             break
-        if time.time() - start > MAX_POLL_TIME:
-            logging.warning(f"Timeout after {MAX_POLL_TIME}s, {running} still running")
+        if time.time() - start > config.MAX_POLL_TIME:
+            logging.warning(f"Timeout after {config.MAX_POLL_TIME}s, {running} still running")
             break
 
-        time.sleep(POLL_INTERVAL)
+        time.sleep(config.POLL_INTERVAL)
 
-    logging.info(f"Collection done: {len(downloaded)} tasks resolved, {len(list(PATCHES_DIR.glob('task_*.patch')))} patches on disk")
+    logging.info(f"Collection done: {len(downloaded)} tasks resolved, {len(list(config.PATCHES_DIR.glob('task_*.patch')))} patches on disk")
 
 
 def run_evaluate(task_ids):
@@ -178,14 +210,14 @@ def run_evaluate(task_ids):
         logging.error("VeriSoftBench evaluation repo not found")
         return {}
 
-    ids = task_ids or get_task_ids_with_patches(PATCHES_DIR)
+    ids = task_ids or get_task_ids_with_patches(config.PATCHES_DIR)
     if not ids:
         logging.info("No patches to evaluate")
         return {}
 
-    EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    config_path = EVAL_RESULTS_DIR / "eval_config.yaml"
-    write_eval_config(PATCHES_DIR, config_path)
+    config.EVAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    config_path = config.EVAL_RESULTS_DIR / "eval_config.yaml"
+    write_eval_config(config.PATCHES_DIR, config_path)
 
     task_ids_str = ",".join(str(t) for t in ids)
     logging.info(f"Evaluating {len(ids)} tasks")
@@ -197,12 +229,10 @@ def run_evaluate(task_ids):
         "--save-debug-lean",
         "--refresh-cache",
     ]
-    # Pipe stderr to stdout so all output is captured in logs
     proc = subprocess.run(cmd, cwd=str(eval_repo), stderr=subprocess.STDOUT)
     logging.info(f"Evaluation subprocess exited with code {proc.returncode}")
 
     # Parse results from the latest aleph-prover-eval run directory
-    # Filter by run_name prefix to avoid picking up old runs with different names
     RUN_PREFIX = "aleph-prover-eval_"
     results = {}
     results_dir = eval_repo / "results" / "data"
@@ -251,17 +281,15 @@ def run_evaluate(task_ids):
 
 def get_failed_task_ids(eval_results):
     """Find task IDs that failed evaluation."""
-    from connector.config import TASKS_JSON, THEOREM_NAME_OVERRIDES
-    with open(TASKS_JSON) as f:
+    with open(config.TASKS_JSON) as f:
         tasks = json.load(f)
 
-    # Build thm_name -> task_id map (accounting for overrides)
     thm_to_tid = {}
     for t in tasks:
         tid = t["id"]
-        name = THEOREM_NAME_OVERRIDES.get(tid, t["theorem_name"])
+        name = config.THEOREM_NAME_OVERRIDES.get(tid, t["theorem_name"])
         thm_to_tid[name] = tid
-        thm_to_tid[t["theorem_name"]] = tid  # also map original name
+        thm_to_tid[t["theorem_name"]] = tid
 
     failed = []
     for thm_name, passed in eval_results.items():
@@ -274,31 +302,36 @@ def get_failed_task_ids(eval_results):
 
 def main():
     p = argparse.ArgumentParser(description="Run full VeriSoftBench evaluation pipeline")
+    p.add_argument("--run-dir", type=Path, default=Path("runs/default"),
+                    help="Directory for all run artifacts: results.json, patches/, logs (default: runs/default)")
     p.add_argument("--task-ids", nargs="*", type=int, help="Task IDs (default: all 100)")
-    p.add_argument("--api-url", default=ALEPH_API_URL)
+    p.add_argument("--api-url", default=config.ALEPH_API_URL)
     p.add_argument("--skip-submit", action="store_true")
     p.add_argument("--skip-collect", action="store_true")
     p.add_argument("--no-retries", action="store_true", help="Disable proof request retries")
     args = p.parse_args()
 
+    # Set up run directory and override config paths
+    run_dir = setup_run_dir(args.run_dir, args.skip_submit, args.skip_collect)
+
     log_file = setup_logging()
     logging.info(f"Pipeline started. API: {args.api_url}")
-    logging.info(f"Retries: {'disabled' if args.no_retries else f'up to {MAX_PROOF_RETRIES}'}")
+    logging.info(f"Run directory: {run_dir.resolve()}")
+    logging.info(f"Retries: {'disabled' if args.no_retries else f'up to {config.MAX_PROOF_RETRIES}'}")
 
     task_ids = args.task_ids
-    max_retries = 0 if args.no_retries else MAX_PROOF_RETRIES
+    max_retries = 0 if args.no_retries else config.MAX_PROOF_RETRIES
 
     # Accumulate results across retry attempts
-    all_results = {}  # thm_name -> passed (updated each attempt)
+    all_results = {}
 
     for attempt in range(1 + max_retries):
         if attempt > 0:
             logging.info(f"\n{'='*60}")
             logging.info(f"RETRY {attempt}/{max_retries}: resubmitting {len(task_ids)} failed tasks")
             logging.info(f"{'='*60}")
-            # Clean patches for failed tasks so they get re-proven
             for tid in task_ids:
-                patch = PATCHES_DIR / f"task_{tid:03d}.patch"
+                patch = config.PATCHES_DIR / f"task_{tid:03d}.patch"
                 if patch.exists():
                     patch.unlink()
             args.skip_submit = False
@@ -322,10 +355,8 @@ def main():
             logging.warning("No evaluation results")
             break
 
-        # Merge into accumulated results
         all_results.update(eval_results)
 
-        # Check for failures to retry
         failed_ids = get_failed_task_ids(eval_results)
 
         if not failed_ids or attempt >= max_retries:
@@ -338,6 +369,7 @@ def main():
     total = len(all_results)
     logging.info(f"\n{'='*60}")
     logging.info(f"FINAL RESULT: {passed}/{total} passed")
+    logging.info(f"Run directory: {run_dir.resolve()}")
     logging.info(f"Log: {log_file}")
     logging.info(f"{'='*60}")
 

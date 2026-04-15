@@ -9,10 +9,21 @@ cd verisoftbench-repos
 
 ALEPH_API_KEY="sk-aleph-..." \
 OPENAI_API_KEY="sk-proj-..." \
-python3 -m connector.run
+python3 -m connector.run --run-dir runs/my_experiment
 ```
 
-This runs the full pipeline: **submit → collect → evaluate**, with up to 2 automatic retries for failed tasks. All output is logged to `eval_results/run_*.log`.
+This runs the full pipeline: **submit → collect → evaluate**, with up to 2 automatic retries for failed tasks. All artifacts are stored in the run directory:
+
+```
+runs/my_experiment/
+├── results.json          # Submission tracking (request IDs, statuses)
+├── patches/              # Downloaded proof patches (task_NNN.patch)
+├── eval_config.yaml      # Generated VeriSoftBench config
+├── eval_results_compat.json
+└── run_YYYYMMDD_HHMMSS.log  # Full pipeline log
+```
+
+If the run directory already contains data from a previous run, you'll be prompted to confirm before overwriting. Use `--skip-submit` or `--skip-collect` to resume from an existing run without the prompt.
 
 ## What Each File Does
 
@@ -67,22 +78,22 @@ This runs the full pipeline: **submit → collect → evaluate**, with up to 2 a
 
 ```bash
 # Full run — all 100 tasks
-python3 -m connector.run
+python3 -m connector.run --run-dir runs/full
 
 # Specific tasks
-python3 -m connector.run --task-ids 4 29 277
+python3 -m connector.run --run-dir runs/test3 --task-ids 4 29 277
 
 # Resume from collect (already submitted)
-python3 -m connector.run --task-ids 4 29 --skip-submit
+python3 -m connector.run --run-dir runs/test3 --skip-submit
 
 # Resume from evaluate (patches already downloaded)
-python3 -m connector.run --task-ids 4 29 --skip-submit --skip-collect
+python3 -m connector.run --run-dir runs/test3 --skip-submit --skip-collect
 
 # No retries
-python3 -m connector.run --no-retries
+python3 -m connector.run --run-dir runs/full --no-retries
 
 # Use dev API
-python3 -m connector.run --api-url https://prover-dev.logicalintelligence.com
+python3 -m connector.run --run-dir runs/dev --api-url https://prover-dev.logicalintelligence.com
 ```
 
 Each step can also run independently:
@@ -111,7 +122,11 @@ All settings live in `config.py`:
 
 ## Output
 
-- **Patches**: `patches/task_NNN.patch` — one per task
-- **Results tracking**: `results.json` — request IDs, statuses, timestamps
-- **Logs**: `eval_results/run_YYYYMMDD_HHMMSS.log` — full pipeline log
-- **Evaluation details**: Written by VeriSoftBench to `VeriSoftBench-eval/results/data/aleph-prover-eval_*/details/*.json` — per-theorem pass/fail with error messages
+All artifacts are stored in the `--run-dir` directory:
+
+- **`results.json`** — request IDs, statuses, timestamps for each submitted task
+- **`patches/task_NNN.patch`** — downloaded proof patches, one per task
+- **`run_*.log`** — full pipeline log (also printed to stdout)
+- **`eval_config.yaml`** — generated VeriSoftBench config for this run
+
+VeriSoftBench also writes detailed per-theorem results to `VeriSoftBench-eval/results/data/aleph-prover-eval_*/details/*.json`.

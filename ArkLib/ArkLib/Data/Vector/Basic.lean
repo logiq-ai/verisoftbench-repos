@@ -85,15 +85,42 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
+theorem head_cons_tail_toList {α} {n : ℕ} [NeZero n] (v : Vector α n) : v.head :: v.tail.toList = v.toList := by
+  have hnonempty : v.toList ≠ [] := by
+    intro hnil
+    exact NeZero.ne n ((Vector.toList_eq_nil_iff (xs := v)).1 hnil)
+  rw [tail_eq_cast_extract, Vector.toList_cast, Vector.toList_extract, List.drop_one]
+  have htake : v.toList.tail.take (n - 1) = v.toList.tail := by
+    apply (List.take_eq_self_iff _).2
+    simp [Vector.length_toList]
+  have hhead : v.toList.head hnonempty = v.head := by
+    calc
+      v.toList.head hnonempty = v.toList[0]'(by simpa [Vector.length_toList] using Nat.pos_of_neZero n) := by
+        simpa [Vector.length_toList] using (List.head_eq_getElem hnonempty)
+      _ = v[0]'(by simpa [Vector.length_toList] using Nat.pos_of_neZero n) := by
+        simpa [Vector.length_toList] using (Vector.getElem_toList (xs := v) (i := 0)
+          (h := by simpa [Vector.length_toList] using Nat.pos_of_neZero n))
+      _ = v.head := rfl
+  rw [htake, ← hhead]
+  clear hhead
+  revert hnonempty
+  cases hlist : v.toList with
+  | nil =>
+      intro hnonempty
+      contradiction
+  | cons x xs =>
+      intro hnonempty
+      simp
 
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
   rfl
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rw [foldl_eq_toList_foldl, foldl_eq_toList_foldl, ← head_cons_tail_toList (v:=v), List.foldl_cons]
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)
 

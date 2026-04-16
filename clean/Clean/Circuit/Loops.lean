@@ -231,9 +231,36 @@ lemma foldlAcc_cons_succ (i : Fin m) (x : α) [constant : ConstantLength (prod c
   rw [constant.localLength_eq (init, x), ←constant.localLength_eq (acc, _) 0]
   ac_rfl
 
-theorem operations_eq :
-  (Vector.foldlM circuit init xs).operations n =
-    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by sorry
+theorem foldlAcc_cons_succ_const_offset (x : α) (i : Fin m) : foldlAcc n (Vector.cons x xs) circuit init i.succ = foldlAcc (n + constant.localLength) xs circuit ((circuit init x).output n) i := by
+  rw [foldlAcc_cons_succ (i := i) (x := x), constant.localLength_eq (init, x) n]
+
+theorem operations_eq_cons_rhs (x : α) : (List.ofFn fun (i : Fin (m + 1)) => (circuit (foldlAcc n (Vector.cons x xs) circuit init i) (Vector.cons x xs)[i.val]).operations (n + i * constant.localLength)).flatten = (circuit init x).operations n ++ (List.ofFn fun (i : Fin m) => (circuit (foldlAcc (n + constant.localLength) xs circuit ((circuit init x).output n) i) xs[i.val]).operations ((n + constant.localLength) + i * constant.localLength)).flatten := by
+  rw [List.ofFn_succ, List.flatten_cons]
+  have h0 : foldlAcc n (Vector.cons x xs) circuit init 0 = init := by
+    simpa using (foldlAcc_zero (n := n) (xs := Vector.cons x xs) (circuit := circuit) (init := init))
+  rw [h0]
+  simp only [Fin.val_zero, zero_mul, add_zero]
+  have hhead : (circuit init (Vector.cons x xs)[0]).operations n = (circuit init x).operations n := by
+    simp [Vector.cons]
+  rw [hhead]
+  congr 1
+  refine congrArg List.flatten ?_
+  rw [List.ofFn_inj]
+  funext i
+  rw [foldlAcc_cons_succ (i := i) (x := x)]
+  rw [constant.localLength_eq (init, x)]
+  simp only [Vector.cons, Vector.getElem_mk, List.getElem_toArray, Fin.val_succ,
+    List.getElem_cons_succ, add_mul, one_mul]
+  ac_rfl
+
+theorem operations_eq: (Vector.foldlM circuit init xs).operations n =
+    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by
+  induction xs using Vector.induct generalizing init n with
+  | nil =>
+      rfl
+  | cons x xs ih =>
+      rw [foldlM_cons, bind_operations_eq, ih, constant.localLength_eq (init, x), operations_eq_cons_rhs (x := x)]
+
 
 variable {prop : Condition F}
 

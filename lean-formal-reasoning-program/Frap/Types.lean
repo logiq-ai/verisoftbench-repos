@@ -246,7 +246,109 @@ exercise (3-star)
 Complete the formal proof of the `progress` property.
 -/
 theorem progress t T
-    : HasType t T → value t ∨ ∃ t', Step t t' := by sorry
+    : HasType t T → value t ∨ ∃ t', Step t t' := by
+  intro ht
+  induction ht with
+  | t_if t₁ t₂ t₃ T =>
+      rename_i ih₁ ih₂ ih₃
+      right
+      cases ih₁ with
+      | inl hval =>
+          have h : BValue t₁ := by
+            apply bool_canonical <;> assumption
+          cases h with
+          | bv_true =>
+              exists t₂
+              apply st_ifTrue
+          | bv_false =>
+              exists t₃
+              apply st_ifFalse
+      | inr hstep =>
+          obtain ⟨t₁', h₁⟩ := hstep
+          exists (ite t₁' t₂ t₃)
+          apply st_if
+          exact h₁
+  | t_true =>
+      left
+      unfold value
+      left
+      apply bv_true
+  | t_false =>
+      left
+      unfold value
+      left
+      apply bv_false
+  | t_0 =>
+      left
+      unfold value
+      right
+      apply nv_0
+  | t_succ t =>
+      rename_i ih
+      cases ih with
+      | inl hval =>
+          left
+          have h : NValue t := by
+            apply nat_canonical <;> assumption
+          cases h with
+          | nv_0 =>
+              unfold value
+              right
+              apply nv_succ
+              apply nv_0
+          | nv_succ t' h' =>
+              unfold value
+              right
+              apply nv_succ
+              apply nv_succ
+              assumption
+      | inr hstep =>
+          right
+          obtain ⟨t', h⟩ := hstep
+          exists (scc t')
+          apply st_succ
+          exact h
+  | t_pred t =>
+      rename_i ih
+      right
+      cases ih with
+      | inl hval =>
+          have h : NValue t := by
+            apply nat_canonical <;> assumption
+          cases h with
+          | nv_0 =>
+              exists zro
+              apply st_pred0
+          | nv_succ v hv =>
+              constructor
+              apply st_predSucc
+              assumption
+      | inr hstep =>
+          obtain ⟨t', h⟩ := hstep
+          exists (prd t')
+          apply st_pred
+          exact h
+  | t_iszero t =>
+      rename_i ih
+      right
+      cases ih with
+      | inl hval =>
+          have h : NValue t := by
+            apply nat_canonical <;> assumption
+          cases h with
+          | nv_0 =>
+              exists tru
+              apply st_iszero0
+          | nv_succ v hv =>
+              exists fls
+              apply st_iszeroSucc
+              assumption
+      | inr hstep =>
+          obtain ⟨t', h⟩ := hstep
+          exists (iszero t')
+          apply st_iszero
+          exact h
+
 
 /-
 exercise (2-star)

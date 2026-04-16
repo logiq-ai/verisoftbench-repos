@@ -297,7 +297,18 @@ theorem operations_eq_const [NeZero m] (constant : ConstantLength (prod circuit)
   (List.ofFn fun (⟨i, _⟩ : Fin (m - 1)) =>
     let k := (circuit default default).localLength
     let acc := (circuit default xs[i]).output (n + i*k)
-    (circuit acc xs[i + 1]).operations (n + (i + 1)*k)).flatten := by sorry
+    (circuit acc xs[i + 1]).operations (n + (i + 1)*k)).flatten := by
+  rcases Nat.exists_eq_succ_of_ne_zero (NeZero.ne m) with ⟨m, rfl⟩
+  rw [operations_eq (constant := constant)]
+  rw [List.ofFn_succ, List.flatten_cons]
+  congr
+  · simp only [foldlAcc_zero, Fin.val_zero, zero_mul, add_zero]
+  · funext i
+    rcases i with ⟨i, hi⟩
+    simp only [Fin.succ, Fin.val_mk, Fin.eta, Fin.val_succ]
+    rw [foldlAcc_const_succ (constant := constant) (h_const_out := h_const_out) (i := i) (hi := Nat.succ_lt_succ hi)]
+    rw [constant.localLength_eq (default, default) 0]
+
 
 theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
     (h_const_out : ConstantOutput (prod circuit)) :

@@ -7,6 +7,8 @@ import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Algebra.BigOperators.Group.Finset.Piecewise
 import Mathlib.Algebra.BigOperators.Ring.Finset
 
+import Mathlib.Data.List.Duplicate
+import Mathlib.Data.List.NodupEquivFin
 /-!
 # State Transition with +1 Source and -1 Sink
 
@@ -319,12 +321,26 @@ lemma containsPath_drop_take (R : Run S) (path : List S) (n m : ℕ)
     containsPath_drop R path n h_contains
   exact containsPath_take R (path.drop n) m h_after_drop
 
-omit [Fintype S] in
-/-- If a run is acyclic and contains a path, the path has no duplicate vertices. -/
 lemma acyclic_containsPath_nodup (R : Run S) (path : List S)
     (h_acyclic : R.isAcyclic)
     (h_contains : R.containsPath path) :
-    path.Nodup := by sorry
+    path.Nodup := by
+  by_contra h_not_nodup
+  obtain ⟨x, hdup⟩ := (List.exists_duplicate_iff_not_nodup).2 h_not_nodup
+  obtain ⟨n, m, h_n_lt_m, hx_n, hx_m⟩ := (List.duplicate_iff_exists_distinct_get).1 hdup
+  let cycle := (path.drop n.val).take (m.val - n.val + 1)
+  have h_x_at_n : path[n] = x := by
+    simpa using hx_n.symm
+  have h_x_at_m : path[m] = x := by
+    simpa using hx_m.symm
+  have h_len : cycle.length ≥ 2 := by
+    simpa [cycle] using drop_take_length_ge_two path n m h_n_lt_m
+  have h_endpoints : cycle.head? = cycle.getLast? := by
+    simpa [cycle] using drop_take_cycle_same_endpoints path x n m h_n_lt_m h_x_at_n h_x_at_m
+  have h_cycle_contains : R.containsPath cycle := by
+    simpa [cycle] using containsPath_drop_take R path n.val (m.val - n.val + 1) h_contains
+  exact h_acyclic ⟨cycle, h_len, h_endpoints, h_cycle_contains⟩
+
 
 omit [Fintype S] in
 /-- Appending an element to a non-empty path adds exactly one transition from the last element. -/

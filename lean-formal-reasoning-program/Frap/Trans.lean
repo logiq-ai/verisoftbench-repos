@@ -500,7 +500,35 @@ example : atrans_sound fold_constants_aexp := by
 Here's the proof for boolean expressions:
 -/
 
-theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by sorry
+theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by
+  intro b st
+  induction b with
+  | b_true =>
+    rfl
+  | b_false =>
+    rfl
+  | b_eq a1 a2 =>
+    simp [fold_constants_bexp, beval]
+    rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+    split <;> (try rename_i hm; simp at hm; obtain ⟨⟩ := hm) <;> (try split) <;> simp [beval, aeval, *]
+  | b_neq a1 a2 =>
+    simp [fold_constants_bexp, beval]
+    rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+    split <;> (try rename_i hm; simp at hm; obtain ⟨⟩ := hm) <;> (try split) <;> simp [beval, aeval, *]
+  | b_le a1 a2 =>
+    simp [fold_constants_bexp, beval]
+    rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+    split <;> (try rename_i hm; simp at hm; obtain ⟨⟩ := hm) <;> (try split) <;> simp [beval, aeval, *]
+  | b_not b1 ih =>
+    simp [fold_constants_bexp, beval]
+    split <;> (try rename_i hm; simp at hm; obtain ⟨⟩ := hm) <;> simp [beval, aeval, *]
+  | b_and b1 b2 ih1 ih2 =>
+    simp [fold_constants_bexp, beval]
+    split <;> (try rename_i hm; simp at hm; obtain ⟨⟩ := hm) <;> simp [beval, aeval, *]
+  | b_or b1 b2 ih1 ih2 =>
+    simp [fold_constants_bexp, beval]
+    split <;> (try rename_i hm; simp at hm; obtain ⟨⟩ := hm) <;> simp [beval, aeval, *]
+
 
 /-
 We see that after doing each split, we need to focus on the last hypothesis and simplify it for further use.

@@ -99,7 +99,47 @@ lemma xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) :
   have h_byte : x.val ^^^ y.val < 256 := Nat.xor_lt_two_pow (n:=8) hx hy
   linarith [p_large_enough.elim]
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem byte_xor_lookup_complete {x y : F p} : x.val < 256 → y.val < 256 → ByteXorTable.Completeness (x, y, (((x.val ^^^ y.val : ℕ)) : F p)) := by
+  intro hx hy
+  simp only [ByteXorTable, Table.fromStatic, StaticTable.toTable]
+  exact ⟨hx, hy, xor_val hx hy⟩
+
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro i0 env input_var h_env input h_input h_assumptions
+  rcases input with ⟨x, y⟩
+  rcases x with ⟨x0, x1, x2, x3⟩
+  rcases y with ⟨y0, y1, y2, y3⟩
+  simp only [circuit_norm, explicit_provable_type, Inputs.mk.injEq, U32.mk.injEq] at h_input
+  simp only [circuit_norm, Assumptions, U32.Normalized] at h_assumptions
+  simp only [h_input, circuit_norm, elaborated, main, ByteXorTable, varFromOffset, Vector.mapRange] at h_env ⊢
+  rcases h_assumptions with ⟨hx, hy0, hy1, hy2, hy3⟩
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  have h0 := h_env (i := ⟨0, by decide⟩)
+  have h1 := h_env (i := ⟨1, by decide⟩)
+  have h2 := h_env (i := ⟨2, by decide⟩)
+  have h3 := h_env (i := ⟨3, by decide⟩)
+  have h0' : env.get i0 = (((x0.val ^^^ y0.val : ℕ)) : F p) := by
+    simpa using h0
+  have h1' : env.get (i0 + 1) = (((x1.val ^^^ y1.val : ℕ)) : F p) := by
+    simpa using h1
+  have h2' : env.get (i0 + 2) = (((x2.val ^^^ y2.val : ℕ)) : F p) := by
+    simpa using h2
+  have h3' : env.get (i0 + 3) = (((x3.val ^^^ y3.val : ℕ)) : F p) := by
+    simpa using h3
+  have hz0 : ZMod.val (env.get i0) = ZMod.val x0 ^^^ ZMod.val y0 := by
+    rw [h0']
+    exact xor_val hx0 hy0
+  have hz1 : ZMod.val (env.get (i0 + 1)) = ZMod.val x1 ^^^ ZMod.val y1 := by
+    rw [h1']
+    exact xor_val hx1 hy1
+  have hz2 : ZMod.val (env.get (i0 + 2)) = ZMod.val x2 ^^^ ZMod.val y2 := by
+    rw [h2']
+    exact xor_val hx2 hy2
+  have hz3 : ZMod.val (env.get (i0 + 3)) = ZMod.val x3 ^^^ ZMod.val y3 := by
+    rw [h3']
+    exact xor_val hx3 hy3
+  exact ⟨⟨hx0, hy0, hz0⟩, ⟨hx1, hy1, hz1⟩, ⟨hx2, hy2, hz2⟩, hx3, hy3, hz3⟩
+
 
 def circuit : FormalCircuit (F p) Inputs U32 where
   Assumptions

@@ -21,6 +21,7 @@ import Mathlib.Data.ENat.Basic
 import Mathlib.Data.ENNReal.Inv
 import Mathlib.Data.Nat.GCD.Basic
 
+import Batteries.Data.Nat.Lemmas
 /-!
 # Bit operations on natural numbers
 
@@ -1129,9 +1130,56 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
       _      < 2^n                         := by exact h_lt
   exact ⟨i_of_m, h_i_lt⟩
 
+theorem sum_two_pow_mul_eq_head_add_two_mul_tail (n : ℕ) (m : Fin (n + 1) → ℕ) : (∑ j : Fin (n + 1), (2 ^ j.val) * m j) = m 0 + 2 * ∑ j : Fin n, (2 ^ j.val) * m j.succ := by
+  rw [Fin.sum_univ_succ]
+  refine congrArg₂ (· + ·) ?_ ?_
+  · simp only [Fin.val_zero, pow_zero, one_mul]
+  · rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl ?_
+    intro j hj
+    rw [Fin.val_succ, pow_succ']
+    ring
+
+theorem toNat_decide_eq_one_of_le_one (b : ℕ) (hb : b ≤ 1) : Bool.toNat (decide (b = 1)) = b := by
+  by_cases h : b = 1
+  · simp [h]
+  · have hb0 : b = 0 := by
+      omega
+    simp [h, hb0]
+
+theorem binaryFinMapToNat_val_succ (n : ℕ) (m : Fin (n + 1) → ℕ) (h_binary : ∀ j : Fin (n + 1), m j ≤ 1) : (binaryFinMapToNat m h_binary).val = Nat.bit (decide (m 0 = 1)) (binaryFinMapToNat (m ∘ Fin.succ) (fun j => h_binary j.succ)).val := by
+  change (∑ j : Fin (n + 1), (2 ^ j.val) * m j) =
+      Nat.bit (decide (m 0 = 1)) (∑ j : Fin n, (2 ^ j.val) * m j.succ)
+  rw [Nat.bit_val, toNat_decide_eq_one_of_le_one (m 0) (h_binary 0)]
+  rw [sum_two_pow_mul_eq_head_add_two_mul_tail]
+  ac_rfl
+
+theorem binaryFinMapToNat_val_eq_ofBits {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j : Fin n, m j ≤ 1) : (binaryFinMapToNat m h_binary).val = Nat.ofBits (fun j => decide (m j = 1)) := by
+  induction n with
+  | zero =>
+      simp [Nat.ofBits]
+  | succ n ih =>
+      rw [binaryFinMapToNat_val_succ]
+      rw [Nat.ofBits_succ]
+      rw [ih (m := m ∘ Fin.succ) (h_binary := fun j => h_binary j.succ)]
+      rw [Nat.bit_val]
+      rw [toNat_decide_eq_one_of_le_one (m 0) (h_binary 0)]
+      rfl
+
 lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
     ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by sorry
+      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
+  intro k
+  rw [binaryFinMapToNat_val_eq_ofBits]
+  rw [Nat.getBit_eq_testBit]
+  rw [Nat.testBit_ofBits]
+  by_cases h_k : k < n
+  · have hb := h_binary ⟨k, h_k⟩
+    by_cases hm : m ⟨k, h_k⟩ = 1
+    · simp [h_k, hm]
+    · interval_cases h : m ⟨k, h_k⟩ <;> simp_all
+  · simp [h_k]
+
 
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=

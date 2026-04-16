@@ -571,13 +571,39 @@ lemma soundness_one {p : ℕ} [Fact p.Prime]
   · simp only [h_eval_eq]
     exact h_input0
 
-/-- Soundness for n = 2 case -/
+theorem multiand_eval_pair_eq {p : ℕ} [Fact p.Prime] (env : Environment (F p)) (input_var : Var (fields 2) (F p)) (input : fields 2 (F p)) (h_env : input = eval env input_var) : ProvableType.eval (α := fieldPair) env (((input_var[0], input_var[1]) : Var fieldPair (F p))) = (input[0], input[1]) := by
+  ext <;> simpa [h_env, circuit_norm]
+
+theorem multiand_foldl_two_eq_bitand {p : ℕ} [Fact p.Prime] (input : fields 2 (F p)) (h0 : IsBool input[0]) : (input.map (·.val)).foldl (· &&& ·) 1 = input[0].val &&& input[1].val := by
+  rw [Vector.foldl_mk, ← Array.foldl_toList]
+  have h_toList : (input.map (·.val)).toList = [input[0].val, input[1].val] := by
+    rw [Vector.toList_length_two]
+    simp only [Vector.getElem_map]
+  rw [Vector.toList_toArray, h_toList]
+  simp only [List.foldl_cons, List.foldl_nil]
+  rw [one_land_of_IsBool input[0].val (val_of_IsBool h0)]
+
 lemma soundness_two {p : ℕ} [Fact p.Prime]
     (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields 2) (F p))
     (input : fields 2 (F p)) (h_env : input = eval env input_var)
     (h_assumptions : Assumptions 2 input)
     (h_hold : Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset)) :
-    Spec 2 input (env ((main input_var).output offset)) := by sorry
+    Spec 2 input (env ((main input_var).output offset)) := by
+  simp only [main, circuit_norm] at h_hold ⊢
+  have h_binary0 : IsBool input[0] := h_assumptions 0 (by norm_num)
+  have h_binary1 : IsBool input[1] := h_assumptions 1 (by norm_num)
+  have h_pair_env := multiand_eval_pair_eq env input_var input h_env
+  have h_and := AND.circuit.soundness offset env
+    (input_var := ((input_var[0], input_var[1]) : Var fieldPair (F p)))
+    (input := (input[0], input[1]))
+    h_pair_env ⟨h_binary0, h_binary1⟩ h_hold
+  simp only [AND.circuit, AND.main, circuit_norm] at h_and
+  rcases h_and with ⟨h_val, h_bool⟩
+  constructor
+  · rw [multiand_foldl_two_eq_bitand input h_binary0]
+    exact h_val
+  · exact h_bool
+
 
 /-- Completeness for n = 0 case -/
 lemma completeness_zero {p : ℕ} [Fact p.Prime]

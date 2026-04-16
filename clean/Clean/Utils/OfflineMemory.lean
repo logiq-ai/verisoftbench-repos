@@ -468,12 +468,27 @@ def MemoryAccessList.isConsistentOffline (accesses : MemoryAccessList) (h_sorted
     (if addr1 = addr2 then readValue2 = writeValue1 else readValue2 = 0) ∧
     MemoryAccessList.isConsistentOffline ((t1, addr1, readValue1, writeValue1) :: rest) (List.Sorted.of_cons h_sorted)
 
-theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted
-    (accesses : MemoryAccessList)
+theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted (accesses : MemoryAccessList)
     (h_sorted : accesses.isAddressTimestampSorted)
     (h_nodup : accesses.Notimestampdup)
     (addr : ℕ) :
-    (accesses.filterAddress addr).isTimestampSorted := by sorry
+    (accesses.filterAddress addr).isTimestampSorted := by
+  have h_strict : accesses.isAddressStrictTimestampSorted :=
+    MemoryAccessList.addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup
+      accesses h_sorted h_nodup
+  have h_filtered_strict : (accesses.filterAddress addr).isAddressStrictTimestampSorted := by
+    simpa only [MemoryAccessList.isAddressStrictTimestampSorted, MemoryAccessList.filterAddress] using
+      (List.Sorted.filter (fun (_t, a, _r, _w) => a = addr) h_strict)
+  unfold MemoryAccessList.isTimestampSorted
+  unfold MemoryAccessList.isAddressStrictTimestampSorted at h_filtered_strict
+  exact h_filtered_strict.imp_of_mem (fun {x y} hx hy hxy => by
+    obtain ⟨tx, ax, rx, wx⟩ := x
+    obtain ⟨ty, ay, ry, wy⟩ := y
+    simp only [MemoryAccessList.filterAddress, List.mem_filter, Bool.and_eq_true, decide_eq_true_eq] at hx hy
+    simp only [address_strict_timestamp_ordering, timestamp_ordering] at hxy ⊢
+    rw [hx.2, hy.2] at hxy
+    simpa only [if_pos rfl] using hxy)
+
 
 theorem MemoryAccessList.isConsistentSingleAddress_filterAddress_forall_of_cons
     (head : MemoryAccess) (tail : MemoryAccessList)

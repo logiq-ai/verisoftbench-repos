@@ -646,12 +646,27 @@ lemma netFlow_removeCycle_eq (R : Run S) (cycle : List S) (x : S)
   rw [cycle_netFlow_zero cycle x h_cycle]
   simp
 
-/-- Removing a cycle decreases the total size of the run. -/
 lemma size_removeCycle_lt (R : Run S) (cycle : List S)
     (h_len : cycle.length ≥ 2)
     (h_contains : R.containsPath cycle)
     (_h_cycle : cycle.head? = cycle.getLast?) :
-    (R.removeCycle cycle).size < R.size := by sorry
+    (R.removeCycle cycle).size < R.size := by
+  obtain ⟨t, ht⟩ := path_has_transition cycle h_len
+  have hcount_pos : 0 < countTransitionInPath t cycle := by
+    unfold countTransitionInPath
+    exact List.count_pos_iff.mpr ht
+  have hdec : (R.removeCycle cycle) t < R t := by
+    have hRt_pos : R t > 0 := containsPath_has_positive_transition R cycle h_contains t ht
+    unfold Run.removeCycle
+    omega
+  have hle : ∀ u : Transition S, (R.removeCycle cycle) u ≤ R u := by
+    intro u
+    unfold Run.removeCycle
+    omega
+  simpa [Run.size] using
+    (sum_decrease (fun u : Transition S => R u)
+      (fun u : Transition S => (R.removeCycle cycle) u) t hdec hle)
+
 
 omit [Fintype S] in
 /-- Removing a cycle gives a smaller or equal run at each transition. -/

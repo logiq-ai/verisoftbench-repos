@@ -214,9 +214,49 @@ variable {α : Type}
   · simp [hs, uniformSelectFinset_def]
   · simp [hs, uniformSelectFinset_def]
 
-@[simp] lemma evalDist_uniformSelectFinset [DecidableEq α] (s : Finset α) :
+lemma evalDist_uniformSelectFinset [DecidableEq α] (s : Finset α) :
     evalDist ($ s) = if hs : s.Nonempty then
-      OptionT.lift (PMF.uniformOfFinset s hs) else failure := by sorry
+      OptionT.lift (PMF.uniformOfFinset s hs) else failure := by
+  by_cases hs : s.Nonempty
+  · have hnone : ((OptionT.lift (PMF.uniformOfFinset s hs)).run none) = 0 := by
+      simp [OptionT.run_lift, PMF.monad_map_eq_map, PMF.map_apply]
+    have hsome (x : α) :
+        ((OptionT.lift (PMF.uniformOfFinset s hs)).run (some x)) =
+          if x ∈ s then (s.card : ℝ≥0∞)⁻¹ else 0 := by
+      simp only [OptionT.run_lift, PMF.monad_map_eq_map, PMF.map_apply]
+      refine (tsum_eq_single x ?_).trans ?_
+      · intro a ha
+        simp [ha.symm]
+      · simp [PMF.uniformOfFinset_apply]
+    refine OptionT.ext ?_
+    apply PMF.ext
+    intro ox
+    cases ox with
+    | none =>
+        rw [evalDist_apply_none, probFailure_uniformSelectFinset]
+        simp only [hs, if_true]
+        exact hnone.symm
+    | some x =>
+        rw [evalDist_apply_some, probOutput_uniformSelectFinset]
+        simp only [hs, if_true]
+        exact (hsome x).symm
+  · have hnone : ((failure : OptionT PMF α).run none) = 1 := by
+      simp [OptionT.run_failure, PMF.pure_apply]
+    have hsome (x : α) : ((failure : OptionT PMF α).run (some x)) = 0 := by
+      simp [OptionT.run_failure, PMF.pure_apply]
+    have hs' : s = ∅ := Finset.not_nonempty_iff_eq_empty.mp hs
+    refine OptionT.ext ?_
+    apply PMF.ext
+    intro ox
+    cases ox with
+    | none =>
+        rw [evalDist_apply_none, probFailure_uniformSelectFinset]
+        simp only [hs, if_false]
+        exact hnone.symm
+    | some x =>
+        rw [evalDist_apply_some, probOutput_uniformSelectFinset]
+        simp [hs, hs', hsome x]
+
 
 end uniformSelectFinset
 

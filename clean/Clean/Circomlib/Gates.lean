@@ -321,7 +321,42 @@ def main : {n : ℕ} → Vector (Expression (F p)) n → Circuit (F p) (Expressi
 
 -- Helper lemma for localLength
 theorem localLength_eq (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
-    (main input).localLength offset = n - 1 := by sorry
+    (main input).localLength offset = n - 1 := by
+  revert input offset
+  refine Nat.strong_induction_on n ?_
+  intro n IH input offset
+  match n with
+  | 0 =>
+      simp only [main, circuit_norm]
+  | 1 =>
+      simp only [main, circuit_norm]
+  | 2 =>
+      simp only [main, AND.circuit, AND.main, circuit_norm]
+  | m + 3 =>
+      let n1 := (m + 3) / 2
+      let n2 := (m + 3) - n1
+      let input1 : Var (fields n1) (F p) :=
+        input.take n1 |>.cast (by
+          simp only [Nat.min_def, n1]
+          split <;> omega)
+      let input2 : Var (fields n2) (F p) :=
+        input.drop n1 |>.cast (by omega)
+      have h_n1_lt : n1 < m + 3 := by
+        unfold n1
+        omega
+      have h_n2_lt : n2 < m + 3 := by
+        unfold n2 n1
+        omega
+      have h1 := IH n1 h_n1_lt input1 offset
+      have h2 := IH n2 h_n2_lt input2 (offset + (main input1).localLength offset)
+      rw [h1] at h2
+      simpa [main, n1, n2, input1, input2] using
+        (show ((main input1 >>= fun out1 => main input2 >>= fun out2 => AND.circuit.main (out1, out2)).localLength offset = m + 3 - 1) from by
+          rw [bind_localLength_eq, bind_localLength_eq, h1, h2]
+          simp only [AND.circuit, AND.main, circuit_norm]
+          unfold n2 n1
+          omega)
+
 
 -- Helper lemma: SubcircuitsConsistent preserved by bind
 theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α) (g : α → Circuit (F p) β) (offset : ℕ)

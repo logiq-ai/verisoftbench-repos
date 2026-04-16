@@ -56,5 +56,26 @@ lemma h_x0_const32 {o : ℕ} (ho : o < 8) :
   omega
 
 theorem rotation32_bits_soundness {o : ℕ} (ho : o < 8) {x : U32 ℕ} :
-    (rotRight32_u32 x o).valueNat = rotRight32 x.valueNat o := by sorry
+    (rotRight32_u32 x o).valueNat = rotRight32 x.valueNat o := by
+  simp only [rotRight32, rotRight32_u32, U32.valueNat]
+
+  have offset_mod_32 : o % 32 = o := Nat.mod_eq_of_lt (by linarith)
+  simp only [offset_mod_32]
+  rw [h_mod32 ho, h_div32 ho]
+
+  rw [shifted_decomposition_eq ho]
+  repeat rw [shifted_decomposition_eq'' ho (by simp only [gt_iff_lt, Nat.ofNat_pos])]
+  simp only [Nat.add_one_sub_one, pow_one, add_mul, add_assoc]
+
+  rw [←add_assoc _ _ (_ * 256 ^ 3), soundness_simp]
+  nth_rw 4 [←add_assoc]
+  nth_rw 2 [Nat.mul_right_comm]
+  rw [soundness_simp]
+  nth_rw 2 [←add_assoc]
+  rw [soundness_simp']
+  nth_rw 3 [mul_assoc]
+
+  rw [h_x0_const32 ho]
+  ac_rfl
+
 end Gadgets.Rotation32.Theorems

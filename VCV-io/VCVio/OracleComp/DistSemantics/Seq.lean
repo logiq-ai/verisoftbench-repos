@@ -134,7 +134,13 @@ lemma probOutput_seq_map_eq_tsum_ite [spec.FiniteRange] [DecidableEq γ]
 
 lemma probEvent_seq_map_eq_probEvent_comp_uncurry [spec.FiniteRange]
     (p : γ → Prop) : [p | f <$> oa <*> ob] =
-      [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] := by sorry
+      [p ∘ f.uncurry | Prod.mk <$> oa <*> ob] := by
+  rw [show f <$> oa <*> ob = f.uncurry <$> (Prod.mk <$> oa <*> ob) by
+    symm
+    simpa only [Functor.map_map, Function.comp, Function.uncurry_apply_pair] using
+      (map_seq (f := f.uncurry) (x := Prod.mk <$> oa) (y := ob))]
+  rw [probEvent_map]
+
 
 
 lemma probEvent_seq_map_eq_probEvent [spec.FiniteRange] (p : γ → Prop) :

@@ -6,6 +6,7 @@ import Clean.Utils.Primes
 import Clean.Circuit.Subcircuit
 import Clean.Gadgets.Equality
 
+import Mathlib.Data.Nat.Digits.Defs
 section
 variable {p : ℕ} [Fact p.Prime] [p_large_enough: Fact (p > 512)]
 
@@ -185,7 +186,32 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
 omit p_large_enough in
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
-    x.value = y.value → x = y := by sorry
+    x.value = y.value → x = y := by
+  intro hxy
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  rcases hy with ⟨hy0, hy1, hy2, hy3⟩
+  have hxDigits : Nat.ofDigits 256 [x.x0.val, x.x1.val, x.x2.val, x.x3.val] = x.value := by
+    simp [Nat.ofDigits, value]
+    ring
+  have hyDigits : Nat.ofDigits 256 [y.x0.val, y.x1.val, y.x2.val, y.x3.val] = y.value := by
+    simp [Nat.ofDigits, value]
+    ring
+  have hdigits : [x.x0.val, x.x1.val, x.x2.val, x.x3.val] = [y.x0.val, y.x1.val, y.x2.val, y.x3.val] := by
+    apply Nat.ofDigits_inj_of_len_eq (b := 256) (hb := by decide)
+    · simp
+    · intro l hl
+      simp at hl
+      rcases hl with rfl | rfl | rfl | rfl <;> assumption
+    · intro l hl
+      simp at hl
+      rcases hl with rfl | rfl | rfl | rfl <;> assumption
+    · rw [hxDigits, hyDigits]
+      exact hxy
+  have hcomp : x.x0.val = y.x0.val ∧ x.x1.val = y.x1.val ∧ x.x2.val = y.x2.val ∧ x.x3.val = y.x3.val := by
+    simpa using hdigits
+  rcases hcomp with ⟨h0, h1, h2, h3⟩
+  exact U32.ext ((ZMod.val_injective p) h0) ((ZMod.val_injective p) h1) ((ZMod.val_injective p) h2) ((ZMod.val_injective p) h3)
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]

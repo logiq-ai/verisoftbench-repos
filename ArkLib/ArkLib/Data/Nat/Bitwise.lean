@@ -1129,9 +1129,41 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
       _      < 2^n                         := by exact h_lt
   exact ⟨i_of_m, h_i_lt⟩
 
+theorem sum_two_pow_succ_mul_eq_two_mul_sum_two_pow (n : ℕ) (f : Fin n → ℕ) : (∑ x : Fin n, 2 ^ x.succ.val * f x) = 2 * ∑ x : Fin n, 2 ^ x.val * f x := by
+  simp_rw [Fin.val_succ, pow_succ', Nat.mul_assoc]
+  rw [← Finset.mul_sum]
+
+theorem binaryFinMapToNat_val_succ {n : ℕ} (m : Fin (n + 1) → ℕ) (h_binary : ∀ j : Fin (n + 1), m j ≤ 1) : (binaryFinMapToNat m h_binary).val = Nat.bit (m 0 = 1) (binaryFinMapToNat (fun j : Fin n => m j.succ) (fun j : Fin n => h_binary j.succ)).val := by
+  unfold binaryFinMapToNat
+  simp_rw [Fin.sum_univ_succ, Fin.val_zero, Fin.val_succ, pow_zero, pow_succ', Nat.bit_val, Nat.mul_assoc, ← Finset.mul_sum]
+  have h0 := h_binary 0
+  interval_cases hm0 : m 0 <;>
+    simp [hm0, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+
 lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
     ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by sorry
+      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
+  revert m h_binary
+  induction n with
+  | zero =>
+      intro m h_binary k
+      rw [Nat.getBit_eq_testBit]
+      simp [binaryFinMapToNat]
+  | succ n ih =>
+      intro m h_binary k
+      cases k with
+      | zero =>
+          rw [binaryFinMapToNat_val_succ m h_binary]
+          rw [Nat.getBit_eq_testBit, Nat.testBit_bit_zero]
+          simp
+          have hm0 : m 0 ≤ 1 := h_binary 0
+          interval_cases hval : m 0 <;> simp [hval]
+      | succ k =>
+          rw [binaryFinMapToNat_val_succ m h_binary]
+          rw [Nat.getBit_eq_testBit, Nat.testBit_bit_succ]
+          rw [← Nat.getBit_eq_testBit]
+          simpa using ih (fun j : Fin n => m j.succ) (fun j : Fin n => h_binary j.succ) k
+
 
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=

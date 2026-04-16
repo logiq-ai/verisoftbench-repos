@@ -95,7 +95,36 @@ lemma xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) :
   have h_byte : x.val ^^^ y.val < 256 := Nat.xor_lt_two_pow (n:=8) hx hy
   linarith [p_large_enough.elim]
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro i₀ env input_var h_env input h_input h_assumptions
+  cases input with
+  | mk x y =>
+    cases x
+    cases y
+    simp only [circuit_norm, explicit_provable_type,
+      main, Assumptions, U64.Normalized] at h_assumptions h_input
+    simp only [circuit_norm, explicit_provable_type,
+      main, ByteXorTable, h_input] at h_env ⊢
+    rcases h_assumptions with
+      ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7⟩,
+        hy0, hy1, hy2, hy3, hy4, hy5, hy6, hy7⟩
+    simp_all [xor_val]
+    constructor
+    · simpa [xor_val hx0 hy0] using congrArg ZMod.val (h_env ⟨0, by decide⟩)
+    constructor
+    · simpa [xor_val hx1 hy1] using congrArg ZMod.val (h_env ⟨1, by decide⟩)
+    constructor
+    · simpa [xor_val hx2 hy2] using congrArg ZMod.val (h_env ⟨2, by decide⟩)
+    constructor
+    · simpa [xor_val hx3 hy3] using congrArg ZMod.val (h_env ⟨3, by decide⟩)
+    constructor
+    · simpa [xor_val hx4 hy4] using congrArg ZMod.val (h_env ⟨4, by decide⟩)
+    constructor
+    · simpa [xor_val hx5 hy5] using congrArg ZMod.val (h_env ⟨5, by decide⟩)
+    constructor
+    · simpa [xor_val hx6 hy6] using congrArg ZMod.val (h_env ⟨6, by decide⟩)
+    · simpa [xor_val hx7 hy7] using congrArg ZMod.val (h_env ⟨7, by decide⟩)
+
 
 def circuit : FormalCircuit (F p) Inputs U64 where
   Assumptions

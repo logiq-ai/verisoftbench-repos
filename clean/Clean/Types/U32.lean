@@ -337,6 +337,18 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
+theorem bitwise_two_pow_componentwise (f : Bool → Bool → Bool) (n : ℕ) {a b c d : ℕ} (ha : a < 2 ^ n) (hc : c < 2 ^ n) (hff : f false false = false) : Nat.bitwise f (a + 2 ^ n * b) (c + 2 ^ n * d) = Nat.bitwise f a c + 2 ^ n * Nat.bitwise f b d := by
+  apply Nat.eq_of_testBit_eq
+  intro k
+  rw [Nat.testBit_bitwise hff]
+  rw [Nat.add_comm a (2 ^ n * b), Nat.add_comm c (2 ^ n * d)]
+  rw [Nat.testBit_two_pow_mul_add b ha k, Nat.testBit_two_pow_mul_add d hc k]
+  conv_rhs => rw [Nat.add_comm (Nat.bitwise f a c) (2 ^ n * Nat.bitwise f b d)]
+  rw [Nat.testBit_two_pow_mul_add (Nat.bitwise f b d) (Nat.bitwise_lt_two_pow ha hc) k]
+  by_cases hk : k < n
+  · simp [hk, Nat.testBit_bitwise hff]
+  · simp [hk, Nat.testBit_bitwise hff]
+
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma bitwise_componentwise (f : Bool → Bool → Bool)
     {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
@@ -344,7 +356,38 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  rcases x_norm with ⟨hx0, hx1, hx2, hx3⟩
+  rcases y_norm with ⟨hy0, hy1, hy2, hy3⟩
+  have hx0' : x.x0.val < 2 ^ 8 := by
+    simpa using hx0
+  have hy0' : y.x0.val < 2 ^ 8 := by
+    simpa using hy0
+  have hx2' : x.x2.val < 2 ^ 8 := by
+    simpa using hx2
+  have hy2' : y.x2.val < 2 ^ 8 := by
+    simpa using hy2
+  have hx01_num : x.x0.val + 256 * x.x1.val < 65536 := by
+    omega
+  have hy01_num : y.x0.val + 256 * y.x1.val < 65536 := by
+    omega
+  have hx01 : x.x0.val + 2 ^ 8 * x.x1.val < 2 ^ 16 := by
+    simpa using hx01_num
+  have hy01 : y.x0.val + 2 ^ 8 * y.x1.val < 2 ^ 16 := by
+    simpa using hy01_num
+  have hxv : x.value = (x.x0.val + 2 ^ 8 * x.x1.val) + 2 ^ 16 * (x.x2.val + 2 ^ 8 * x.x3.val) := by
+    rw [value_horner x]
+    ring
+  have hyv : y.value = (y.x0.val + 2 ^ 8 * y.x1.val) + 2 ^ 16 * (y.x2.val + 2 ^ 8 * y.x3.val) := by
+    rw [value_horner y]
+    ring
+  rw [hxv, hyv]
+  rw [bitwise_two_pow_componentwise f 16 hx01 hy01 hff]
+  rw [bitwise_two_pow_componentwise f 8 hx0' hy0' hff]
+  rw [bitwise_two_pow_componentwise f 8 hx2' hy2' hff]
+  ring
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
@@ -352,8 +395,7 @@ lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Nor
     (x.x0.val ||| y.x0.val) + 256 *
       ((x.x1.val ||| y.x1.val) + 256 *
         ((x.x2.val ||| y.x2.val) + 256 * (x.x3.val ||| y.x3.val))) := by
-  show Nat.bitwise _ _ _ = _
-  rw [bitwise_componentwise or x_norm y_norm] <;> rfl
+  simpa using bitwise_componentwise or x_norm y_norm rfl
 
 end Bitwise
 

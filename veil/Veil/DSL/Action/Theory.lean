@@ -622,7 +622,25 @@ theorem bind_terminates m (act : Wp m σ ρ) (act' : ρ -> Wp m σ ρ') s [Lawfu
   act.alwaysSuccessfullyTerminates pre →
   (act.bind act').alwaysSuccessfullyTerminates pre ->
   act.toBigStep s r' s' ->
-  (act' r').alwaysSuccessfullyTerminates (· = s') := by sorry
+  (act' r').alwaysSuccessfullyTerminates (· = s') := by
+  intro hs _ hbind hbig st hst
+  classical
+  subst st
+  by_cases hterm : act' r' s' (fun _ _ => True)
+  · exact hterm
+  · change ¬ act s (fun r st => ¬ (r' = r ∧ s' = st)) at hbig
+    apply False.elim
+    apply hbig
+    apply LawfulAction.impl (post := fun r st => act' r st (fun _ _ => True))
+    · intro r st hterm' hEq
+      rcases hEq with ⟨hr, hst'⟩
+      subst hr
+      subst hst'
+      exact False.elim (hterm hterm')
+    · have hbind' := hbind s hs
+      change act s (fun r st => act' r st (fun _ _ => True)) at hbind'
+      exact hbind'
+
 
 attribute [-simp] not_and in
 instance (act : Wp .external σ ρ) (act' : ρ -> Wp .external σ ρ')

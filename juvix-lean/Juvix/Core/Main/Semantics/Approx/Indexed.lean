@@ -334,8 +334,31 @@ mutual
       exact Env.Approx.Indexed'.refl' h
 end
 
-@[refl]
-lemma Value.Approx.Indexed.refl {n} v : v ≲ᵥ(n) v := by sorry
+lemma Value.Approx.Indexed.refl {n} v : v ≲ᵥ(n) v := by
+  revert v
+  refine Nat.strong_induction_on n ?_
+  intro n ih v
+  cases v with
+  | unit =>
+      exact Value.Approx.Indexed.unit
+  | const c =>
+      exact Value.Approx.Indexed.const
+  | constr_app ctr_name args_rev =>
+      apply Value.Approx.Indexed.constr_app
+      intro k hk
+      exact (List.forall₂_same).2 (fun x hx => ih k hk x)
+  | closure env body =>
+      apply Value.Approx.Indexed.closure
+      intro n₁ n₂ hlt a₁ a₂ r₁ happrox heval
+      have hsmall : ∀ v, v ≲ᵥ(n₁ + n₂) v := fun v => ih (n₁ + n₂) hlt v
+      have henv0 : a₁ ∷ env ≲ₑ'(n₁ + n₂) a₂ ∷ env := by
+        apply Env.Approx.Indexed'.cons
+        · exact Object.Approx.Indexed'.value happrox
+        · exact Env.Approx.Indexed'.refl' hsmall
+      have henv : a₁ ∷ env ≲ₑ'(n₂ + n₁) a₂ ∷ env := by
+        simpa only [Nat.add_comm] using henv0
+      exact Value.Approx.Indexed.preserved n₂ n₁ (a₁ ∷ env) (a₂ ∷ env) body r₁ henv heval
+
 
 @[refl]
 lemma Env.Approx.Indexed'.refl {n env} : env ≲ₑ'(n) env :=

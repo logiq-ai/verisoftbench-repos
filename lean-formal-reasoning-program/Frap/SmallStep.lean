@@ -499,7 +499,42 @@ There are two cases to consider:
   Finally, `c (n₁ + n₂)` is a value, which is in turn a normal form by `nf_same_as_value`.
 -/
 
-theorem step_normalizing : normalizing Step := by sorry
+theorem multistep_congr_2_value (v₁ t₂ t₂' : Tm) : Value v₁ → (t₂ ~~>* t₂') → (p v₁ t₂ ~~>* p v₁ t₂') := by
+  intro hv h
+  induction h with
+  | multi_refl =>
+      apply multi_refl
+  | multi_step x y z hxy hyz ih =>
+      apply multi_step
+      · exact st_plus2 v₁ x y hv hxy
+      · exact ih
+
+theorem step_normalizing : normalizing Step := by
+  unfold normalizing
+  intro t
+  induction t with
+  | c n =>
+      refine ⟨c n, multi_refl _, ?_⟩
+      exact value_is_nf _ (v_const n)
+  | p t₁ t₂ ih₁ ih₂ =>
+      obtain ⟨t₁', h₁ms, h₁nf⟩ := ih₁
+      obtain ⟨t₂', h₂ms, h₂nf⟩ := ih₂
+      have hv₁ : Value t₁' := (nf_same_as_value t₁').mp h₁nf
+      have hv₂ : Value t₂' := (nf_same_as_value t₂').mp h₂nf
+      cases hv₁ with
+      | v_const n₁ =>
+          cases hv₂ with
+          | v_const n₂ =>
+              refine ⟨c (n₁ + n₂), ?_, ?_⟩
+              · have h12 : p t₁ t₂ ~~>* p (c n₁) t₂ :=
+                  multistep_congr_1 t₁ (c n₁) t₂ h₁ms
+                have h23 : p (c n₁) t₂ ~~>* p (c n₁) (c n₂) :=
+                  multistep_congr_2_value (c n₁) t₂ (c n₂) (v_const n₁) h₂ms
+                have h34 : p (c n₁) (c n₂) ~~>* c (n₁ + n₂) :=
+                  multi_R Tm Step _ _ (st_plusConstConst n₁ n₂)
+                exact multi_trans _ _ _ _ _ h12 (multi_trans _ _ _ _ _ h23 h34)
+              · exact value_is_nf _ (v_const (n₁ + n₂))
+
 
 /-
 ### Equivalence of big-step and small-step

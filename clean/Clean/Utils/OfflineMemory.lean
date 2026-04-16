@@ -637,17 +637,26 @@ lemma MemoryAccessList.eq_of_perm_of_sorted {l1 l2 l3 : MemoryAccessList} (h_l1_
   have l2_strict_sorted := MemoryAccessList.addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup l2 h_l2_sorted l2_notimestampdup
   have l3_strict_sorted := MemoryAccessList.addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup l3 h_l3_sorted l3_notimestampdup
   exact List.eq_of_perm_of_sorted l2_perm_l3 l2_strict_sorted l3_strict_sorted
-/--
-  This is the main theorem of this file.
-
-  A list of timestamp-sorted memory accesses is consistent if and only if there exists a permutation of the list
-  that is address-sorted, and such that the offline consistency check holds.
--/
-theorem MemoryAccessList.isConsistentOnline_iff_isConsistentOffline
-    (accesses : MemoryAccessList)
+theorem MemoryAccessList.isConsistentOnline_iff_isConsistentOffline (accesses : MemoryAccessList)
     (h_sorted : accesses.isTimestampSorted)
     (h_nodup : accesses.Notimestampdup) :
     MemoryAccessList.isConsistentOnline accesses h_sorted ↔
     ∃ permuted : AddressSortedMemoryAccessList,
       permuted.val.Perm accesses ∧
-      MemoryAccessList.isConsistentOffline permuted.val permuted.property := by sorry
+      MemoryAccessList.isConsistentOffline permuted.val permuted.property := by
+  constructor
+  · intro h_online
+    refine ⟨⟨MemoryAccessList.addressTimestampSort accesses, MemoryAccessList.addressTimestampSort_sorted accesses⟩, ?_, ?_⟩
+    · exact MemoryAccessList.addressTimestampSort_perm accesses
+    · exact (MemoryAccessList.isConsistentOnline_iff_sorted_isConsistentOffline accesses h_sorted h_nodup).1 h_online
+  · intro h
+    rcases h with ⟨permuted, h_perm, h_offline⟩
+    rcases permuted with ⟨l, hl_sorted⟩
+    have h_eq : l = MemoryAccessList.addressTimestampSort accesses := by
+      exact MemoryAccessList.eq_of_perm_of_sorted h_sorted hl_sorted
+        (MemoryAccessList.addressTimestampSort_sorted accesses)
+        h_perm.symm
+        (MemoryAccessList.addressTimestampSort_perm accesses).symm
+    subst h_eq
+    exact (MemoryAccessList.isConsistentOnline_iff_sorted_isConsistentOffline accesses h_sorted h_nodup).2 h_offline
+

@@ -85,15 +85,43 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
+theorem foldl_toList_aux {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) : v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
+  rw [Vector.foldl, Array.foldl_toList, Vector.toList]
+
+theorem toList_tail_aux {α} {n : ℕ} (v : Vector α n) : v.tail.toList = v.toList.tail := by
+  rw [Vector.tail_eq_cast_extract, Vector.toList_cast, Vector.toList_extract, List.drop_one]
+  apply (List.take_eq_self_iff _).2
+  simp [Vector.length_toList]
 
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
   rw [Vector.foldl]
   rw [←Array.foldl_toList]
   rfl
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rcases Nat.exists_eq_add_one_of_ne_zero (Nat.ne_of_gt (Nat.pos_of_neZero n)) with ⟨m, rfl⟩
+  rw [foldl_eq_toList_foldl, foldl_eq_toList_foldl]
+  have hlen : v.toList.length = m + 1 := by
+    simpa [Vector.toList] using v.size_toArray
+  have h0 : 0 < v.toList.length := by omega
+  have hget0 : v.toList[0] = v.head := by
+    simpa [Vector.head] using (Vector.getElem_toList (xs := v) (i := 0) h0)
+  have htail : v.tail.toList = v.toList.tail := by
+    rw [Vector.tail_eq_cast_extract, Vector.toList_cast, Vector.toList_extract, List.drop_one]
+    apply List.take_of_length_le
+    simpa [hlen]
+  have hdrop1 : v.toList.drop 1 = v.tail.toList := by
+    rw [List.drop_one]
+    exact htail.symm
+  have htoList : v.toList = v.head :: v.tail.toList := by
+    have hl : v.head :: v.tail.toList = v.toList := by
+      have hl' : v.toList[0] :: v.toList.drop 1 = v.toList.drop 0 := by
+        simpa using (List.cons_getElem_drop_succ (l := v.toList) (n := 0) (h := h0))
+      simpa [hget0, hdrop1] using hl'
+    exact hl.symm
+  rw [htoList, List.foldl_cons]
 
 -- #eval cons (hd:=6) (tl:=⟨#[2, 3], rfl⟩)
 

@@ -222,11 +222,47 @@ namespace TotalCorrectness
 
 variable [∀ α, CCPO (m α)] [MonoBind m]
 
-lemma repeat_inv (f : Unit -> β -> m (ForInStep β))
+theorem repeat_inv (f : Unit -> β -> m (ForInStep β))
   (inv : ForInStep β -> l) (measure : β -> Nat)
   init :
    (∀ b, triple (inv (.yield b)) (f () b) (fun | .yield b' => inv (.yield b') ⊓ ⌜ measure b' < measure b ⌝ | .done b' => inv (.done b'))) ->
-   triple (inv (.yield init)) (Loop.forIn.loop f init) (fun b => inv (.done b)) := by sorry
+   triple (inv (.yield init)) (Loop.forIn.loop f init) (fun b => inv (.done b)) := by
+  intro hstep
+  have haux : ∀ n b, measure b ≤ n → triple (inv (.yield b)) (Loop.forIn.loop f b) (fun b => inv (.done b)) := by
+    intro n
+    induction n with
+    | zero =>
+        intro b hb
+        unfold Loop.forIn.loop
+        simp only [triple, wp_bind]
+        apply le_trans
+        · exact hstep b
+        · apply wp_cons
+          rintro (_ | b')
+          · simp only [wp_pure]
+            exact le_rfl
+          · rw [pure_intro_l]
+            intro hlt
+            have hfalse : False := by
+              omega
+            exact False.elim hfalse
+    | succ n ih =>
+        intro b hb
+        unfold Loop.forIn.loop
+        simp only [triple, wp_bind]
+        apply le_trans
+        · exact hstep b
+        · apply wp_cons
+          rintro (_ | b')
+          · simp only [wp_pure]
+            exact le_rfl
+          · rw [pure_intro_l]
+            intro hlt
+            have hb' : measure b' ≤ n := by
+              omega
+            exact ih b' hb'
+  exact haux (measure init) init le_rfl
+
 
 
 lemma repeat_inv_split (f : Unit -> β -> m (ForInStep β))

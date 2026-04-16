@@ -337,9 +337,24 @@ theorem compose_computableWitnesses (circuit : ElaboratedCircuit F β α) (input
   exact h_input
 end ElaboratedCircuit
 
+theorem Circuit.subcircuit_computableWitnesses_of_main (circuit : FormalCircuit F β α) (input : Var β F) (n : ℕ) : (circuit.main input).ComputableWitnesses n → (subcircuit circuit input).ComputableWitnesses n := by
+  intro h_main
+  intro env env'
+  have h_flat :
+      FlatOperation.forAll n
+        { witness := fun n _ compute => Environment.AgreesBelow n env env' → compute env = compute env' }
+        (((circuit.main input).operations n).toFlat) := by
+    simpa only [Operations.ComputableWitnesses, ← Operations.forAll_toFlat_iff] using h_main env env'
+  simpa only [subcircuit, Circuit.ComputableWitnesses, Circuit.operations, Operations.ComputableWitnesses,
+    Operations.forAllFlat, Operations.forAll, FormalCircuit.toSubcircuit, and_true] using h_flat
+
 theorem Circuit.subcircuit_computableWitnesses (circuit : FormalCircuit F β α) (input : Var β F) (n : ℕ) :
   Environment.OnlyAccessedBelow n (eval · input) ∧ circuit.ComputableWitnesses →
-    (subcircuit circuit input).ComputableWitnesses n := by sorry
+    (subcircuit circuit input).ComputableWitnesses n := by
+  intro h
+  apply Circuit.subcircuit_computableWitnesses_of_main
+  exact ElaboratedCircuit.compose_computableWitnesses circuit.elaborated input n h
+
 
 -- to reduce offsets, `circuit_norm` will use these theorems to unfold subcircuits
 attribute [circuit_norm] Circuit.subcircuit_localLength_eq Circuit.assertion_localLength_eq

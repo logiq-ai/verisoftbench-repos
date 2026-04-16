@@ -359,8 +359,50 @@ def ExtractNonDet.prop {α : Type u} (s : NonDetT m α) :  ExtractNonDet WeakFin
 
 namespace DemonicChoice
 
+theorem ExtractNonDet.iSup_pure_eq_bot_of_find_none {τ : Type u} (p : τ → Prop) [Findable p] (h : Findable.find p () = none) : (⨆ t, (⌜p t⌝ : l)) = (⊥ : l) := by
+  have hnone : ∀ t, ¬ p t := Findable.find_none (p := p) (by simpa [Option.isNone_iff_eq_none, h])
+  simp [hnone]
+
+theorem ExtractNonDet.pickCont_inf_bounds_of_find_some {τ : Type u} (p : τ → Prop) [Findable p] (f : τ → NonDetT m α) {x : τ} (h : Findable.find p () = some x) : (⨅ a, ⌜p a⌝ ⇨ wp (f a) post) ⊓ (⨅ a, ⌜p a⌝ ⇨ (f a).prop ⊤) ≤ wp (f x) post ⊓ (f x).prop ⊤ := by
+  let px : p x := Findable.find_some_p (p := p) h
+  apply inf_le_inf
+  · exact le_trans (iInf_le (fun a => ⌜p a⌝ ⇨ wp (f a) post) x) (by simp [px])
+  · exact le_trans (iInf_le (fun a => ⌜p a⌝ ⇨ (f a).prop ⊤) x) (by simp [px])
+
 lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
-  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by sorry
+  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+  unhygienic induction inst with
+  | pure x =>
+      simp [_root_.wp_pure, NonDetT.extract, NonDetT.extractGen, NonDetT.prop]
+  | vis x f hex ih =>
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, monadLift_self, wp_bind, NonDetT.wp_vis]
+      rw [inf_comm, wlp_join_wp]
+      apply wp_cons
+      intro a
+      simpa [inf_comm] using ih a
+  | pickSuchThat τ p f hex ih =>
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_pickCont]
+      cases hfind : Findable.find p () with
+      | none =>
+          rw [ExtractNonDet.iSup_pure_eq_bot_of_find_none (p := p) hfind]
+          simp [hfind]
+      | some x =>
+          rw [← inf_assoc]
+          refine le_trans inf_le_left ?_
+          refine le_trans (ExtractNonDet.pickCont_inf_bounds_of_find_some (p := p) (f := f) hfind) ?_
+          simpa [hfind] using ih x
+  | assume p f hex ih =>
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_pickCont, ge_iff_le]
+      split_ifs with hp
+      · rw [iInf_unique (f := fun a : PUnit => (⌜p a⌝ : l) ⇨ wp (f a) post),
+            iInf_unique (f := fun t : PUnit => (⌜p t⌝ : l) ⇨ (f t).prop ⊤),
+            iSup_unique (f := fun t : PUnit => (⌜p t⌝ : l))]
+        simpa [hp] using ih PUnit.unit
+      · rw [iInf_unique (f := fun a : PUnit => (⌜p a⌝ : l) ⇨ wp (f a) post),
+            iInf_unique (f := fun t : PUnit => (⌜p t⌝ : l) ⇨ (f t).prop ⊤),
+            iSup_unique (f := fun t : PUnit => (⌜p t⌝ : l))]
+        simp [hp]
+
 
 lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
   triple pre s post ->

@@ -182,10 +182,24 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
   rw [FieldUtils.val_lt_p x]
   repeat linarith [x.is_lt, p_large_enough.elim]
 
-omit p_large_enough in
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
-    x.value = y.value → x = y := by sorry
+    x.value = y.value → x = y := by
+  intro hxy
+  simp only [U32.Normalized] at hx hy
+  simp only [U32.value] at hxy
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  rcases hy with ⟨hy0, hy1, hy2, hy3⟩
+  have h0 : x.x0.val = y.x0.val := by omega
+  have h1 : x.x1.val = y.x1.val := by omega
+  have h2 : x.x2.val = y.x2.val := by omega
+  have h3 : x.x3.val = y.x3.val := by omega
+  apply U32.ext
+  · exact (ZMod.val_injective p) h0
+  · exact (ZMod.val_injective p) h1
+  · exact (ZMod.val_injective p) h2
+  · exact (ZMod.val_injective p) h3
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]
@@ -228,7 +242,6 @@ lemma value_zero :
     (0 : U32 (F p)) = U32.mk 0 0 0 0 := by
   aesop
 
-omit p_large_enough in
 @[circuit_norm]
 lemma value_zero_iff_zero {x : U32 (F p)} (hx : x.Normalized) :
     x.value = 0 ↔ x = U32.mk 0 0 0 0 := by

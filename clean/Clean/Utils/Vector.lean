@@ -314,7 +314,10 @@ theorem toChunks_flatten {α : Type} (m : ℕ+) (v : Vector α (n*m)) :
   simp [toChunks, show v.toList.toArray = v.toArray from rfl]
 
 theorem flatten_toChunks {α : Type} (m : ℕ+) (v : Vector (Vector α m) n) :
-    v.flatten.toChunks m = v := by sorry
+    v.flatten.toChunks m = v := by
+  apply Vector.eq_iff_flatten_eq.mpr
+  simpa using (Vector.toChunks_flatten (m := m) (v := v.flatten))
+
 
 -- using the above, it's quite easy to prove theorems about `toChunks` from similar theorems about `flatten`!
 theorem toChunks_push (m : ℕ+) {α : Type} (vs : Vector α (n*m)) (v : Vector α m) :

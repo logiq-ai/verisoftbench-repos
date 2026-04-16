@@ -551,7 +551,191 @@ example : btrans_sound fold_constants_bexp := by
 Finally, here's the proof for commands:
 -/
 
-theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by sorry
+theorem c_if_congruence_fixed (b b' : BExp) (c₁ c₁' c₂ c₂' : Com) : bequiv b b' → cequiv c₁ c₁' → cequiv c₂ c₂' → cequiv (c_if b c₁ c₂) (c_if b' c₁' c₂') := by
+  intro hb hc₁ hc₂
+  unfold bequiv at hb
+  unfold cequiv at hc₁ hc₂ ⊢
+  intro st st'
+  constructor
+  · intro h
+    cases h with
+    | e_ifTrue _ _ _ _ _ hbt hce =>
+        apply CEval.e_ifTrue
+        · rw [← hb st]
+          exact hbt
+        · exact (hc₁ st st').1 hce
+    | e_ifFalse _ _ _ _ _ hbf hce =>
+        apply CEval.e_ifFalse
+        · rw [← hb st]
+          exact hbf
+        · exact (hc₂ st st').1 hce
+  · intro h
+    cases h with
+    | e_ifTrue _ _ _ _ _ hbt hce =>
+        apply CEval.e_ifTrue
+        · rw [hb st]
+          exact hbt
+        · exact (hc₁ st st').2 hce
+    | e_ifFalse _ _ _ _ _ hbf hce =>
+        apply CEval.e_ifFalse
+        · rw [hb st]
+          exact hbf
+        · exact (hc₂ st st').2 hce
+
+theorem c_seq_congruence_fixed (c₁ c₁' c₂ c₂' : Com) : cequiv c₁ c₁' → cequiv c₂ c₂' → cequiv (c_seq c₁ c₂) (c_seq c₁' c₂') := by
+  intro h₁ h₂
+  intro st st'
+  constructor
+  · intro h
+    cases h
+    rename_i hc₁ hc₂
+    apply e_seq
+    · exact (h₁ _ _).1 hc₁
+    · exact (h₂ _ _).1 hc₂
+  · intro h
+    cases h
+    rename_i hc₁ hc₂
+    apply e_seq
+    · exact (h₁ _ _).2 hc₁
+    · exact (h₂ _ _).2 hc₂
+
+theorem fold_constants_bexp_sound_fixed: btrans_sound fold_constants_bexp := by
+  intro b st
+  induction b with
+  | b_true =>
+    rfl
+  | b_false =>
+    rfl
+  | b_eq a1 a2 =>
+    simp [fold_constants_bexp, beval]
+    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
+    split <;> (
+      try rename_i heq
+      try simp at heq
+      try obtain ⟨⟩ := heq
+    ) <;> (try split) <;> simp [beval, aeval, *]
+  | b_neq a1 a2 =>
+    simp [fold_constants_bexp, beval]
+    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
+    split <;> (
+      try rename_i heq
+      try simp at heq
+      try obtain ⟨⟩ := heq
+    ) <;> (try split) <;> simp [beval, aeval, *]
+  | b_le a1 a2 =>
+    simp [fold_constants_bexp, beval]
+    rw [fold_constants_aexp_sound a1, fold_constants_aexp_sound a2]
+    split <;> (
+      try rename_i heq
+      try simp at heq
+      try obtain ⟨⟩ := heq
+    ) <;> (try split) <;> simp [beval, aeval, *]
+  | b_not b ih =>
+    simp [fold_constants_bexp, beval, ih]
+    split <;> (
+      try rename_i heq
+      try simp at heq
+      try obtain ⟨⟩ := heq
+    ) <;> simp [beval, aeval, *]
+  | b_and b1 b2 ih1 ih2 =>
+    simp [fold_constants_bexp, beval, ih1, ih2]
+    split <;> (
+      try rename_i heq
+      try simp at heq
+      try obtain ⟨⟩ := heq
+    ) <;> simp [beval, aeval, *]
+  | b_or b1 b2 ih1 ih2 =>
+    simp [fold_constants_bexp, beval, ih1, ih2]
+    split <;> (
+      try rename_i heq
+      try simp at heq
+      try obtain ⟨⟩ := heq
+    ) <;> simp [beval, aeval, *]
+
+theorem fold_constants_if_sound_fixed (b : BExp) (c₁ c₂ : Com) : cequiv c₁ (fold_constants_com c₁) → cequiv c₂ (fold_constants_com c₂) → cequiv (c_if b c₁ c₂) (fold_constants_com (c_if b c₁ c₂)) := by
+  intro ih₁ ih₂
+  have hb : bequiv b (fold_constants_bexp b) := fold_constants_bexp_sound_fixed b
+  cases hfb : fold_constants_bexp b <;> simp [fold_constants_com, hfb]
+  · exact trans_cequiv (c_if b c₁ c₂) c₁ (fold_constants_com c₁)
+      (_root_.Imp.if_true b c₁ c₂ (by simpa [hfb] using hb)) ih₁
+  · exact trans_cequiv (c_if b c₁ c₂) c₂ (fold_constants_com c₂)
+      (_root_.Imp.if_false b c₁ c₂ (by simpa [hfb] using hb)) ih₂
+  · apply c_if_congruence_fixed
+    · simpa [hfb] using hb
+    · exact ih₁
+    · exact ih₂
+  · apply c_if_congruence_fixed
+    · simpa [hfb] using hb
+    · exact ih₁
+    · exact ih₂
+  · apply c_if_congruence_fixed
+    · simpa [hfb] using hb
+    · exact ih₁
+    · exact ih₂
+  · apply c_if_congruence_fixed
+    · simpa [hfb] using hb
+    · exact ih₁
+    · exact ih₂
+  · apply c_if_congruence_fixed
+    · simpa [hfb] using hb
+    · exact ih₁
+    · exact ih₂
+  · apply c_if_congruence_fixed
+    · simpa [hfb] using hb
+    · exact ih₁
+    · exact ih₂
+
+theorem while_true_fixed (b : BExp) (c : Com) : bequiv b <{true}> → cequiv <{while <[b]> do <[c]> end}> loop := by
+  intro hb
+  unfold cequiv
+  intro st st'
+  constructor <;> intro h
+  · exfalso
+    exact while_true_nonterm b c st st' hb h
+  · exfalso
+    exact loop_never_stops st st' h
+
+theorem fold_constants_while_sound_fixed (b : BExp) (c : Com) : cequiv c (fold_constants_com c) → cequiv (c_while b c) (fold_constants_com (c_while b c)) := by
+  intro ih
+  have hb : bequiv b (fold_constants_bexp b) := fold_constants_bexp_sound_fixed b
+  cases hfb : fold_constants_bexp b <;> simp [fold_constants_com, hfb]
+  · apply while_true_fixed
+    simpa [hfb] using hb
+  · apply while_false
+    simpa [hfb] using hb
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact ih
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact ih
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact ih
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact ih
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact ih
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact ih
+
+theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by
+  intro c
+  induction c with
+  | c_skip =>
+      exact refl_cequiv _
+  | c_asgn x a =>
+      simpa [fold_constants_com] using c_asgn_congruence x a (fold_constants_aexp a) (fold_constants_aexp_sound a)
+  | c_seq c₁ c₂ ih₁ ih₂ =>
+      simpa [fold_constants_com] using c_seq_congruence_fixed c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) ih₁ ih₂
+  | c_if b c₁ c₂ ih₁ ih₂ =>
+      exact fold_constants_if_sound_fixed b c₁ c₂ ih₁ ih₂
+  | c_while b c ih =>
+      exact fold_constants_while_sound_fixed b c ih
+
 
 /-
 ## references

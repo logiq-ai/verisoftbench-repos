@@ -821,15 +821,65 @@ lemma cycle_from_suffix_contains (R : Run S) (suffix : List S) (current y : S)
     exact h_contains_suffix t
 
 omit [Fintype S] in
-/-- If a run contains an acyclic path and has an edge from the end back into the path,
-    then the run has a cycle. -/
 lemma path_with_back_edge_creates_cycle (R : Run S) (path : List S) (current y : S)
     (h_acyclic : R.isAcyclic)
     (h_end : path.getLast? = some current)
     (h_contains : R.containsPath path)
     (h_y_in_path : y ∈ path)
     (h_edge : R (current, y) > 0) :
-    R.hasCycle := by sorry
+    R.hasCycle := by
+  have h_path_nodup := acyclic_containsPath_nodup (R := R) (path := path) h_acyclic h_contains
+  rcases List.mem_iff_getElem.mp h_y_in_path with ⟨i, hi_lt, hi_eq⟩
+  let suffix := path.drop i
+  have h_suffix_nonempty : suffix ≠ [] := by
+    dsimp [suffix]
+    exact drop_of_lt_length_nonempty path i hi_lt
+  have h_suffix_head : suffix.head? = some y := by
+    dsimp [suffix]
+    rw [List.head?_drop]
+    exact List.getElem?_eq_some_iff.mpr ⟨hi_lt, hi_eq⟩
+  have h_suffix_last : suffix.getLast? = some current := by
+    dsimp [suffix]
+    rw [List.getLast?_drop]
+    simp [Nat.not_le_of_lt hi_lt, h_end]
+  have h_suffix_contains : R.containsPath suffix := by
+    dsimp [suffix]
+    exact containsPath_drop R path i h_contains
+  have h_suffix_nodup : suffix.Nodup := by
+    dsimp [suffix]
+    exact (List.drop_suffix i path).sublist.nodup h_path_nodup
+  let cycle := suffix ++ [y]
+  have h_len : 2 ≤ cycle.length := by
+    have h_pos : 0 < suffix.length := by
+      cases h : suffix with
+      | nil =>
+          exfalso
+          exact h_suffix_nonempty h
+      | cons a t =>
+          simp
+    have h_ge1 : 1 ≤ suffix.length := Nat.succ_le_of_lt h_pos
+    simpa [cycle] using Nat.succ_le_succ h_ge1
+  have h_head_last : cycle.head? = cycle.getLast? := by
+    have h_head : cycle.head? = some y := by
+      dsimp [cycle]
+      cases h : suffix with
+      | nil =>
+          exfalso
+          exact h_suffix_nonempty h
+      | cons a t =>
+          have ha : a = y := by
+            simpa [h] using h_suffix_head
+          simp [h, ha]
+    have h_last : cycle.getLast? = some y := by
+      dsimp [cycle]
+      simp
+    rw [h_head, h_last]
+  have h_cycle_contains : R.containsPath cycle := by
+    dsimp [cycle]
+    exact cycle_from_suffix_contains (R := R) (suffix := suffix) (current := current) (y := y)
+      h_suffix_nodup h_suffix_contains h_suffix_nonempty h_suffix_last h_edge
+  exact ⟨cycle, h_len, h_head_last, h_cycle_contains⟩
+
 
 omit [Fintype S] in
 /-- If there's an edge from current to y, and y is in the path from root to current,

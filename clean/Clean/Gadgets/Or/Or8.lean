@@ -130,7 +130,50 @@ theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
   show Nat.bitwise _ _ _ < 2 ^ 8
   exact Nat.bitwise_lt_two_pow hx_byte hy_byte
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem or_witness_xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) : ((2 * (((x.val ||| y.val : ℕ) : F p)) - x - y : F p)).val = x.val ^^^ y.val := by
+  let o : ℕ := x.val ||| y.val
+  have ho_byte : o < 256 := by
+    simpa only [o] using (Nat.or_lt_two_pow (n := 8) hx hy)
+  have hp : 512 < p := p_large_enough.elim
+  have ho_p : o < p := by
+    omega
+  have h_two_o_lt : 2 * o < p := by
+    omega
+  have h_mul : (2 * (((o : ℕ) : F p))).val = 2 * o := by
+    rw [ZMod.val_mul_of_lt]
+    · rw [val_two, ZMod.val_cast_of_lt ho_p]
+    · rw [val_two, ZMod.val_cast_of_lt ho_p]
+      exact h_two_o_lt
+  have h_sub1 : ((2 * (((o : ℕ) : F p)) - x : F p)).val = 2 * o - x.val := by
+    rw [ZMod.val_sub]
+    · rw [h_mul]
+    · rw [h_mul]
+      have h_ge : 2 * o ≥ x.val + y.val := by
+        simpa only [o] using (two_or_ge_add hx hy)
+      omega
+  have h_sub2 : ((2 * (((o : ℕ) : F p)) - x - y : F p)).val = 2 * o - x.val - y.val := by
+    rw [ZMod.val_sub]
+    · rw [h_sub1]
+    · rw [h_sub1]
+      have h_ge : 2 * o ≥ x.val + y.val := by
+        simpa only [o] using (two_or_ge_add hx hy)
+      omega
+  rw [h_sub2]
+  simpa only [o] using (or_times_two_sub_xor' hx hy)
+
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  unfold Completeness
+  intro i₀ env input_var h_env input h_input h_assumptions
+  rcases input_var with ⟨x_var, y_var⟩
+  rcases input with ⟨x, y⟩
+  simp only [Assumptions] at h_assumptions
+  simp only [circuit_norm, explicit_provable_type, Inputs.mk.injEq] at h_input ⊢
+  simp only [circuit_norm, main, ByteXorTable, h_input] at h_env ⊢
+  rcases h_assumptions with ⟨hx, hy⟩
+  have h_w : env.get i₀ = (((x).val ||| (y).val : ℕ) : F p) := by
+    simpa using h_env
+  exact ⟨hx, hy, by simpa [h_w, sub_eq_add_neg, add_assoc] using or_witness_xor_val (x := x) (y := y) hx hy⟩
+
 
 def circuit : FormalCircuit (F p) Inputs field :=
   { Assumptions, Spec, soundness, completeness }

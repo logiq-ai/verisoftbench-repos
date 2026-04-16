@@ -383,12 +383,39 @@ lemma wp_bot [∀ α, CCPO (m α)] [MAlgPartial m]:
   refine le_iInf₂ ?_
   intro; erw [Set.mem_empty_iff_false]; simp
 
-omit [MAlgDet m l] in
 lemma ExtractNonDet.extract_refines_wp_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
-  wp s post <= wp s.extractWeak post := by sorry
+  wp s post <= wp s.extractWeak post := by
+  unhygienic induction inst
+  · simp [wp_pure, NonDetT.extractWeak]
+  · simp only [NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind, NonDetT.wp_vis]
+    apply wp_cons
+    intro a
+    exact a_ih a
+  · simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+    split
+    · simp [CCPOBotLawful.prop, wp_bot]
+    · rename_i t ht
+      have hp : p t := by
+        exact x.find_some_p ht
+      have hsel : (⨅ a, ⌜p a⌝ ⇨ wp (f a) post) ≤ wp (f t) post := by
+        exact iInf_le_of_le t (by simpa [hp, top_himp])
+      exact le_trans hsel (a_ih t)
+  · simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+    have hpu : ∀ a, p a = p PUnit.unit := by
+      intro a
+      cases a
+      rfl
+    have hfu : ∀ a, wp (f a) post = wp (f PUnit.unit) post := by
+      intro a
+      cases a
+      rfl
+    simp only [hpu, hfu, ge_iff_le]
+    split_ifs with hp
+    · simpa [hp, iInf_const] using a_ih PUnit.unit
+    · simp [hp, iInf_const, CCPOBotLawful.prop, wp_bot]
 
 
-omit [MAlgDet m l] in
+
 lemma ExtractNonDet.extract_refines_triple_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (pre : l) (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
   triple pre s post ->
   triple pre s.extractWeak post := by

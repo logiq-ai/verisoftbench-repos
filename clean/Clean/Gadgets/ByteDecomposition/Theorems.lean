@@ -37,9 +37,42 @@ theorem byteDecomposition_lt (o : ℕ) (ho : o ≤ 8) {low high : F p} (h_low : 
   use by linarith
   rw [h_base]; linarith
 
+theorem soundness_nat_eq (offset : Fin 8) (x low high : F p)
+  (low_lt : low.val < 2^offset.val) (high_lt : high.val < 2^8)
+  (h_eq : x = low + high * 2^offset.val) :
+    x.val = low.val + high.val * 2^offset.val := by
+  have hpow_le : 2 ^ offset.val ≤ 2 ^ 8 := by
+    exact Nat.pow_le_pow_of_le (show 2 > 1 by norm_num) (Nat.le_of_lt offset.is_lt)
+  have hlow8 : low.val < 2 ^ 8 := lt_of_lt_of_le low_lt hpow_le
+  have hpow_val : (2 ^ offset.val : F p).val = 2 ^ offset.val := by
+    exact two_pow_val _ (Nat.le_of_lt offset.is_lt)
+  have hx : x.val = (low + high * (2 ^ offset.val : F p)).val := by
+    exact congrArg (fun z : F p => z.val) h_eq
+  rw [hx]
+  have hpow_val_le : (2 ^ offset.val : F p).val ≤ 2 ^ 8 := by
+    rw [hpow_val]
+    exact hpow_le
+  rw [byteDecomposition_lift hlow8 high_lt hpow_val_le]
+  rw [hpow_val]
+
 theorem soundness (offset : Fin 8) (x low high : F p)
   (x_lt : x.val < 2^8) (low_lt : low.val < 2^offset.val) (high_lt : high.val < 2^8)
   (h_eq : x = low + high * 2^offset.val) :
-    low.val = x.val % 2^offset.val ∧ high.val = x.val / 2^offset.val := by sorry
+    low.val = x.val % 2^offset.val ∧ high.val = x.val / 2^offset.val := by
+  let c : ℕ := 2 ^ offset.val
+  have hc_pos : 0 < c := by
+    dsimp [c]
+    exact Nat.pow_pos (by norm_num)
+  have h_nat : x.val = low.val + high.val * c := by
+    dsimp [c]
+    exact soundness_nat_eq offset x low high low_lt high_lt h_eq
+  have hqrm : x.val / c = high.val ∧ x.val % c = low.val := by
+    have h' : low.val + c * high.val = x.val ∧ low.val < c := by
+      constructor
+      · simpa only [Nat.mul_comm] using h_nat.symm
+      · exact low_lt
+    exact (Nat.div_mod_unique (a := x.val) (b := c) (c := low.val) (d := high.val) hc_pos).2 h'
+  exact ⟨hqrm.2.symm, hqrm.1.symm⟩
+
 
 end Gadgets.ByteDecomposition.Theorems

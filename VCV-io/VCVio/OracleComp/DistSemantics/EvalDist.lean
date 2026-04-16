@@ -658,8 +658,29 @@ lemma probOutput_bind_of_const (y : β) (r : ℝ≥0∞) (h : ∀ x, [= y | ob x
     [= y | oa >>= ob] = (1 - [⊥ | oa]) * r := by
   simp [probOutput_bind_eq_tsum, h, ENNReal.tsum_mul_right, tsum_probOutput_eq_sub]
 
+theorem probFailure_bind_of_const_ennreal_arith (p r : ℝ≥0∞) (hp : p ≤ 1) (hr : r ≤ 1) : p + (1 - p) * r = p + r - p * r := by
+  have hr' : r ≠ ∞ := ne_top_of_le_ne_top one_ne_top hr
+  rw [ENNReal.sub_mul (a := 1) (b := p) (c := r) (fun _ _ => hr')]
+  simp only [one_mul]
+  have hpr : p * r ≤ r := mul_le_of_le_one_left' hp
+  calc
+    p + (r - p * r) = (r - p * r) + p := by rw [add_comm]
+    _ = r + p - p * r :=
+      ENNReal.sub_add_eq_add_sub (a := r) (b := p * r) (c := p) hpr
+        (ne_top_of_le_ne_top hr' hpr)
+    _ = p + r - p * r := by rw [add_comm]
+
 lemma probFailure_bind_of_const [Nonempty α] (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
-    [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by sorry
+    [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by
+  classical
+  have hr : r ≤ 1 := by
+    simpa [h (Classical.arbitrary α)] using
+      (probFailure_le_one (oa := ob (Classical.arbitrary α)))
+  rw [probFailure_bind_eq_tsum]
+  simp only [h, ENNReal.tsum_mul_right, tsum_probOutput_eq_sub]
+  simpa using
+    probFailure_bind_of_const_ennreal_arith [⊥ | oa] r (probFailure_le_one (oa := oa)) hr
+
 
 lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :

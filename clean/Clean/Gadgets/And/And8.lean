@@ -82,7 +82,38 @@ instance elaborated : ElaboratedCircuit (F p) Inputs field where
 
 theorem soundness : Soundness (F p) elaborated Assumptions Spec := by sorry
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem and_lookup_xor_val (x y : F p) (hx : x.val < 256) (hy : y.val < 256) : (x + y - 2 * ((x.val &&& y.val : ℕ) : F p)).val = x.val ^^^ y.val := by
+  have hxcast : ((x.val : ℕ) : F p) = x := ZMod.natCast_zmod_val x
+  have hycast : ((y.val : ℕ) : F p) = y := ZMod.natCast_zmod_val y
+  have hfield : 2 * ((x.val &&& y.val : ℕ) : F p) + ((x.val ^^^ y.val : ℕ) : F p) = x + y := by
+    simpa [Nat.cast_add, Nat.cast_mul, hxcast, hycast] using
+      congrArg (fun n : ℕ => (n : F p)) (and_times_two_add_xor hx hy)
+  have hmain : x + y - 2 * ((x.val &&& y.val : ℕ) : F p) = ((x.val ^^^ y.val : ℕ) : F p) := by
+    calc
+      x + y - 2 * ((x.val &&& y.val : ℕ) : F p)
+          = (2 * ((x.val &&& y.val : ℕ) : F p) + ((x.val ^^^ y.val : ℕ) : F p)) -
+              2 * ((x.val &&& y.val : ℕ) : F p) := by rw [hfield.symm]
+      _ = ((x.val ^^^ y.val : ℕ) : F p) := by ring
+  rw [hmain]
+  have hxor_lt_256 : x.val ^^^ y.val < 256 := by
+    simpa using (Nat.xor_lt_two_pow (n := 8) hx hy)
+  have hxor_lt_p : x.val ^^^ y.val < p := by
+    linarith [p_large_enough.elim, hxor_lt_256]
+  simpa using (FieldUtils.val_lt_p (p := p) (x := x.val ^^^ y.val) hxor_lt_p)
+
+theorem and_lookup_complete (x y : F p) (hx : x.val < 256) (hy : y.val < 256) : ByteXorTable.Completeness (x, y, x + y - 2 * ((x.val &&& y.val : ℕ) : F p)) := by
+  simp [ByteXorTable]
+  refine ⟨hx, hy, ?_⟩
+  exact and_lookup_xor_val x y hx hy
+
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro i env input_var h_env input h_input h_assumptions
+  cases input_var
+  cases input
+  simp only [circuit_norm, explicit_provable_type, main, Assumptions, Inputs.mk.injEq] at h_env h_input h_assumptions ⊢
+  rcases h_input with ⟨rfl, rfl⟩
+  simpa [sub_eq_add_neg, h_env] using and_lookup_complete _ _ h_assumptions.1 h_assumptions.2
+
 
 def circuit : FormalCircuit (F p) Inputs field :=
   { Assumptions, Spec, soundness, completeness }

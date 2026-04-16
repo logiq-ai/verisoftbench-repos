@@ -65,7 +65,33 @@ theorem Flat.chain_some {c : Chain (Flat _)} {a b : α}
     rw [si, sj] at h₀
     injection h₀ (by simp)
 
-theorem Flat.sup_some {c : Chain _} {a : α} : (∃ k, c.act k = .some a) ↔ (flat_sup c = .some a) := by sorry
+theorem Flat.exists_of_sup_some {α : Type} {c : Chain (Flat α)} {a : α} : flat_sup c = .some a → (∃ k, c.act k = .some a) := by
+  intro h
+  unfold flat_sup at h
+  by_cases p : ∃ b n, c.act n = .some b
+  · rw [dif_pos p] at h
+    have ha : p.choose = a := by
+      injection h with ha
+    refine ⟨p.choose_spec.choose, ?_⟩
+    simpa [ha] using p.choose_spec.choose_spec
+  · rw [dif_neg p] at h
+    cases h
+
+theorem Flat.sup_some_of_exists {α : Type} {c : Chain (Flat α)} {a : α} : (∃ k, c.act k = .some a) → flat_sup c = .some a := by
+  intro h
+  unfold flat_sup
+  let p : ∃ b n, c.act n = .some b := by
+    rcases h with ⟨k, hk⟩
+    exact ⟨a, k, hk⟩
+  rw [dif_pos p]
+  obtain ⟨k, hk⟩ := p.choose_spec
+  have hk' : ∃ k, c.act k = .some p.choose := ⟨k, hk⟩
+  have hEq : p.choose = a := Flat.chain_some hk' h
+  simpa [hEq]
+
+theorem Flat.sup_some {c : Chain _} {a : α} : (∃ k, c.act k = .some a) ↔ (flat_sup c = .some a) := by
+  exact ⟨Flat.sup_some_of_exists, Flat.exists_of_sup_some⟩
+
 
 noncomputable instance : Domain (Flat α) where
   bot := .none

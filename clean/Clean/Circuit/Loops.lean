@@ -209,9 +209,14 @@ lemma finFoldl_cons_succ (x : α) :
   rw [add_mul, add_assoc, add_comm k]
   simp [Vector.cons]
 
-theorem output_eq :
-  (xs.foldlM circuit init).output n =
-    Fin.foldl m (fun acc i => (circuit acc xs[i.val]).output (n + i * constant.localLength)) init := by sorry
+theorem output_eq: (xs.foldlM circuit init).output n =
+    Fin.foldl m (fun acc i => (circuit acc xs[i.val]).output (n + i * constant.localLength)) init := by
+  induction xs using Vector.induct generalizing init n with
+  | nil =>
+      rfl
+  | cons x xs ih =>
+      rw [foldlM_cons, bind_output_eq, ih, finFoldl_cons_succ, constant.localLength_eq (init, x)]
+
 
 def foldlAcc (n : ℕ) (xs : Vector α m) (circuit : β → α → Circuit F β) (init : β) (j : Fin m) : β :=
   Fin.foldl j (fun acc i => (circuit acc xs[i.val]).output (n + i*(circuit acc xs[i.val]).localLength)) init

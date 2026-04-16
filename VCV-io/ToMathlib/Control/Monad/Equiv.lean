@@ -101,9 +101,11 @@ instance : Coe (PureEquiv m n) (PureHom m n) where
 lemma map_pure (f : PureEquiv m n) {α : Type u} (x : α) :
     f.toFun (pure x) = (pure x : n α) := f.map_pure' x
 
-@[simp]
 lemma map_pure_inv (f : PureEquiv m n) {α : Type u} (x : α) :
-    f.invFun (pure x) = (pure x : m α) := by sorry
+    f.invFun (pure x) = (pure x : m α) := by
+  rw [← f.map_pure x]
+  exact f.left_inv (pure x : m α)
+
 
 instance : Coe (PureEquiv m n) (PureHom n m) where
   coe f := ⟨f.toNatEquiv, f.map_pure_inv⟩

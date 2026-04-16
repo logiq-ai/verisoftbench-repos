@@ -950,8 +950,67 @@ lemma getBit_eq_pred_getBit_of_div_two {n k : ℕ} (h_k: k > 0) :
   exact Eq.symm (getBit_of_shiftRight (k - 1))
 
 -- TODO: uniqueness of this representation?
+theorem getBit_repr_range {ℓ : Nat} : ∀ j, j < 2^ℓ → j = ∑ k ∈ Finset.range ℓ, (getBit k j) * 2^k := by
+  induction ℓ with
+  | zero =>
+      intro j h_j
+      have hj0 : j = 0 := by omega
+      subst hj0
+      simp only [Finset.range_zero, Finset.sum_empty]
+  | succ ℓ ih =>
+      intro j h_j
+      by_cases hlt : j < 2 ^ ℓ
+      · have hbitfalse : j.testBit ℓ = false := Nat.testBit_eq_false_of_lt hlt
+        have hget0 : getBit ℓ j = 0 := (Nat.testBit_false_eq_getBit_eq_0 ℓ j).mp hbitfalse
+        rw [Finset.sum_range_succ, hget0, zero_mul, add_zero]
+        exact ih j hlt
+      · have hge : 2 ^ ℓ ≤ j := by omega
+        let j' := j - 2 ^ ℓ
+        have hupper : j < 2 ^ ℓ + 2 ^ ℓ := by
+          simpa [Nat.pow_succ, Nat.mul_comm, two_mul] using h_j
+        have hj' : j' < 2 ^ ℓ := by
+          dsimp [j']
+          omega
+        have htop : getBit ℓ j = 1 :=
+          Nat.getBit_1_of_ge_two_pow_and_lt_two_pow_succ (x := j) (i := ℓ) hge h_j
+        have hrepr' : j' = ∑ k ∈ Finset.range ℓ, getBit k j' * 2 ^ k := ih j' hj'
+        have hsum :
+            (∑ k ∈ Finset.range ℓ, getBit k j' * 2 ^ k) =
+              ∑ k ∈ Finset.range ℓ, getBit k j * 2 ^ k := by
+          refine Finset.sum_congr rfl ?_
+          intro k hk
+          have hklt : k < ℓ := Finset.mem_range.mp hk
+          have hkne : k ≠ ℓ := by omega
+          have hbit_eq : getBit k j' = getBit k j := by
+            dsimp [j']
+            simpa [hkne] using
+              (Nat.getBit_of_sub_two_pow_of_bit_1 (n := j) (i := ℓ) (j := k) htop)
+          rw [hbit_eq]
+        have hrepr : j' = ∑ k ∈ Finset.range ℓ, getBit k j * 2 ^ k := by
+          rw [hsum] at hrepr'
+          exact hrepr'
+        calc
+          j = j' + 2 ^ ℓ := by
+            dsimp [j']
+            exact (Nat.sub_add_cancel hge).symm
+          _ = (∑ k ∈ Finset.range ℓ, getBit k j * 2 ^ k) + 2 ^ ℓ := by rw [hrepr]
+          _ = (∑ k ∈ Finset.range ℓ, getBit k j * 2 ^ k) + getBit ℓ j * 2 ^ ℓ := by
+            rw [htop, one_mul]
+          _ = ∑ k ∈ Finset.range (ℓ + 1), getBit k j * 2 ^ k := by
+            rw [Finset.sum_range_succ]
+
 theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by sorry
+  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
+  intro j h
+  cases ℓ with
+  | zero =>
+      have hj0 : j = 0 := by
+        simpa only [Finset.sum_range_zero] using (getBit_repr_range (ℓ := 0) j h)
+      subst hj0
+      simp [Nat.getBit_zero_eq_zero]
+  | succ n =>
+      simpa only [Nat.range_succ_eq_Icc_zero, Nat.succ_sub_one] using getBit_repr_range (ℓ := n + 1) j h
+
 
 theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
   j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by

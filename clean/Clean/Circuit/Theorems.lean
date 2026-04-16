@@ -491,15 +491,42 @@ lemma Environment.agreesBelow_of_le {F} {n m : ℕ} {env env' : Environment F} :
   fun h_same hi i hi' => h_same i (Nat.lt_of_lt_of_le hi' hi)
 
 namespace FlatOperation
-/--
-If all witness generators only access the environment below the current offset, then
-the entire circuit only accesses the environment below `n + localLength`.
-
-This is not currently used, but seemed like a nice result to have.
--/
 theorem onlyAccessedBelow_all {ops : List (FlatOperation F)} (n : ℕ) :
   forAll n { witness n _ := Environment.OnlyAccessedBelow n } ops →
-    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by sorry
+    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by
+  intro h
+  induction ops generalizing n with
+  | nil =>
+      intro env env' hagree
+      simp only [FlatOperation.forAll, FlatOperation.localLength, FlatOperation.localWitnesses,
+        Environment.OnlyAccessedBelow] at h ⊢
+  | cons op ops ih =>
+      cases op with
+      | witness m c =>
+          intro env env' hagree
+          simp only [FlatOperation.forAll, FlatOperation.localLength, FlatOperation.localWitnesses,
+            Environment.OnlyAccessedBelow] at h ⊢
+          simp only [FlatOperation.localLength] at hagree
+          rcases h with ⟨hc, hrest⟩
+          have h_small : env.AgreesBelow n env' :=
+            Environment.agreesBelow_of_le hagree (by omega)
+          have h_tail : env.AgreesBelow ((m + n) + localLength ops) env' := by
+            simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using hagree
+          have hc_eq : c env = c env' := hc env env' h_small
+          have hrec : localWitnesses env ops = localWitnesses env' ops := by
+            exact ih (n := m + n) hrest env env' h_tail
+          rw [hc_eq, hrec]
+      | assert e =>
+          intro env env' hagree
+          simp only [FlatOperation.forAll, FlatOperation.localLength, FlatOperation.localWitnesses,
+            Environment.OnlyAccessedBelow] at h ⊢
+          exact ih (n := n) h.right env env' hagree
+      | lookup l =>
+          intro env env' hagree
+          simp only [FlatOperation.forAll, FlatOperation.localLength, FlatOperation.localWitnesses,
+            Environment.OnlyAccessedBelow] at h ⊢
+          exact ih (n := n) h.right env env' hagree
+
 end FlatOperation
 
 -- theorem about relationship between FormalCircuit and GeneralFormalCircuit

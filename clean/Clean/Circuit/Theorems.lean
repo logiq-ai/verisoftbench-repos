@@ -465,13 +465,64 @@ lemma getElem?_dynamicWitnesses_cons_right {op : FlatOperation F} {ops : List (F
     List.getElem_append_right (by linarith)]
   simp only [add_tsub_cancel_left]
 
-/--
-Flat version of the final theorem in this section, `Circuit.proverEnvironment_usesLocalWitnesses`.
--/
+theorem proverEnvironment_agreesBelow_init {ops : List (FlatOperation F)} (init : List F) : (proverEnvironment ops init).AgreesBelow init.length (Environment.fromList init) := by
+  intro i hi
+  simp [FlatOperation.proverEnvironment, Environment.AgreesBelow, Environment.fromList]
+  simpa [List.getElem?_eq_getElem hi] using
+    (getElem?_dynamicWitnesses_of_lt (ops := ops) (acc := init) hi)
+
 theorem proverEnvironment_usesLocalWitnesses {ops : List (FlatOperation F)} (init : List F) :
   (∀ (env env' : Environment F),
     forAll init.length { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops) →
-    (proverEnvironment ops init).UsesLocalWitnessesFlat init.length ops := by sorry
+    (proverEnvironment ops init).UsesLocalWitnessesFlat init.length ops := by
+  intro h_comp
+  induction ops using FlatOperation.induct generalizing init with
+  | empty =>
+      simp [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll]
+  | witness m c ops ih =>
+      let envFinal : Environment F := proverEnvironment (.witness m c :: ops) init
+      let init' : List F := init ++ (c (Environment.fromList init)).toList
+      rw [Environment.UsesLocalWitnessesFlat, forAll_cons]
+      constructor
+      · have h_comp_head := (forAll_cons).mp (h_comp envFinal (Environment.fromList init))
+        have hagree : envFinal.AgreesBelow init.length (Environment.fromList init) :=
+          proverEnvironment_agreesBelow_init (ops := .witness m c :: ops) init
+        have hc : c envFinal = c (Environment.fromList init) := h_comp_head.1 hagree
+        intro i
+        change (dynamicWitnesses (.witness m c :: ops) init)[init.length + i.val]?.getD 0 = (c envFinal)[i.val]
+        rw [getElem?_dynamicWitnesses_cons_right (op := .witness m c) (ops := ops) (init := init) (i := i.val) i.isLt]
+        simp only [dynamicWitness]
+        simpa [hc] using (Vector.getElem_toList (xs := c envFinal) (i := i.val) (by simpa using i.isLt))
+      · have h_tail : ∀ env env',
+            forAll init'.length
+              { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+          intro env env'
+          have h_comp' := (forAll_cons).mp (h_comp env env')
+          simpa [init', List.length_append, add_comm, add_left_comm, add_assoc] using h_comp'.2
+        simpa [Environment.UsesLocalWitnessesFlat, envFinal, init', proverEnvironment,
+          dynamicWitnesses_cons, List.length_append, add_comm, add_left_comm, add_assoc] using
+          (ih (init := init') h_tail)
+  | assert e ops ih =>
+      rw [Environment.UsesLocalWitnessesFlat, forAll_cons]
+      constructor
+      · trivial
+      · have h_tail : ∀ env env',
+            forAll init.length { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+          intro env env'
+          simpa [singleLocalLength] using ((forAll_cons).mp (h_comp env env')).2
+        simpa [Environment.UsesLocalWitnessesFlat, proverEnvironment, dynamicWitnesses_cons,
+          dynamicWitness, singleLocalLength] using (ih (init := init) h_tail)
+  | lookup l ops ih =>
+      rw [Environment.UsesLocalWitnessesFlat, forAll_cons]
+      constructor
+      · trivial
+      · have h_tail : ∀ env env',
+            forAll init.length { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+          intro env env'
+          simpa [singleLocalLength] using ((forAll_cons).mp (h_comp env env')).2
+        simpa [Environment.UsesLocalWitnessesFlat, proverEnvironment, dynamicWitnesses_cons,
+          dynamicWitness, singleLocalLength] using (ih (init := init) h_tail)
+
 end FlatOperation
 
 /--

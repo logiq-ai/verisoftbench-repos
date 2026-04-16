@@ -1000,9 +1000,11 @@ lemma probOutput_uniformFin (x : Fin (n + 1)) : [= x | $[0..n]] = ((n : ℝ≥0�
 @[simp]
 lemma probFailure_uniformFin : [⊥ | $[0..n]] = 0 := probFailure_query _ _
 
-@[simp]
 lemma probEvent_uniformFin (p : Fin (n + 1) → Prop) [DecidablePred p] :
-    [p | $[0..n]] = (Finset.univ.filter p).card * (n + 1 : ℝ≥0∞)⁻¹ := by sorry
+    [p | $[0..n]] = (Finset.univ.filter p).card * (n + 1 : ℝ≥0∞)⁻¹ := by
+  simpa [uniformFin, OracleSpec.range] using
+    (probEvent_query_eq_mul_inv (spec := unifSpec) (i := n) (t := ()) (p := p))
+
 
 end uniformFin
 

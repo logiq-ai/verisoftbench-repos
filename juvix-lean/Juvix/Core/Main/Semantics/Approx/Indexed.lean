@@ -226,7 +226,29 @@ lemma Value.Approx.Indexed.invert {n v v'} :
   · subst h₁ h₂
     exact Value.Approx.Indexed.Inversion.closure h
 
-lemma Value.Approx.Indexed.anti_monotone {n n' v₁ v₂} (h : v₁ ≲ᵥ(n) v₂) (h' : n' ≤ n) : v₁ ≲ᵥ(n') v₂ := by sorry
+lemma Value.Approx.Indexed.anti_monotone {n n' v₁ v₂} (h : v₁ ≲ᵥ(n) v₂) (h' : n' ≤ n) : v₁ ≲ᵥ(n') v₂ := by
+  unfold Value.Approx.Indexed at h ⊢
+  rcases h with hunit | hconst | hconstr | hclosure
+  · left
+    exact hunit
+  · right
+    left
+    exact hconst
+  · right
+    right
+    left
+    rcases hconstr with ⟨ctr_name, args_rev, args_rev', rfl, rfl, hargs⟩
+    refine ⟨ctr_name, args_rev, args_rev', rfl, rfl, ?_⟩
+    intro k hk
+    exact hargs k (lt_of_lt_of_le hk h')
+  · right
+    right
+    right
+    rcases hclosure with ⟨env₁, body₁, env₂, body₂, rfl, rfl, hcl⟩
+    refine ⟨env₁, body₁, env₂, body₂, rfl, rfl, ?_⟩
+    intro n₁ n₂ hlt a₁ a₂ r₁ ha hEval
+    exact hcl n₁ n₂ (lt_of_lt_of_le hlt h') a₁ a₂ r₁ ha hEval
+
 
 lemma Expr.Approx.Param.Indexed.anti_monotone {n n' env₁ env₂ e₁ e₂}
   (h : e₁ ≲(n)⟨env₁, env₂⟩ e₂)

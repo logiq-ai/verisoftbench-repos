@@ -1186,14 +1186,78 @@ lemma lifted_trace_map_eval_at_roots_prev_BTField
       rw [Nat.sub_one_add_one (two_pow_ne_zero k)]
     _ = 1 := by rw [trace_map_at_prev_root]
 
-theorem rsum_eq_t1_square_aux
-  {curBTField : Type*} [Field curBTField] -- curBTField ≃ 𝔽_{2^{2^k}}
+theorem inverse_trace_shift_eq_one {curBTField : Type*} [Field curBTField] (u : curBTField) (k : ℕ) (x_pow_card : ∀ (x : curBTField), x ^ (2 ^ (2 ^ k)) = x) (trace_map_prop : TraceMapProperty curBTField u k) : ∑ j ∈ Finset.Icc 1 (2 ^ k), (u⁻¹) ^ (2 ^ j) = 1 := by
+  calc
+    ∑ j ∈ Finset.Icc 1 (2 ^ k), (u⁻¹) ^ (2 ^ j)
+      = ∑ j ∈ Finset.Icc 1 (2 ^ k - 1), (u⁻¹) ^ (2 ^ j) + (u⁻¹) ^ (2 ^ (2 ^ k)) := by
+        rw [← Finset.sum_erase_add _ _ (by
+          rw [Finset.mem_Icc]
+          exact ⟨one_le_two_pow_n k, le_rfl⟩)]
+        congr 2
+        ext x
+        simp only [Finset.mem_erase, Finset.mem_Icc]
+        constructor
+        · intro h
+          have hx : x ≤ 2 ^ k - 1 := Nat.le_pred_of_lt (lt_of_le_of_ne h.2.2 h.1)
+          exact ⟨h.2.1, hx⟩
+        · intro h
+          refine ⟨?_, h.1, Nat.le_trans h.2 (Nat.sub_le (2 ^ k) 1)⟩
+          intro hx_eq
+          have hx_le := h.2
+          rw [hx_eq] at hx_le
+          have lt_succ : 2 ^ k - 1 < 2 ^ k := by
+            calc
+              2 ^ k - 1 < 2 ^ k - 1 + 1 := Nat.lt_succ_self (2 ^ k - 1)
+              _ = 2 ^ k := by rw [Nat.sub_add_cancel (h := one_le_two_pow_n k)]
+          exact Nat.lt_irrefl _ (Nat.lt_of_le_of_lt hx_le lt_succ)
+    _ = ∑ j ∈ Finset.Icc 1 (2 ^ k - 1), (u⁻¹) ^ (2 ^ j) + u⁻¹ := by
+        rw [x_pow_card (u⁻¹)]
+    _ = ∑ j ∈ Finset.Icc 1 (2 ^ k - 1), (u⁻¹) ^ (2 ^ j) + (u⁻¹) ^ 1 := by
+        congr
+        rw [pow_one]
+    _ = (u⁻¹) ^ (2 ^ 0) + ∑ j ∈ Finset.Icc 1 (2 ^ k - 1), (u⁻¹) ^ (2 ^ j) := by
+        rw [add_comm, pow_zero]
+    _ = ∑ j ∈ Finset.Icc 0 (2 ^ k - 1), (u⁻¹) ^ (2 ^ j) := by
+        congr 1
+    _ = ∑ j ∈ Finset.range (2 ^ k), (u⁻¹) ^ (2 ^ j) := by
+        congr 1
+        rw [← Nat.range_succ_eq_Icc_zero (2 ^ k - 1)]
+        congr
+        rw [Nat.sub_add_cancel]
+        exact one_le_two_pow_n k
+    _ = 1 := by
+        exact trace_map_prop.inverse_trace
+
+theorem pow_card_sub_pow_eq_mul_inv_pow {curBTField : Type*} [Field curBTField] (u : curBTField) (k j : ℕ) (x_pow_card : ∀ (x : curBTField), x ^ (2 ^ (2 ^ k)) = x) (u_ne_zero : u ≠ 0) (hj : j ∈ Finset.Icc 1 (2 ^ k)) : u ^ (2 ^ (2 ^ k) - 2 ^ j) = u * (u⁻¹) ^ (2 ^ j) := by
+  have hle : j ≤ 2 ^ k := (Finset.mem_Icc.mp hj).2
+  have hpowle : 2 ^ j ≤ 2 ^ (2 ^ k) := by
+    exact pow_le_pow_right₀ (by decide : (1 : ℕ) ≤ 2) hle
+  calc
+    u ^ (2 ^ (2 ^ k) - 2 ^ j) = u ^ (2 ^ (2 ^ k)) * (u ^ (2 ^ j))⁻¹ := by
+      rw [pow_sub₀ u u_ne_zero hpowle]
+    _ = u * (u ^ (2 ^ j))⁻¹ := by
+      rw [x_pow_card u]
+    _ = u * (u⁻¹) ^ (2 ^ j) := by
+      rw [inv_pow]
+
+theorem rsum_eq_t1_square_aux {curBTField : Type*} [Field curBTField] -- curBTField ≃ 𝔽_{2^{2^k}}
   (u : curBTField) -- here u is already lifted to curBTField
   (k : ℕ)
   (x_pow_card : ∀ (x : curBTField), x ^ (2 ^ (2 ^ (k))) = x)
   (u_ne_zero : u ≠ 0)
   (trace_map_prop : TraceMapProperty curBTField u k):
-   ∑ j ∈ Finset.Icc 1 (2 ^ (k)), u ^ (2 ^ 2 ^ (k) - 2 ^ j) = u := by sorry
+   ∑ j ∈ Finset.Icc 1 (2 ^ (k)), u ^ (2 ^ 2 ^ (k) - 2 ^ j) = u := by
+  calc
+    ∑ j ∈ Finset.Icc 1 (2 ^ k), u ^ (2 ^ 2 ^ k - 2 ^ j)
+        = ∑ j ∈ Finset.Icc 1 (2 ^ k), u * (u⁻¹) ^ (2 ^ j) := by
+            apply Finset.sum_congr rfl
+            intro j hj
+            exact pow_card_sub_pow_eq_mul_inv_pow (u := u) (k := k) (j := j) x_pow_card u_ne_zero hj
+    _ = u * (∑ j ∈ Finset.Icc 1 (2 ^ k), (u⁻¹) ^ (2 ^ j)) := by
+            rw [Finset.mul_sum]
+    _ = u := by
+            rw [inverse_trace_shift_eq_one (u := u) (k := k) x_pow_card trace_map_prop, mul_one]
+
 
 instance charP_eq_2_of_add_self_eq_zero {F : Type*} [Field F]
     (sumZeroIffEq : ∀ (x y : F), x + y = 0 ↔ x = y) : CharP F 2 :=

@@ -981,7 +981,12 @@ theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
 
 lemma getLowBits_succ {n: ℕ} (numLowBits: ℕ) :
     getLowBits (numLowBits + 1) n = getLowBits numLowBits n
-    + (getBit numLowBits n) <<< numLowBits := by sorry
+    + (getBit numLowBits n) <<< numLowBits := by
+  rw [getLowBits_eq_mod_two_pow, getLowBits_eq_mod_two_pow, Nat.mod_pow_succ]
+  unfold getBit
+  rw [Nat.shiftRight_eq_div_pow, Nat.and_one_is_mod, Nat.shiftLeft_eq]
+  simpa only [Nat.mul_comm]
+
 
 /-- This takes a argument for the number of lowBitss to remove from the number -/
 def getHighBits_no_shl (numLowBits : ℕ) (n : ℕ) : ℕ := n >>> numLowBits

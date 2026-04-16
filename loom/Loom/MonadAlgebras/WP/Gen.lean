@@ -181,6 +181,43 @@ def WPGen.spec_wp wp' (x : m α) (trp : wp x = wp') : WPGen x where
     subst trp
     simp
 
+theorem triple_forIn_deacreasing_step {β : Type u} {measure : β → ℕ} {init : β} {f : β → m (ForInStep β)}
+  (inv : β → l)
+  (hstep : ∀ b,
+    measure b <= measure init ->
+    triple
+      (inv b)
+      (f b)
+      (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b'))
+  (i : ℕ) (b : β) :
+  triple
+    (inv b ⊓ ⌜measure b ≤ measure init - i⌝)
+    (f b)
+    (fun | .yield b' => inv b' ⊓ ⌜measure b' ≤ measure init - (i + 1)⌝
+         | .done b' => inv b' ⊓ ⌜measure b' ≤ measure init - measure init⌝) := by
+  by_cases hmi : measure b ≤ measure init - i
+  · have hbi : measure b ≤ measure init := by
+      exact le_trans hmi (Nat.sub_le _ _)
+    apply triple_cons (x := f b)
+      (pre := inv b)
+      (post := fun
+        | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝
+        | .done b' => ⌜measure b' = 0⌝ ⊓ inv b')
+    · exact inf_le_left
+    · intro y
+      cases y with
+      | yield b' =>
+          apply inf_le_inf_left
+          by_cases hlt : measure b' < measure b
+          · simp [LE.pure, hlt]
+            omega
+          · simp [LE.pure, hlt]
+      | done b' =>
+          simpa [Nat.sub_self, inf_comm, inf_left_comm, inf_assoc]
+    · exact hstep b hbi
+  · unfold triple
+    simp [hmi, LE.pure]
+
 theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
   {init : β} {f : β → m (ForInStep β)}
   (inv : β → l)
@@ -190,7 +227,14 @@ theorem triple_forIn_deacreasing {β} {measure : β -> ℕ}
       (inv b)
       (f b)
       (fun | .yield b' => inv b' ⊓ ⌜measure b' < measure b⌝ | .done b' => ⌜ measure b' = 0 ⌝ ⊓ inv b')) :
-  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by sorry
+  triple (inv init) (forIn [0:measure init] init (fun _ => f)) (fun b => inv b ⊓ ⌜measure b = 0⌝) := by
+  let I : ℕ → β → l := fun i b => inv b ⊓ ⌜measure b ≤ measure init - i⌝
+  simpa [I, Nat.sub_zero, Nat.sub_self] using
+    (triple_forIn_range_step1 (xs := [0:measure init]) (init := init) (f := fun _ => f) I
+      (fun i b => triple_forIn_deacreasing_step inv hstep i b)
+      (by rfl)
+      (by simp [Nat.zero_le]))
+
 
 attribute [-simp] Std.Range.forIn_eq_forIn_range' in
 noncomputable

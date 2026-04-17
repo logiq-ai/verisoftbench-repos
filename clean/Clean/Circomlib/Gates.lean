@@ -323,6 +323,7 @@ def main : {n : ℕ} → Vector (Expression (F p)) n → Circuit (F p) (Expressi
 theorem localLength_eq (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
     (main input).localLength offset = n - 1 := by sorry
 
+
 -- Helper lemma: SubcircuitsConsistent preserved by bind
 theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α) (g : α → Circuit (F p) β) (offset : ℕ)
     (hf : Operations.SubcircuitsConsistent offset (f.operations offset))

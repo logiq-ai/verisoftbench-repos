@@ -408,11 +408,217 @@ theorem compile_bexp_correct (C : List instr) (s : store) (b : bexp) (d1 d0 : In
 /-
   4.2 Correctness of generated code for commands, terminating case.
 -/
+theorem compile_com_assign_correct_aux (s : store) (x : ident) (a : aexp) : ∀ C pc stk, code_at C pc (compile_com (.ASSIGN x a)) → transitions C (pc, stk, s) (pc + codelen (compile_com (.ASSIGN x a)), stk, update x (aeval s a) s) := by
+  intro C pc stk hcode
+  have hA : code_at C pc (compile_aexp a) := by
+    simpa [compile_com] using
+      (code_at_app_left (C := C) (pc := pc) (C1 := compile_aexp a) (C2 := [instr.Isetvar x]) hcode)
+  have hRunA :
+      transitions C (pc, stk, s)
+        (pc + codelen (compile_aexp a), aeval s a :: stk, s) := by
+    exact compile_aexp_correct C s a pc stk hA
+  have hInstr :
+      instr_at C (pc + codelen (compile_aexp a)) = .some (.Isetvar x) := by
+    have hcode' : code_at C pc (compile_aexp a ++ instr.Isetvar x :: []) := by
+      simpa [compile_com] using hcode
+    simpa using
+      (code_at_to_instr_at (C := C) (pc := pc) (c1 := compile_aexp a) (i := instr.Isetvar x) (c2 := []) hcode')
+  have hSet :
+      transitions C (pc + codelen (compile_aexp a), aeval s a :: stk, s)
+        (pc + codelen (compile_aexp a) + 1, stk, update x (aeval s a) s) := by
+    apply star_one
+    exact transition.trans_setvar (pc := pc + codelen (compile_aexp a))
+      (stk := stk) (s := s) (x := x) (n := aeval s a) hInstr
+  have h := star_trans (transition C)
+      (pc, stk, s)
+      (pc + codelen (compile_aexp a), aeval s a :: stk, s)
+      hRunA
+      (pc + codelen (compile_aexp a) + 1, stk, update x (aeval s a) s)
+      hSet
+  simpa [compile_com, codelen_app, codelen_singleton, Int.add_assoc] using h
+
+theorem compile_com_ifthenelse_correct_aux (s s' : store) (b : bexp) (c1 c2 : com) (ih : ∀ C pc stk, code_at C pc (compile_com (if beval s b then c1 else c2)) → transitions C (pc, stk, s) (pc + codelen (compile_com (if beval s b then c1 else c2)), stk, s')) : ∀ C pc stk, code_at C pc (compile_com (.IFTHENELSE b c1 c2)) → transitions C (pc, stk, s) (pc + codelen (compile_com (.IFTHENELSE b c1 c2)), stk, s') := by
+  intro C pc stk hcode
+  let code_ifso := compile_com c1
+  let code_ifnot := compile_com c2
+  let test := compile_bexp b 0 (codelen code_ifso + 1)
+  have hcode' : code_at C pc (test ++ code_ifso ++ [instr.Ibranch (codelen code_ifnot)] ++ code_ifnot) := by
+    simpa [compile_com, code_ifso, code_ifnot, test, List.append_assoc] using hcode
+  have hcode_left : code_at C pc (test ++ (code_ifso ++ [instr.Ibranch (codelen code_ifnot)] ++ code_ifnot)) := by
+    simpa [List.append_assoc] using hcode'
+  have hcode_mid : code_at C pc (test ++ code_ifso ++ ([instr.Ibranch (codelen code_ifnot)] ++ code_ifnot)) := by
+    simpa [List.append_assoc] using hcode'
+  have hcode_branch : code_at C pc ((test ++ code_ifso) ++ instr.Ibranch (codelen code_ifnot) :: code_ifnot) := by
+    simpa [List.append_assoc] using hcode'
+  have hcode_right : code_at C pc ((test ++ code_ifso ++ [instr.Ibranch (codelen code_ifnot)]) ++ code_ifnot) := by
+    simpa [List.append_assoc] using hcode'
+  have hTest : code_at C pc test := by
+    exact code_at_app_left (C := C) (pc := pc) (C1 := test)
+      (C2 := code_ifso ++ [instr.Ibranch (codelen code_ifnot)] ++ code_ifnot) hcode_left
+  have hrunTest := compile_bexp_correct C s b 0 (codelen code_ifso + 1) pc stk hTest
+  by_cases hb : beval s b = true
+  · have hIfso : code_at C (pc + codelen test) code_ifso := by
+      exact code_at_app_right2 (C := C) (pc := pc) (C1 := test) (C2 := code_ifso)
+        (C3 := [instr.Ibranch (codelen code_ifnot)] ++ code_ifnot) hcode_mid
+    have hIfso' : code_at C (pc + codelen test) (compile_com (if beval s b then c1 else c2)) := by
+      simpa [hb, code_ifso] using hIfso
+    have hrunIfso :
+        transitions C (pc + codelen test, stk, s)
+          (pc + codelen test + codelen code_ifso, stk, s') := by
+      simpa [hb, code_ifso, Int.add_assoc] using (ih C (pc + codelen test) stk hIfso')
+    have hInstr0 : instr_at C (pc + codelen (test ++ code_ifso)) = .some (.Ibranch (codelen code_ifnot)) := by
+      exact code_at_to_instr_at (C := C) (pc := pc) (c1 := test ++ code_ifso)
+        (i := instr.Ibranch (codelen code_ifnot)) (c2 := code_ifnot) hcode_branch
+    have hInstr : instr_at C (pc + codelen test + codelen code_ifso) = .some (.Ibranch (codelen code_ifnot)) := by
+      simpa [codelen_app, Int.add_assoc] using hInstr0
+    have hBranch : transitions C
+        (pc + codelen test + codelen code_ifso, stk, s')
+        ((pc + codelen test + codelen code_ifso) + 1 + codelen code_ifnot, stk, s') := by
+      apply star_one
+      exact transition.trans_branch (pc := pc + codelen test + codelen code_ifso)
+        (stk := stk) (s := s') (d := codelen code_ifnot)
+        (pc' := (pc + codelen test + codelen code_ifso) + 1 + codelen code_ifnot) hInstr rfl
+    have htestTrue : transitions C (pc, stk, s) (pc + codelen test, stk, s) := by
+      simpa [hb] using hrunTest
+    have hfinal : transitions C (pc, stk, s)
+        (((pc + codelen test + codelen code_ifso) + 1 + codelen code_ifnot), stk, s') := by
+      apply star_trans
+      · exact htestTrue
+      · apply star_trans
+        · exact hrunIfso
+        · exact hBranch
+    have hpc_true :
+        ((pc + codelen test + codelen code_ifso) + 1 + codelen code_ifnot) =
+          pc + codelen (compile_com (.IFTHENELSE b c1 c2)) := by
+      simp [compile_com, code_ifso, code_ifnot, test, codelen_app, codelen_cons, Int.add_assoc]
+      omega
+    simpa [hpc_true] using hfinal
+  · have hIfnot0 : code_at C (pc + codelen (test ++ code_ifso ++ [instr.Ibranch (codelen code_ifnot)])) code_ifnot := by
+      exact code_at_app_right (C := C) (pc := pc)
+        (C1 := test ++ code_ifso ++ [instr.Ibranch (codelen code_ifnot)]) (C2 := code_ifnot) hcode_right
+    have hIfnot : code_at C (pc + codelen test + (codelen code_ifso + 1)) code_ifnot := by
+      simpa [codelen_app, codelen_singleton, Int.add_assoc] using hIfnot0
+    have hIfnot' :
+        code_at C (pc + codelen test + (codelen code_ifso + 1))
+          (compile_com (if beval s b then c1 else c2)) := by
+      simpa [hb, code_ifnot] using hIfnot
+    have hrunIfnot : transitions C
+        (pc + codelen test + (codelen code_ifso + 1), stk, s)
+        (pc + codelen test + (codelen code_ifso + 1) + codelen code_ifnot, stk, s') := by
+      simpa [hb, code_ifnot, Int.add_assoc] using
+        (ih C (pc + codelen test + (codelen code_ifso + 1)) stk hIfnot')
+    have htestFalse : transitions C (pc, stk, s) (pc + codelen test + (codelen code_ifso + 1), stk, s) := by
+      simpa [hb] using hrunTest
+    have hfinal : transitions C (pc, stk, s)
+        ((pc + codelen test + (codelen code_ifso + 1) + codelen code_ifnot), stk, s') := by
+      apply star_trans
+      · exact htestFalse
+      · exact hrunIfnot
+    have hpc_false :
+        (pc + codelen test + (codelen code_ifso + 1) + codelen code_ifnot) =
+          pc + codelen (compile_com (.IFTHENELSE b c1 c2)) := by
+      simp [compile_com, code_ifso, code_ifnot, test, codelen_app, codelen_cons, Int.add_assoc]
+      omega
+    simpa [hpc_false] using hfinal
+
+theorem compile_com_seq_correct_aux (s s' s'' : store) (c1 c2 : com) (ih1 : ∀ C pc stk, code_at C pc (compile_com c1) → transitions C (pc, stk, s) (pc + codelen (compile_com c1), stk, s')) (ih2 : ∀ C pc stk, code_at C pc (compile_com c2) → transitions C (pc, stk, s') (pc + codelen (compile_com c2), stk, s'')) : ∀ C pc stk, code_at C pc (compile_com (.SEQ c1 c2)) → transitions C (pc, stk, s) (pc + codelen (compile_com (.SEQ c1 c2)), stk, s'') := by
+  intro C pc stk hcode
+  have h1 : code_at C pc (compile_com c1) := by
+    simpa [compile_com] using
+      (code_at_app_left C pc (compile_com c1) (compile_com c2) (by simpa [compile_com] using hcode))
+  have h2 : code_at C (pc + codelen (compile_com c1)) (compile_com c2) := by
+    simpa [compile_com] using
+      (code_at_app_right C pc (compile_com c1) (compile_com c2) (by simpa [compile_com] using hcode))
+  have t1 : transitions C (pc, stk, s) (pc + codelen (compile_com c1), stk, s') :=
+    ih1 C pc stk h1
+  have t2 :
+      transitions C (pc + codelen (compile_com c1), stk, s')
+        (pc + codelen (compile_com c1) + codelen (compile_com c2), stk, s'') :=
+    ih2 C (pc + codelen (compile_com c1)) stk h2
+  simpa [transitions, compile_com, codelen_app, Int.add_assoc] using
+    (star_trans (transition C) (pc, stk, s) (pc + codelen (compile_com c1), stk, s') t1
+      (pc + codelen (compile_com c1) + codelen (compile_com c2), stk, s'') t2)
+
+theorem compile_com_while_done_correct_aux (s : store) (b : bexp) (c : com) (hb : beval s b = false) : ∀ C pc stk, code_at C pc (compile_com (.WHILE b c)) → transitions C (pc, stk, s) (pc + codelen (compile_com (.WHILE b c)), stk, s) := by
+  intro C pc stk hcode
+  let code_body := compile_com c
+  let test := compile_bexp b 0 (codelen code_body + 1)
+  have hloop : code_at C pc (test ++ code_body ++ [instr.Ibranch (-(codelen test + codelen code_body + 1))]) := by
+    simpa [compile_com, code_body, test, List.append_assoc] using hcode
+  have hTest : code_at C pc test := by
+    apply code_at_app_left C pc test (code_body ++ [instr.Ibranch (-(codelen test + codelen code_body + 1))])
+    simpa [List.append_assoc] using hloop
+  have htrans :
+      transitions C (pc, stk, s)
+        (pc + codelen test + (if beval s b then 0 else codelen code_body + 1), stk, s) :=
+    compile_bexp_correct C s b 0 (codelen code_body + 1) pc stk hTest
+  simpa [compile_com, code_body, test, codelen_app, codelen_singleton, Int.add_assoc, hb] using htrans
+
+theorem compile_com_while_loop_correct_aux (s s' s'' : store) (b : bexp) (c : com) (hcond : beval s b = true) (ih_body : ∀ C pc stk, code_at C pc (compile_com c) → transitions C (pc, stk, s) (pc + codelen (compile_com c), stk, s')) (ih_while : ∀ C pc stk, code_at C pc (compile_com (.WHILE b c)) → transitions C (pc, stk, s') (pc + codelen (compile_com (.WHILE b c)), stk, s'')) : ∀ C pc stk, code_at C pc (compile_com (.WHILE b c)) → transitions C (pc, stk, s) (pc + codelen (compile_com (.WHILE b c)), stk, s'') := by
+  intro C pc stk hcode
+  let code_body := compile_com c
+  let test := compile_bexp b 0 (codelen code_body + 1)
+  let back : Int := -(codelen test + codelen code_body + 1)
+  have hcode' : code_at C pc (test ++ code_body ++ [instr.Ibranch back]) := by
+    simpa [compile_com, code_body, test, back, List.append_assoc] using hcode
+  have hcode'' : code_at C pc (test ++ (code_body ++ [instr.Ibranch back])) := by
+    simpa [List.append_assoc] using hcode'
+  have hTest : code_at C pc test := by
+    exact code_at_app_left C pc test (code_body ++ [instr.Ibranch back]) hcode''
+  have hTestRun : transitions C (pc, stk, s) (pc + codelen test, stk, s) := by
+    simpa [test, hcond] using
+      (compile_bexp_correct C s b 0 (codelen code_body + 1) pc stk hTest)
+  have hBody : code_at C (pc + codelen test) code_body := by
+    exact code_at_app_right2 C pc test code_body [instr.Ibranch back] hcode'
+  have hBodyRun : transitions C (pc + codelen test, stk, s)
+      (pc + codelen test + codelen code_body, stk, s') := by
+    simpa [code_body] using ih_body C (pc + codelen test) stk hBody
+  have hBranchInstr' : instr_at C (pc + codelen (test ++ code_body)) = .some (instr.Ibranch back) := by
+    apply code_at_to_instr_at
+    simpa using hcode'
+  have hBranchInstr : instr_at C (pc + codelen test + codelen code_body) = .some (instr.Ibranch back) := by
+    simpa [codelen_app, Int.add_assoc] using hBranchInstr'
+  have hBackRun : transitions C (pc + codelen test + codelen code_body, stk, s') (pc, stk, s') := by
+    apply star_one
+    apply transition.trans_branch
+    · exact hBranchInstr
+    · dsimp [back]
+      omega
+  apply star_trans
+  · exact hTestRun
+  · apply star_trans
+    · exact hBodyRun
+    · apply star_trans
+      · exact hBackRun
+      · exact ih_while C pc stk hcode
+
 theorem compile_com_correct_terminating (s s' : store) (c : com) (h₁ : cexec s c s') :
  ∀ C pc stk, code_at C pc (compile_com c) →
   transitions C
       (pc, stk, s)
-      (pc + codelen (compile_com c), stk, s') := by sorry
+      (pc + codelen (compile_com c), stk, s') := by
+  intro C pc stk hcode
+  induction h₁ generalizing C pc stk with
+  | cexec_skip =>
+      rename_i s0
+      unfold transitions
+      simpa [compile_com, codelen] using (star.star_refl (R := transition C) (x := (pc, stk, s0)))
+  | cexec_assign =>
+      rename_i s0 x a
+      exact compile_com_assign_correct_aux s0 x a C pc stk hcode
+  | cexec_seq =>
+      rename_i s0 c1 s1 c2 s2 h1 h2 ih1 ih2
+      exact compile_com_seq_correct_aux s0 s1 s2 c1 c2 ih1 ih2 C pc stk hcode
+  | cexec_ifthenelse =>
+      rename_i s0 b c1 c2 s1 h ih
+      exact compile_com_ifthenelse_correct_aux s0 s1 b c1 c2 ih C pc stk hcode
+  | cexec_while_done =>
+      rename_i s0 b c hfalse
+      exact compile_com_while_done_correct_aux s0 b c hfalse C pc stk hcode
+  | cexec_while_loop =>
+      rename_i s0 b c s1 s2 htrue hbody hwhile ih1 ih2
+      exact compile_com_while_loop_correct_aux s0 s1 s2 b c htrue ih1 ih2 C pc stk hcode
+
 
 /-
   7.  Full proof of compiler correctness

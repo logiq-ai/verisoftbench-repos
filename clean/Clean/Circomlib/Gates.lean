@@ -334,8 +334,10 @@ theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α)
   exact ⟨hf, hg⟩
 
 -- Helper theorem for subcircuitsConsistent
+
 theorem subcircuitsConsistent (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
     Operations.SubcircuitsConsistent offset ((main input).operations offset) := by sorry
+
 
 -- Helper lemma: UsesLocalWitnesses and UsesLocalWitnessesCompleteness are equivalent for MultiAND.main
 lemma main_usesLocalWitnesses_iff_completeness (n : ℕ) (input : Var (fields n) (F p)) (offset1 offset2 : ℕ) (env : Environment (F p)) :

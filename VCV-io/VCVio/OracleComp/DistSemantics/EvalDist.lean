@@ -661,9 +661,54 @@ lemma probOutput_bind_of_const (y : β) (r : ℝ≥0∞) (h : ∀ x, [= y | ob x
 lemma probFailure_bind_of_const [Nonempty α] (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
     [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by sorry
 
+theorem ennreal_add_mul_compl_eq_sub_mul_compl_aux (s r : ℝ≥0∞) (hs : s ≤ 1) (hr : r ≤ 1) : s + (1 - s) * r = 1 - (1 - s) * (1 - r) := by
+  refine ENNReal.eq_sub_of_add_eq ?_ ?_
+  · have hmul : (1 - s) * (1 - r) ≤ (1 : ℝ≥0∞) * 1 :=
+      mul_le_mul' (tsub_le_self) (tsub_le_self)
+    have hmul' : (1 - s) * (1 - r) ≤ (1 : ℝ≥0∞) := by
+      simpa using hmul
+    exact ne_top_of_le_ne_top one_ne_top hmul'
+  · calc
+      (s + (1 - s) * r) + (1 - s) * (1 - r)
+          = s + ((1 - s) * r + (1 - s) * (1 - r)) := by
+            rw [add_assoc]
+      _ = s + (1 - s) * (r + (1 - r)) := by
+            rw [← mul_add]
+      _ = s + (1 - s) * 1 := by
+            rw [add_comm r (1 - r), tsub_add_cancel_of_le hr]
+      _ = s + (1 - s) := by
+            rw [mul_one]
+      _ = (1 - s) + s := by
+            rw [add_comm]
+      _ = 1 := by
+            rw [tsub_add_cancel_of_le hs]
+
+theorem probFailure_bind_eq_add_mul_of_const_aux (oa : OracleComp spec α) (ob : α → OracleComp spec β) (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) : [⊥ | oa >>= ob] = [⊥ | oa] + (1 - [⊥ | oa]) * r := by
+  rw [probFailure_bind_eq_tsum]
+  simp only [h]
+  rw [ENNReal.tsum_mul_right]
+  rw [tsum_probOutput_eq_sub]
+
+theorem probFailure_eq_one_of_isEmpty_aux [IsEmpty α] (oa : OracleComp spec α) : [⊥ | oa] = 1 := by
+  simpa using probFailure_add_tsum_probOutput oa
+
 lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
-    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by sorry
+    [⊥ | oa >>= ob] = 1 - (1 - [⊥ | oa]) * (1 - r) := by
+  cases isEmpty_or_nonempty α with
+  | inl hα =>
+      letI := hα
+      rw [probFailure_bind_eq_add_mul_of_const_aux oa ob r h,
+        probFailure_eq_one_of_isEmpty_aux oa]
+      simp
+  | inr hα =>
+      rcases hα with ⟨x⟩
+      have hs : [⊥ | oa] ≤ 1 := probFailure_le_one (oa := oa)
+      have hr : r ≤ 1 := by
+        simpa only [h x] using (probFailure_le_one (oa := ob x))
+      rw [probFailure_bind_eq_add_mul_of_const_aux oa ob r h]
+      exact ennreal_add_mul_compl_eq_sub_mul_compl_aux [⊥ | oa] r hs hr
+
 
 lemma probFailure_bind_le_of_forall {oa : OracleComp spec α} {s : ℝ≥0∞}
     -- TODO: this should be a general type of `uniformOutput` computations

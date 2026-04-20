@@ -1102,13 +1102,27 @@ lemma leaf_has_incoming_and_negative_netFlow (R : Run S) (root leaf : S)
   · -- root ≠ leaf, so use the helper lemma
     exact reachable_leaf_has_incoming_edge R root leaf h_leaf h_eq
 
-/-- For an acyclic run with balanced net flow, there exists a simple path from source to sink. -/
 lemma acyclic_run_has_path_from_source_to_sink (R : Run S) (s d : S)
     (h_acyclic : R.isAcyclic)
     (h_source : R.netFlow s = 1)
     (h_others : ∀ x, x ≠ s → x ≠ d → R.netFlow x = 0) :
     ∃ (path : List S), path.head? = some s ∧ path.getLast? = some d ∧
-      path ≠ [] ∧ R.containsPath path ∧ path.Nodup := by sorry
+      path ≠ [] ∧ R.containsPath path ∧ path.Nodup := by
+  have h_source_pos : R.netFlow s > 0 := by
+    rw [h_source]
+    omega
+  obtain ⟨y, hy⟩ := positive_netFlow_has_outgoing_edge R s h_source_pos
+  obtain ⟨leaf, h_leaf⟩ := acyclic_has_leaf R s h_acyclic ⟨y, hy⟩
+  have h_leaf_neg : R.netFlow leaf < 0 :=
+    leaf_has_incoming_and_negative_netFlow R s leaf h_leaf ⟨y, hy⟩
+  have h_leaf_eq_d : leaf = d :=
+    unique_negative_netFlow R s d leaf h_source h_others h_leaf_neg
+  obtain ⟨h_reach, _h_no_out⟩ := h_leaf
+  obtain ⟨path, h_head, h_last, h_nonempty, h_contains⟩ := h_reach
+  refine ⟨path, h_head, ?_, h_nonempty, h_contains,
+    acyclic_containsPath_nodup R path h_acyclic h_contains⟩
+  simpa [h_leaf_eq_d] using h_last
+
 
 /-- Main theorem: If the net flow is +1 at source s, anything at sink d,
     and 0 elsewhere, then there exists a cycle-free path from s to d. -/

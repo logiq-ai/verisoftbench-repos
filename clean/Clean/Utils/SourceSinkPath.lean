@@ -7,6 +7,8 @@ import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Algebra.BigOperators.Group.Finset.Piecewise
 import Mathlib.Algebra.BigOperators.Ring.Finset
 
+import Mathlib.Data.List.Nodup
+import Mathlib.Data.Fintype.Card
 /-!
 # State Transition with +1 Source and -1 Sink
 
@@ -878,8 +880,40 @@ lemma containsPath_append_singleton (R : Run S) (path : List S) (x y : S)
     unfold countTransitionInPath at h_count_same ⊢
     aesop
 
-/-- Helper: Starting from a current node with outgoing edges, excluding visited states,
-    we can find a leaf reachable from the root. Uses strong induction on unvisited state count. -/
+theorem acyclic_path_endpoint_leaf_or_fresh_successor (R : Run S) (root current : S)
+    (path : List S)
+    (h_acyclic : R.isAcyclic)
+    (h_start : path.head? = some root)
+    (h_end : path.getLast? = some current)
+    (h_nonempty : path ≠ [])
+    (h_contains : R.containsPath path) :
+    R.isLeaf root current ∨ ∃ y, y ∉ path ∧ R (current, y) > 0 := by
+  by_cases h_out : ∃ y, R (current, y) > 0
+  · rcases h_out with ⟨y, h_edge⟩
+    right
+    refine ⟨y, ?_, h_edge⟩
+    intro h_y_in_path
+    exact acyclic_edge_not_in_path R path current y h_acyclic h_end h_contains h_edge h_y_in_path
+  · left
+    refine ⟨?_, ?_⟩
+    · exact ⟨path, h_start, h_end, h_nonempty, h_contains⟩
+    · intro y
+      have h_not_pos : ¬ R (current, y) > 0 := by
+        intro h_edge
+        exact h_out ⟨y, h_edge⟩
+      omega
+
+theorem nodup_fresh_extension_length_lt_card (path : List S) (y : S)
+    (h_nodup : path.Nodup)
+    (h_not_mem : y ∉ path) :
+    path.length < Fintype.card S := by
+  have h_ext_nodup : (path ++ [y]).Nodup := by
+    simpa [List.concat_eq_append] using (List.nodup_concat path y).2 ⟨h_not_mem, h_nodup⟩
+  have h_card : (path ++ [y]).length ≤ Fintype.card S := List.Nodup.length_le_card h_ext_nodup
+  have h_succ : path.length + 1 ≤ Fintype.card S := by
+    simpa using h_card
+  exact lt_of_lt_of_le (Nat.lt_succ_self path.length) h_succ
+
 lemma acyclic_has_leaf_aux (R : Run S) (root current : S)
     (path : List S)
     (h_acyclic : R.isAcyclic)
@@ -888,7 +922,46 @@ lemma acyclic_has_leaf_aux (R : Run S) (root current : S)
     (h_nonempty : path ≠ [])
     (h_contains : R.containsPath path)
     (h_has_out : ∃ y, y ∉ path ∧ R (current, y) > 0) :
-    ∃ leaf, R.isLeaf root leaf := by sorry
+    ∃ leaf, R.isLeaf root leaf := by
+  let P : Nat → Prop := fun n =>
+    ∀ {root current : S} {path : List S},
+      Fintype.card S - path.length = n →
+      path.head? = some root →
+      path.getLast? = some current →
+      path ≠ [] →
+      R.containsPath path →
+      (∃ y, y ∉ path ∧ R (current, y) > 0) →
+      ∃ leaf, R.isLeaf root leaf
+  have hP : ∀ n, (∀ m < n, P m) → P n := by
+    intro n ih root current path h_measure h_start h_end h_nonempty h_contains h_has_out
+    rcases h_has_out with ⟨y, h_y_not_mem, h_edge⟩
+    have h_nodup : path.Nodup := acyclic_containsPath_nodup R path h_acyclic h_contains
+    have h_len_lt : path.length < Fintype.card S :=
+      nodup_fresh_extension_length_lt_card path y h_nodup h_y_not_mem
+    have h_contains' : R.containsPath (path ++ [y]) :=
+      containsPath_append_singleton R path current y h_nonempty h_end h_contains h_y_not_mem h_edge
+    have h_start' : (path ++ [y]).head? = some root := by
+      simpa [h_start] using (List.head?_append_of_ne_nil path (l₂ := [y]) h_nonempty)
+    have h_end' : (path ++ [y]).getLast? = some y := by
+      simpa using (List.getLast?_append_of_ne_nil path (l₂ := [y]) (by simp : [y] ≠ []))
+    have h_nonempty' : path ++ [y] ≠ [] := by simp
+    have h_next :=
+      acyclic_path_endpoint_leaf_or_fresh_successor R root y (path ++ [y])
+        h_acyclic h_start' h_end' h_nonempty' h_contains'
+    rcases h_next with h_leaf | h_has_out'
+    · exact ⟨y, h_leaf⟩
+    · have h_measure_lt : Fintype.card S - (path ++ [y]).length < n := by
+        rw [← h_measure]
+        simp [List.length_append, h_len_lt]
+        omega
+      exact ih (Fintype.card S - (path ++ [y]).length) h_measure_lt
+        (root := root) (current := y) (path := path ++ [y])
+        rfl h_start' h_end' h_nonempty' h_contains' h_has_out'
+  have h_main : P (Fintype.card S - path.length) :=
+    Nat.strong_induction_on (p := P) (Fintype.card S - path.length) hP
+  exact h_main (root := root) (current := current) (path := path)
+    rfl h_start h_end h_nonempty h_contains h_has_out
+
 
 /-- A finite DAG reachable from a root has at least one leaf. -/
 lemma acyclic_has_leaf (R : Run S) (root : S)

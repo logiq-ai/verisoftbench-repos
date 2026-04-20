@@ -499,7 +499,35 @@ There are two cases to consider:
   Finally, `c (n₁ + n₂)` is a value, which is in turn a normal form by `nf_same_as_value`.
 -/
 
-theorem step_normalizing : normalizing Step := by sorry
+theorem step_normalizing : normalizing Step := by
+  unfold normalizing
+  intro t
+  induction t with
+  | c n =>
+      refine ⟨c n, ?_, ?_⟩
+      · apply multi_refl
+      · exact value_is_nf _ (v_const n)
+  | p t₁ t₂ ih₁ ih₂ =>
+      rcases ih₁ with ⟨t₁', h₁, nf₁⟩
+      rcases ih₂ with ⟨t₂', h₂, nf₂⟩
+      have hv₁ : Value t₁' := (nf_same_as_value _).mp nf₁
+      have hv₂ : Value t₂' := (nf_same_as_value _).mp nf₂
+      cases hv₁ with
+      | v_const n₁ =>
+          cases hv₂ with
+          | v_const n₂ =>
+              refine ⟨c (n₁ + n₂), ?_, ?_⟩
+              · have h1' : p t₁ t₂ ~~>* p (c n₁) t₂ :=
+                  multistep_congr_1 _ _ _ h₁
+                have h2' : p (c n₁) t₂ ~~>* p (c n₁) (c n₂) :=
+                  multistep_congr_2 _ _ _ h₂
+                have h3' : p (c n₁) (c n₂) ~~>* c (n₁ + n₂) :=
+                  multi_R Tm Step _ _ (st_plusConstConst n₁ n₂)
+                have hp12 : p t₁ t₂ ~~>* p (c n₁) (c n₂) :=
+                  multi_trans Tm Step _ _ _ h1' h2'
+                exact multi_trans Tm Step _ _ _ hp12 h3'
+              · exact value_is_nf _ (v_const (n₁ + n₂))
+
 
 /-
 ### Equivalence of big-step and small-step

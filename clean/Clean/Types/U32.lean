@@ -337,16 +337,49 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
-omit [Fact (Nat.Prime p)] p_large_enough in
+theorem nat_bitwise_add_mul256 (f : Bool → Bool → Bool) {a b x y : ℕ} (ha : a < 256) (hb : b < 256) :
+    f false false = false →
+    Nat.bitwise f (a + 256 * x) (b + 256 * y) =
+      Nat.bitwise f a b + 256 * Nat.bitwise f x y := by
+  intro hff
+  calc
+    Nat.bitwise f (a + 256 * x) (b + 256 * y)
+        = (Nat.bitwise f (a + 256 * x) (b + 256 * y)) % 2 ^ 8
+            + 2 ^ 8 * ((Nat.bitwise f (a + 256 * x) (b + 256 * y)) / 2 ^ 8) := by
+              exact (Nat.mod_add_div _ _).symm
+    _ = Nat.bitwise f ((a + 256 * x) % 2 ^ 8) ((b + 256 * y) % 2 ^ 8)
+          + 2 ^ 8 * Nat.bitwise f ((a + 256 * x) / 2 ^ 8) ((b + 256 * y) / 2 ^ 8) := by
+            rw [Nat.bitwise_mod_two_pow hff, Nat.bitwise_div_two_pow hff]
+    _ = Nat.bitwise f a b + 256 * Nat.bitwise f x y := by
+          norm_num
+          rw [Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb]
+          rw [Nat.add_mul_div_left _ _ (by norm_num : 0 < 256), Nat.div_eq_of_lt ha, zero_add]
+          rw [Nat.add_mul_div_left _ _ (by norm_num : 0 < 256), Nat.div_eq_of_lt hb, zero_add]
+
+theorem u32_normalized_bounds {x : U32 (F p)} (x_norm : x.Normalized) :
+    x.x0.val < 256 ∧ x.x1.val < 256 ∧ x.x2.val < 256 ∧ x.x3.val < 256 := by
+  simpa [U32.Normalized] using x_norm
+
+theorem u32_value_eq_nested (x : U32 (F p)) :
+    x.value = x.x0.val + 256 * (x.x1.val + 256 * (x.x2.val + 256 * x.x3.val)) := by
+  simpa using (value_horner x)
+
 lemma bitwise_componentwise (f : Bool → Bool → Bool)
     {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     f false false = false →
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  obtain ⟨hx0, hx1, hx2, hx3⟩ := u32_normalized_bounds x_norm
+  obtain ⟨hy0, hy1, hy2, hy3⟩ := u32_normalized_bounds y_norm
+  rw [u32_value_eq_nested x, u32_value_eq_nested y]
+  rw [nat_bitwise_add_mul256 f hx0 hy0 hff]
+  rw [nat_bitwise_add_mul256 f hx1 hy1 hff]
+  rw [nat_bitwise_add_mul256 f hx2 hy2 hff]
 
-omit [Fact (Nat.Prime p)] p_large_enough in
+
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     x.value ||| y.value =
     (x.x0.val ||| y.x0.val) + 256 *

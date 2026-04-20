@@ -409,13 +409,54 @@ theorem MemoryAccessList.lastWriteValue_filter (accesses : MemoryAccessList)
       simp only [h_addr, ↓reduceIte, ih]
 
 
-/--
-  If a memory access list is online consistent, then the filtered list for a specific address is
-  online consistent as well.
--/
+theorem MemoryAccessList.isConsistentOnline_filter_of_consistentOnline_strong (accesses : MemoryAccessList) (h_sorted : accesses.isTimestampSorted) (h_consistent : MemoryAccessList.isConsistentOnline accesses h_sorted) (addr : ℕ) (h_filtered : (MemoryAccessList.filterAddress accesses addr).isTimestampSorted) : MemoryAccessList.isConsistentOnline (MemoryAccessList.filterAddress accesses addr) h_filtered := by
+  induction accesses with
+  | nil =>
+      simp only [MemoryAccessList.filterAddress, List.filter_nil, MemoryAccessList.isConsistentOnline]
+  | cons head tail ih =>
+      obtain ⟨t, a, r, w⟩ := head
+      have h_sorted_tail : MemoryAccessList.isTimestampSorted tail := by
+        exact List.Sorted.of_cons h_sorted
+      simp only [MemoryAccessList.isConsistentOnline] at h_consistent
+      obtain ⟨h_read, h_tail⟩ := h_consistent
+      by_cases h_addr : a = addr
+      · subst a
+        simp [MemoryAccessList.filterAddress, List.filter_cons, MemoryAccessList.isConsistentOnline] at h_filtered ⊢
+        constructor
+        · rw [MemoryAccessList.lastWriteValue_filter tail h_sorted_tail addr (List.Sorted.of_cons h_filtered)] at h_read
+          exact h_read
+        · exact ih h_sorted_tail h_tail (List.Sorted.of_cons h_filtered)
+      · simp [MemoryAccessList.filterAddress, List.filter_cons, h_addr] at h_filtered ⊢
+        exact ih h_sorted_tail h_tail h_filtered
+
 theorem MemoryAccessList.isConsistentOnline_filter_of_consistentOnline (accesses : MemoryAccessList) (h_sorted : accesses.isTimestampSorted)
     (h_consistent : MemoryAccessList.isConsistentOnline accesses h_sorted) (addr : ℕ) :
-    MemoryAccessList.isConsistentOnline (MemoryAccessList.filterAddress accesses addr) (MemoryAccessList.filterAddress_sorted accesses h_sorted addr) := by sorry
+    MemoryAccessList.isConsistentOnline (MemoryAccessList.filterAddress accesses addr) (MemoryAccessList.filterAddress_sorted accesses h_sorted addr) := by
+  have aux : ∀ (accesses : MemoryAccessList) (h_sorted : accesses.isTimestampSorted)
+      (h_consistent : MemoryAccessList.isConsistentOnline accesses h_sorted)
+      (addr : ℕ) (h_filtered : (MemoryAccessList.filterAddress accesses addr).isTimestampSorted),
+      MemoryAccessList.isConsistentOnline (MemoryAccessList.filterAddress accesses addr) h_filtered := by
+    intro accesses h_sorted h_consistent addr h_filtered
+    induction accesses generalizing addr with
+    | nil =>
+        simp only [MemoryAccessList.filterAddress, List.filter_nil, MemoryAccessList.isConsistentOnline]
+    | cons head tail ih =>
+        rcases head with ⟨t, a, r, w⟩
+        have h_sorted_tail : MemoryAccessList.isTimestampSorted tail := List.Sorted.of_cons h_sorted
+        simp only [MemoryAccessList.isConsistentOnline] at h_consistent
+        rcases h_consistent with ⟨h_read, h_tail⟩
+        by_cases h_addr : a = addr
+        · simp [MemoryAccessList.filterAddress, List.filter_cons, h_addr, MemoryAccessList.isConsistentOnline] at h_filtered ⊢
+          constructor
+          · have h_read' : r = MemoryAccessList.lastWriteValue tail h_sorted_tail addr := by
+              simpa [h_addr] using h_read
+            have h_last := MemoryAccessList.lastWriteValue_filter tail h_sorted_tail addr (List.Sorted.of_cons h_filtered)
+            exact h_read'.trans h_last
+          · exact ih h_sorted_tail h_tail addr (List.Sorted.of_cons h_filtered)
+        · simp [MemoryAccessList.filterAddress, List.filter_cons, h_addr] at h_filtered ⊢
+          exact ih h_sorted_tail h_tail addr h_filtered
+  exact aux accesses h_sorted h_consistent addr (MemoryAccessList.filterAddress_sorted accesses h_sorted addr)
+
 
 theorem MemoryAccessList.isTimestampSorted_cons (head : MemoryAccess) (tail : MemoryAccessList) :
     isTimestampSorted (head :: tail) → isTimestampSorted tail := by

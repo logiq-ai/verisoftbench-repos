@@ -13,6 +13,7 @@ import Std.Data.HashMap
   8.1 Simplifying expressions using smart constructors
 -/
 
+import Std.Data.HashMap.Lemmas
 open Classical in
 instance [BEq α] [BEq β] [Hashable α] : BEq (Std.HashMap α β) where
   beq m n := Id.run do
@@ -601,4 +602,75 @@ theorem cp_bexp_sound :
 -/
 theorem cp_com_correct_terminating :
   ∀ c s1 s2 S1,
-  cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by sorry
+  cexec s1 c s2 -> matches' s1 S1 -> cexec s1 (cp_com S1 c) s2 := by
+  intro c s1 s2 S1 EXEC MATCHES
+  revert S1 MATCHES
+  induction EXEC <;> intro S1 MATCHES
+  case cexec_skip s =>
+    simpa [cp_com] using (cexec.cexec_skip (s := s))
+  case cexec_assign s x a =>
+    have hcp : aeval s (cp_aexp S1 a) = aeval s a := cp_aexp_sound s S1 MATCHES a
+    simpa [cp_com, hcp] using (cexec.cexec_assign (s := s) (x := x) (a := cp_aexp S1 a))
+  case cexec_seq s c1 smid c2 sfinal EXEC1 EXEC2 ih1 ih2 =>
+    exact cexec.cexec_seq
+      (ih1 S1 MATCHES)
+      (ih2 (Cexec S1 c1) (Cexec_sound c1 s smid S1 EXEC1 MATCHES))
+  case cexec_ifthenelse s b c1 c2 sfinal EXEC ih =>
+    unfold cp_com
+    apply cexec_mk_IFTHENELSE
+    have ih' := ih S1 MATCHES
+    cases hbe : beval s b <;> simp [hbe, cp_bexp_sound s S1 MATCHES b, cp_com] at ih' ⊢
+    · exact ih'
+    · exact ih'
+  case cexec_while_done s b c hfalse =>
+    unfold cp_com
+    apply cexec_mk_WHILE_done
+    have HM : matches' s (Cexec S1 (.WHILE b c)) :=
+      Cexec_sound (.WHILE b c) s s S1 (cexec.cexec_while_done hfalse) MATCHES
+    rw [cp_bexp_sound s (Cexec S1 (.WHILE b c)) HM b, hfalse]
+  case cexec_while_loop s b c smid sfinal htrue EXEC1 EXEC2 ih1 ih2 =>
+    generalize hF : (fun x => Join S1 (Cexec x c)) = F
+    generalize hX : fixpoint F S1 = X
+    have hstart : matches' s X := by
+      apply matches_Le
+      · exact @fixpoint_sound X F S1 hX.symm
+      · rw [← hF]
+        apply matches_Le
+        · exact Le_Join_l S1 (Cexec X c)
+        · exact MATCHES
+    have hbody : cexec s (cp_com X c) smid := ih1 X hstart
+    have hbeq : beval s (cp_bexp X b) = true := by
+      rw [cp_bexp_sound s X hstart b, htrue]
+    have hCx : Le (Cexec X c) X := by
+      intro x n hx
+      have hfx : (F X).get? x = .some n := by
+        exact (@fixpoint_sound X F S1 hX.symm) x n hx
+      rw [← hF] at hfx
+      exact (Le_Join_r S1 (Cexec X c)) x n hfx
+    have hJoinEq : Equal (Join X (Cexec X c)) X := by
+      rw [Join]
+      apply (Std.HashMap.filter_equiv_self_iff (m := X) (f := fun key _ => (Cexec X c).get? key == X.get? key)).2
+      intro k hk
+      have hk' := Std.HashMap.getElem?_eq_some_getElem (m := X) (a := k) hk
+      have hk'' : (Cexec X c).get? k = .some (X.get k hk) :=
+        hCx k (X.get k hk) (by simpa using hk')
+      simpa [hk'] using hk''
+    have hCexecWhile : Cexec X (.WHILE b c) = X := by
+      unfold Cexec fixpoint num_iter
+      simp [fixpoint_rec, hJoinEq]
+    have hmid : matches' smid X := by
+      apply matches_Le
+      · exact @fixpoint_sound X F S1 hX.symm
+      · rw [← hF]
+        apply matches_Le
+        · exact Le_Join_r S1 (Cexec X c)
+        · exact Cexec_sound c s smid X EXEC1 hstart
+    have hloop : cexec smid (mk_WHILE (cp_bexp X b) (cp_com X c)) sfinal := by
+      simpa [cp_com, hCexecWhile] using (ih2 X hmid)
+    have hSX : Cexec S1 (.WHILE b c) = X := by
+      unfold Cexec
+      rw [hF, hX]
+    simpa [cp_com, hSX] using
+      (cexec_mk_WHILE_loop (b := cp_bexp X b) (c := cp_com X c)
+        (s1 := s) (s2 := smid) (s3 := sfinal) hbeq hbody hloop)
+

@@ -231,9 +231,32 @@ lemma foldlAcc_cons_succ (i : Fin m) (x : α) [constant : ConstantLength (prod c
   rw [constant.localLength_eq (init, x), ←constant.localLength_eq (acc, _) 0]
   ac_rfl
 
-theorem operations_eq :
-  (Vector.foldlM circuit init xs).operations n =
-    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by sorry
+theorem operations_eq_cons_rhs (x : α) :
+  (List.ofFn fun (i : Fin (m + 1)) =>
+    (circuit (foldlAcc n (Vector.cons x xs) circuit init i) (Vector.cons x xs)[i.val]).operations
+      (n + i * constant.localLength)).flatten =
+    (circuit init x).operations n ++
+      (List.ofFn fun (i : Fin m) =>
+        (circuit (foldlAcc (n + (circuit init x).localLength n) xs circuit ((circuit init x).output n) i) xs[i.val]).operations
+          (n + (circuit init x).localLength n + i * constant.localLength)).flatten := by
+  rw [List.ofFn_succ, List.flatten_cons]
+  congr
+  · simp only [foldlAcc_zero, Fin.val_zero, zero_mul, add_zero, Vector.cons, Vector.getElem_mk,
+      List.getElem_toArray, List.getElem_cons_zero]
+  · funext i
+    rw [foldlAcc_cons_succ]
+    simp only [Vector.cons, Vector.getElem_mk, List.getElem_toArray, List.getElem_cons_succ, Fin.val_succ]
+    rw [add_mul, one_mul, ←constant.localLength_eq (init, x) n]
+    ac_rfl
+
+theorem operations_eq: (Vector.foldlM circuit init xs).operations n =
+    (List.ofFn fun i => (circuit (foldlAcc n xs circuit init i) xs[i.val]).operations (n + i * constant.localLength)).flatten := by
+  induction xs using Vector.induct generalizing init n with
+  | nil =>
+      rfl
+  | cons x xs ih =>
+      rw [foldlM_cons, bind_operations_eq, ih, operations_eq_cons_rhs (x := x)]
+
 
 variable {prop : Condition F}
 

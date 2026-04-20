@@ -143,11 +143,16 @@ lemma liftComp_seq (og : OracleComp spec (α → β)) (oa : OracleComp spec α) 
     liftComp (og <*> oa) superSpec = liftComp og superSpec <*> liftComp oa superSpec := by
   simp [liftComp, seq_eq_bind, Function.comp_def]
 
-/-- Lifting a computation to a different set of oracles doesn't change the output distribution,
-since `evalDist` assumes uniformly random queries. -/
-@[simp]
 lemma evalDist_liftComp [spec.FiniteRange] [superSpec.FiniteRange]
-    (oa : OracleComp spec α) : evalDist (liftComp oa superSpec) = evalDist oa := by sorry
+    (oa : OracleComp spec α) : evalDist (liftComp oa superSpec) = evalDist oa := by
+  induction oa using OracleComp.inductionOn with
+  | pure x =>
+      simp
+  | failure =>
+      simp
+  | query_bind i t oa ih =>
+      simp [ih, Function.comp_def]
+
 
 @[simp] -- NOTE: shouldn't actually need finiteness here.
 lemma support_liftComp [spec.FiniteRange] [superSpec.FiniteRange]

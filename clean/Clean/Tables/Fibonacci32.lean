@@ -116,15 +116,69 @@ lemma fib_vars (curr next : Row (F p) RowType) (aux_env : Environment (F p)) :
     Fin.isValue, List.getElem_toArray, List.getElem_cons_zero, List.getElem_cons_succ]
   and_intros <;> rfl
 
-/--
-  Main lemma that shows that if the constraints hold over the two-row window,
-  then the Spec of add32 and equality are satisfied
--/
+def fib_add_inputVar : Var Gadgets.Addition32.Inputs (F p) := { x := varFromOffset U32 0, y := varFromOffset U32 4 }
+
+def fib_add_outputVar : Var U32 (F p) := U32.mk (var ⟨16⟩) (var ⟨18⟩) (var ⟨20⟩) (var ⟨22⟩)
+
+def fib_eq_inputVar : Var (ProvablePair U32 U32) (F p) := (varFromOffset U32 4, varFromOffset U32 8)
+
+def fib_windowEnv (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : Environment (F p) := recursiveRelation.windowEnv ⟨<+> +> curr +> next, rfl⟩ aux_env
+
+theorem fib_constraints_addition_sound (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env → Gadgets.Addition32.Assumptions (eval (fib_windowEnv curr next aux_env) fib_add_inputVar) → Gadgets.Addition32.Spec (eval (fib_windowEnv curr next aux_env) fib_add_inputVar) (eval (fib_windowEnv curr next aux_env) fib_add_outputVar) := by
+  intro h hAs
+  change Circuit.ConstraintsHold.Soundness (fib_windowEnv curr next aux_env) recursiveRelation.operations at h
+  simp only [recursiveRelation, table_norm, circuit_norm] at h
+  have h0 := h.1
+  change ((Gadgets.Addition32.circuit).toSubcircuit 16 fib_add_inputVar).Soundness
+      (fib_windowEnv curr next aux_env) at h0
+  have hspec := h0 hAs
+  simpa [fib_add_outputVar] using hspec
+
+theorem fib_constraints_addition (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env → curr.x.Normalized → curr.y.Normalized → next.y.value = (curr.x.value + curr.y.value) % 2^32 ∧ next.y.Normalized := by
+  intro h hx hy
+  have hvars := fib_vars (p := p) curr next aux_env
+  dsimp [fib_windowEnv] at hvars
+  rcases hvars with ⟨hcurrx, hcurry, _, hnexty⟩
+  have hinput : eval (fib_windowEnv curr next aux_env) fib_add_inputVar = Gadgets.Addition32.Inputs.mk curr.x curr.y := by
+    rw [ProvableStruct.eval_eq_eval (x := fib_add_inputVar)]
+    simp [ProvableStruct.eval, ProvableStruct.fromComponents, ProvableStruct.eval.go,
+      ProvableType.eval_field, fib_add_inputVar, fib_windowEnv, hcurrx, hcurry]
+  have hAs : Gadgets.Addition32.Assumptions (eval (fib_windowEnv curr next aux_env) fib_add_inputVar) := by
+    rw [hinput]
+    exact ⟨hx, hy⟩
+  have hout : eval (fib_windowEnv curr next aux_env) fib_add_outputVar = next.y := by
+    simpa [fib_add_outputVar, fib_windowEnv] using hnexty
+  have hspec := fib_constraints_addition_sound (p := p) curr next aux_env h hAs
+  rw [hinput, hout] at hspec
+  simpa [Gadgets.Addition32.Spec] using hspec
+
+theorem fib_constraints_eq_eval (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env → eval (fib_windowEnv curr next aux_env) (varFromOffset U32 4) = eval (fib_windowEnv curr next aux_env) (varFromOffset U32 8) := by
+  intro h
+  simp only [recursiveRelation, table_norm, circuit_norm] at h
+  have hEq : ((Gadgets.Equality.circuit U32).toSubcircuit 24 fib_eq_inputVar).Soundness
+      (fib_windowEnv curr next aux_env) := by
+    set_option maxHeartbeats 4000000 in
+    simpa only [fib_eq_inputVar, fib_windowEnv, recursiveRelation, table_norm, circuit_norm] using h.2.1
+  simpa only [fib_eq_inputVar, Gadgets.Equality.soundness] using hEq
+
+theorem fib_constraints_eq (curr next : Row (F p) RowType) (aux_env : Environment (F p)) : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env → curr.y = next.x := by
+  intro h
+  have hraw := fib_constraints_eq_eval (p := p) curr next aux_env h
+  have hvars := fib_vars (p := p) curr next aux_env
+  dsimp [fib_windowEnv] at hraw hvars
+  rcases hvars with ⟨_, hy, hnextx, _⟩
+  simpa [hy, hnextx] using hraw
+
 lemma fib_constraints (curr next : Row (F p) RowType) (aux_env : Environment (F p))
   : recursiveRelation.ConstraintsHoldOnWindow ⟨<+> +> curr +> next, rfl⟩ aux_env →
   curr.y = next.x ∧
   (curr.x.Normalized → curr.y.Normalized → next.y.value = (curr.x.value + curr.y.value) % 2^32 ∧ next.y.Normalized)
-   := by sorry
+   := by
+  intro h
+  refine ⟨fib_constraints_eq (p:=p) curr next aux_env h, ?_⟩
+  intro hx hy
+  exact fib_constraints_addition (p:=p) curr next aux_env h hx hy
+
 
 lemma boundary_constraints (first_row : Row (F p) RowType) (aux_env : Environment (F p)) :
   Circuit.ConstraintsHold.Soundness (windowEnv boundary ⟨<+> +> first_row, rfl⟩ aux_env) boundary.operations →

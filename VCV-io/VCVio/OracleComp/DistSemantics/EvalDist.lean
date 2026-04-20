@@ -658,8 +658,40 @@ lemma probOutput_bind_of_const (y : β) (r : ℝ≥0∞) (h : ∀ x, [= y | ob x
     [= y | oa >>= ob] = (1 - [⊥ | oa]) * r := by
   simp [probOutput_bind_eq_tsum, h, ENNReal.tsum_mul_right, tsum_probOutput_eq_sub]
 
+theorem ennreal_add_sub_mul_of_le_one (a r : ℝ≥0∞) (ha : a ≤ 1) (hr : r ≤ 1) : a + (1 - a) * r = a + r - a * r := by
+  have hr_ne_top : r ≠ ∞ := ne_top_of_le_ne_top one_ne_top hr
+  rw [ENNReal.sub_mul (a := 1) (b := a) (c := r) (by intro _ _; exact hr_ne_top)]
+  simp only [one_mul]
+  have hmul : a * r ≤ r := by
+    calc
+      a * r ≤ 1 * r := by exact mul_le_mul_right' ha r
+      _ = r := by simp only [one_mul]
+  have hmul_ne_top : a * r ≠ ∞ := ne_top_of_le_ne_top one_ne_top (le_trans hmul hr)
+  calc
+    a + (r - a * r) = r - a * r + a := by rw [add_comm]
+    _ = r + a - a * r := ENNReal.sub_add_eq_add_sub hmul hmul_ne_top
+    _ = a + r - a * r := by rw [add_comm]
+
 lemma probFailure_bind_of_const [Nonempty α] (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :
-    [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by sorry
+    [⊥ | oa >>= ob] = [⊥ | oa] + r - [⊥ | oa] * r := by
+  obtain ⟨x⟩ := ‹Nonempty α›
+  have hr_le_one : r ≤ 1 := by
+    simpa only [h x] using (probFailure_le_one (oa := ob x))
+  calc
+    [⊥ | oa >>= ob] = [⊥ | oa] + ∑' x, [= x | oa] * [⊥ | ob x] := by
+      rw [probFailure_bind_eq_tsum]
+    _ = [⊥ | oa] + ∑' x, [= x | oa] * r := by
+      congr 1
+      apply tsum_congr
+      intro x
+      rw [h x]
+    _ = [⊥ | oa] + (∑' x, [= x | oa]) * r := by
+      rw [ENNReal.tsum_mul_right]
+    _ = [⊥ | oa] + (1 - [⊥ | oa]) * r := by
+      rw [tsum_probOutput_eq_sub]
+    _ = [⊥ | oa] + r - [⊥ | oa] * r := by
+      exact ennreal_add_sub_mul_of_le_one [⊥ | oa] r (probFailure_le_one (oa := oa)) hr_le_one
+
 
 lemma probFailure_bind_eq_sub_mul {oa : OracleComp spec α} {ob : α → OracleComp spec β}
     (r : ℝ≥0∞) (h : ∀ x, [⊥ | ob x] = r) :

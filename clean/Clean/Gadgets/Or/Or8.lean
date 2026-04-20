@@ -130,7 +130,51 @@ theorem soundness : Soundness (F p) elaborated Assumptions Spec := by
   show Nat.bitwise _ _ _ < 2 ^ 8
   exact Nat.bitwise_lt_two_pow hx_byte hy_byte
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem or_witness_mul_val (x y : F p) (hx : x.val < 256) (hy : y.val < 256) : (2 * (((x.val ||| y.val : ℕ) : F p))).val = 2 * (x.val ||| y.val) := by
+  have h_or_lt : x.val ||| y.val < 256 := Nat.or_lt_two_pow (n := 8) hx hy
+  have h_or_val : ((((x.val ||| y.val : ℕ) : F p))).val = x.val ||| y.val := by
+    apply FieldUtils.val_lt_p
+    linarith [h_or_lt, p_large_enough.elim]
+  have h_mul_lt : 2 * (x.val ||| y.val) < p := by
+    linarith [h_or_lt, p_large_enough.elim]
+  rw [ZMod.val_mul_of_lt]
+  · rw [val_two, h_or_val]
+  · simpa [val_two, h_or_val] using h_mul_lt
+
+theorem or_witness_sub1_val (x y : F p) (hx : x.val < 256) (hy : y.val < 256) : (2 * (((x.val ||| y.val : ℕ) : F p)) - x).val = 2 * (x.val ||| y.val) - x.val := by
+  have h_sub1_le : x.val ≤ (2 * (((x.val ||| y.val : ℕ) : F p))).val := by
+    rw [or_witness_mul_val x y hx hy]
+    have h_or_ge : x.val ≤ x.val ||| y.val := Nat.left_le_or
+    omega
+  rw [ZMod.val_sub h_sub1_le, or_witness_mul_val x y hx hy]
+
+theorem or_witness_xor_val (x y : F p) (hx : x.val < 256) (hy : y.val < 256) : (2 * (((x.val ||| y.val : ℕ) : F p)) - x - y).val = x.val ^^^ y.val := by
+  have h_sub2_le : y.val ≤ (2 * (((x.val ||| y.val : ℕ) : F p)) - x).val := by
+    rw [or_witness_sub1_val x y hx hy]
+    have h_two_or := two_or_ge_add (x := x.val) (y := y.val) hx hy
+    omega
+  rw [ZMod.val_sub h_sub2_le, or_witness_sub1_val x y hx hy]
+  simpa using or_times_two_sub_xor' (x := x.val) (y := y.val) hx hy
+
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro offset env input_var h_env input h_input h_assumptions
+  cases input_var with
+  | mk x_var y_var =>
+    cases input with
+    | mk x y =>
+      simp only [circuit_norm, main, Assumptions, ByteXorTable, Inputs.mk.injEq] at h_env h_input ⊢
+      rcases h_input with ⟨hx_eval, hy_eval⟩
+      simp only [hx_eval, hy_eval] at h_env ⊢
+      rcases h_assumptions with ⟨hx, hy⟩
+      refine ⟨hx, hy, ?_⟩
+      rw [h_env]
+      have hsub :
+          2 * (((x.val ||| y.val : ℕ) : F p)) + -x + -y =
+            2 * (((x.val ||| y.val : ℕ) : F p)) - x - y := by
+        ring
+      rw [hsub]
+      simpa using or_witness_xor_val x y hx hy
+
 
 def circuit : FormalCircuit (F p) Inputs field :=
   { Assumptions, Spec, soundness, completeness }

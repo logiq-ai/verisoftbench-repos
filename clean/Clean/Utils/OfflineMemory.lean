@@ -599,15 +599,23 @@ theorem MemoryAccessList.filterAddress_addressTimestampSort_eq
   -- Since the lists are equal, the iff is trivial
   simp only [h_eq]
 
-/--
-  Constructive version of the theorem below.
--/
-theorem MemoryAccessList.isConsistentOnline_iff_sorted_isConsistentOffline
-    (accesses : MemoryAccessList)
+theorem MemoryAccessList.isConsistentOnline_iff_sorted_isConsistentOffline (accesses : MemoryAccessList)
     (h_sorted : accesses.isTimestampSorted)
     (h_nodup : accesses.Notimestampdup) :
     MemoryAccessList.isConsistentOnline accesses h_sorted ↔
-    MemoryAccessList.isConsistentOffline (MemoryAccessList.addressTimestampSort accesses) (MemoryAccessList.addressTimestampSort_sorted accesses) := by sorry
+    MemoryAccessList.isConsistentOffline (MemoryAccessList.addressTimestampSort accesses) (MemoryAccessList.addressTimestampSort_sorted accesses) := by
+  let h_online := MemoryAccessList.isConsistent_iff_all_single_address accesses h_sorted
+  let h_offline := MemoryAccessList.isConsistentOffline_iff_all_single_addresses (MemoryAccessList.addressTimestampSort accesses) (MemoryAccessList.addressTimestampSort_sorted accesses) (MemoryAccessList.addressTimestampSort_noTimestampDup accesses h_nodup)
+  constructor
+  · intro h
+    apply h_offline.mpr
+    intro addr
+    exact (MemoryAccessList.filterAddress_addressTimestampSort_eq accesses h_sorted h_nodup addr).1 ((h_online.mp h) addr)
+  · intro h
+    apply h_online.mpr
+    intro addr
+    exact (MemoryAccessList.filterAddress_addressTimestampSort_eq accesses h_sorted h_nodup addr).2 ((h_offline.mp h) addr)
+
 
 /--
   Technical lemma for soundness: if there exists two address-timestamp sorted lists of memory accesses

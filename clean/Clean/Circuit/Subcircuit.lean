@@ -337,9 +337,26 @@ theorem compose_computableWitnesses (circuit : ElaboratedCircuit F β α) (input
   exact h_input
 end ElaboratedCircuit
 
+theorem Circuit.subcircuit_computableWitnesses_ops_iff (circuit : FormalCircuit F β α) (input : Var β F) (n : ℕ) (env env' : Environment F) :
+  ((subcircuit circuit input).operations n).ComputableWitnesses n env env' ↔
+    ((circuit.main input).operations n).ComputableWitnesses n env env' := by
+  simp only [subcircuit, Circuit.operations, Operations.ComputableWitnesses,
+    Operations.forAllFlat, Operations.forAll, and_true]
+  let cond : Condition F :=
+    { witness := fun n _ compute => env.AgreesBelow n env' → compute env = compute env' }
+  change FlatOperation.forAll n cond (((circuit.main input).operations n).toFlat) ↔
+    ((circuit.main input).operations n).forAllFlat n cond
+  exact Operations.forAll_toFlat_iff n cond ((circuit.main input).operations n)
+
 theorem Circuit.subcircuit_computableWitnesses (circuit : FormalCircuit F β α) (input : Var β F) (n : ℕ) :
   Environment.OnlyAccessedBelow n (eval · input) ∧ circuit.ComputableWitnesses →
-    (subcircuit circuit input).ComputableWitnesses n := by sorry
+    (subcircuit circuit input).ComputableWitnesses n := by
+  intro h
+  have h_main := ElaboratedCircuit.compose_computableWitnesses (circuit := circuit.elaborated) input n ⟨h.1, h.2⟩
+  intro env env'
+  have h_main' := h_main env env'
+  exact (Circuit.subcircuit_computableWitnesses_ops_iff circuit input n env env').2 h_main'
+
 
 -- to reduce offsets, `circuit_norm` will use these theorems to unfold subcircuits
 attribute [circuit_norm] Circuit.subcircuit_localLength_eq Circuit.assertion_localLength_eq

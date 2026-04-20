@@ -534,7 +534,17 @@ lemma probOutput_congr {x y : α} {oa : OracleComp spec α} {oa' : OracleComp sp
 
 lemma probEvent_congr' {p q : α → Prop} {oa : OracleComp spec α} {oa' : OracleComp spec' α}
     (h1 : ∀ x, x ∈ oa.support → x ∈ oa'.support → (p x ↔ q x))
-    (h2 : evalDist oa = evalDist oa') : [p | oa] = [q | oa'] := by sorry
+    (h2 : evalDist oa = evalDist oa') : [p | oa] = [q | oa'] := by
+  have hsupport : ∀ x, x ∈ oa.support ↔ x ∈ oa'.support :=
+    mem_support_iff_of_evalDist_eq h2
+  have hleft : [p | oa] = [q | oa] := by
+    apply probEvent_ext
+    intro x hx
+    exact h1 x hx ((hsupport x).1 hx)
+  have hright : [q | oa] = [q | oa'] := by
+    exact probEvent_congr (oa := oa) (oa' := oa') (p := q) (q := q) (fun _ => Iff.rfl) h2
+  exact hleft.trans hright
+
 
 
 @[simp] lemma probEvent_const (oa : OracleComp spec α) (p : Prop) [Decidable p] :

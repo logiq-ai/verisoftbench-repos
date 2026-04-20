@@ -551,7 +551,90 @@ example : btrans_sound fold_constants_bexp := by
 Finally, here's the proof for commands:
 -/
 
-theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by sorry
+theorem fold_constants_com_if_sound (b : BExp) (c₁ c₂ : Com) : cequiv c₁ (fold_constants_com c₁) → cequiv c₂ (fold_constants_com c₂) → cequiv <{if <[b]> then <[c₁]> else <[c₂]> end}> (fold_constants_com <{if <[b]> then <[c₁]> else <[c₂]> end}>) := by
+  intro hc₁ hc₂
+  let hb : bequiv b (fold_constants_bexp b) := fold_constants_bexp_sound b
+  cases hfb : fold_constants_bexp b <;> simp [fold_constants_com, hfb]
+  · have hbtrue : bequiv b <{true}> := by
+      simpa [hfb] using hb
+    apply trans_cequiv
+    · exact if_true b c₁ c₂ hbtrue
+    · exact hc₁
+  · have hbfalse : bequiv b <{false}> := by
+      simpa [hfb] using hb
+    apply trans_cequiv
+    · exact if_false b c₁ c₂ hbfalse
+    · exact hc₂
+  · apply c_if_congruence
+    · simpa [hfb] using hb
+    · exact hc₁
+    · exact hc₂
+  · apply c_if_congruence
+    · simpa [hfb] using hb
+    · exact hc₁
+    · exact hc₂
+  · apply c_if_congruence
+    · simpa [hfb] using hb
+    · exact hc₁
+    · exact hc₂
+  · apply c_if_congruence
+    · simpa [hfb] using hb
+    · exact hc₁
+    · exact hc₂
+  · apply c_if_congruence
+    · simpa [hfb] using hb
+    · exact hc₁
+    · exact hc₂
+  · apply c_if_congruence
+    · simpa [hfb] using hb
+    · exact hc₁
+    · exact hc₂
+
+theorem fold_constants_com_while_sound (b : BExp) (c : Com) : cequiv c (fold_constants_com c) → cequiv <{while <[b]> do <[c]> end}> (fold_constants_com <{while <[b]> do <[c]> end}>) := by
+  intro hc
+  have hb : bequiv b (fold_constants_bexp b) := fold_constants_bexp_sound b
+  cases hfb : fold_constants_bexp b <;> simp [fold_constants_com, hfb]
+  · have hbtrue : bequiv b <{true}> := by
+      simpa [hfb] using hb
+    exact while_true b c hbtrue
+  · have hbfalse : bequiv b <{false}> := by
+      simpa [hfb] using hb
+    exact while_false b c hbfalse
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact hc
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact hc
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact hc
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact hc
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact hc
+  · apply c_while_congruence
+    · simpa [hfb] using hb
+    · exact hc
+
+theorem fold_constants_com_sound : ctrans_sound fold_constants_com := by
+  intro c
+  induction c with
+  | c_skip =>
+      simpa [fold_constants_com] using (refl_cequiv c_skip)
+  | c_asgn x a =>
+      simpa [fold_constants_com] using
+        (c_asgn_congruence x a (fold_constants_aexp a) (fold_constants_aexp_sound a))
+  | c_seq c₁ c₂ ih₁ ih₂ =>
+      simpa [fold_constants_com] using
+        (c_seq_congruence c₁ (fold_constants_com c₁) c₂ (fold_constants_com c₂) ih₁ ih₂)
+  | c_if b c₁ c₂ ih₁ ih₂ =>
+      exact fold_constants_com_if_sound b c₁ c₂ ih₁ ih₂
+  | c_while b c ih =>
+      exact fold_constants_com_while_sound b c ih
+
 
 /-
 ## references

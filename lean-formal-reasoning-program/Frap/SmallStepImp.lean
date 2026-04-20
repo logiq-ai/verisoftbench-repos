@@ -399,9 +399,45 @@ theorem par_body_n n st
 ... the above loop can exit with `x` having any value whatsoever.
 -/
 
+theorem par_loop_exit (st : State) : Multi CStep (par_loop, st) (c_skip, y !-> 1; st) := by
+  apply multi_step
+  · apply cs_par1
+    apply cs_asgn
+  · apply multi_step
+    · apply cs_par2
+      apply cs_while
+    · apply multi_step
+      · apply cs_par2
+        apply cs_ifStep
+        apply bs_eq1
+        apply as_id
+      · apply multi_step
+        · apply cs_par2
+          apply cs_ifStep
+          apply bs_eq
+        · apply multi_step
+          · apply cs_par2
+            simp [update]
+            apply cs_ifFalse
+          · apply multi_R
+            apply cs_parDone
+
 theorem par_loop_any_x n
     : ∃ st', Multi CStep (par_loop, empty) (c_skip, st')
-        ∧ st' x = n := by sorry
+        ∧ st' x = n := by
+  have h0 : empty x = 0 ∧ empty y = 0 := by
+    simp [empty]
+  rcases par_body_n n empty h0 with ⟨st, hbody, hx, hy⟩
+  refine ⟨y !-> 1; st, ?_, ?_⟩
+  · apply multi_trans (y := (par_loop, st))
+    · exact hbody
+    · exact par_loop_exit st
+  · calc
+      (y !-> 1; st) x = st x := by
+        apply lookup_update_neq
+        simp [x, y]
+      _ = n := hx
+
 
 end CImp
 

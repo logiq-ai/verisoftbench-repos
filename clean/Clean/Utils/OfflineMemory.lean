@@ -468,12 +468,33 @@ def MemoryAccessList.isConsistentOffline (accesses : MemoryAccessList) (h_sorted
     (if addr1 = addr2 then readValue2 = writeValue1 else readValue2 = 0) ∧
     MemoryAccessList.isConsistentOffline ((t1, addr1, readValue1, writeValue1) :: rest) (List.Sorted.of_cons h_sorted)
 
-theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted
-    (accesses : MemoryAccessList)
+theorem MemoryAccessList.timestamp_ordering_of_mem_filterAddress_of_addressStrict (accesses : MemoryAccessList) (addr : ℕ) (x y : MemoryAccess) (hx : List.Mem x (accesses.filterAddress addr)) (hy : List.Mem y (accesses.filterAddress addr)) (hxy : address_strict_timestamp_ordering x y) : timestamp_ordering x y := by
+  rcases x with ⟨tx, ax, rx, wx⟩
+  rcases y with ⟨ty, ay, ry, wy⟩
+  have hx' := (List.mem_filter).1 hx
+  have hy' := (List.mem_filter).1 hy
+  have haddr : ay = ax := by
+    have hax : ax = addr := by simpa using hx'.2
+    have hay : ay = addr := by simpa using hy'.2
+    omega
+  simpa [address_strict_timestamp_ordering, timestamp_ordering, haddr] using hxy
+
+theorem MemoryAccessList.filterAddress_sorted_from_addressTimestampSorted (accesses : MemoryAccessList)
     (h_sorted : accesses.isAddressTimestampSorted)
     (h_nodup : accesses.Notimestampdup)
     (addr : ℕ) :
-    (accesses.filterAddress addr).isTimestampSorted := by sorry
+    (accesses.filterAddress addr).isTimestampSorted := by
+  unfold MemoryAccessList.isTimestampSorted
+  have h_strict := MemoryAccessList.addressStrictTimestampSorted_of_AddressTimestampSorted_noTimestampDup accesses h_sorted h_nodup
+  have h_filter_strict : (accesses.filterAddress addr).Sorted address_strict_timestamp_ordering := by
+    unfold MemoryAccessList.isAddressStrictTimestampSorted at h_strict
+    simpa only [MemoryAccessList.filterAddress] using
+      List.Sorted.filter (fun (_timestamp, addr', _readValue, _writeValue) => addr' = addr) h_strict
+  exact List.Pairwise.imp_of_mem
+    (fun {x y} hx hy hxy =>
+      MemoryAccessList.timestamp_ordering_of_mem_filterAddress_of_addressStrict accesses addr x y hx hy hxy)
+    h_filter_strict
+
 
 theorem MemoryAccessList.isConsistentSingleAddress_filterAddress_forall_of_cons
     (head : MemoryAccess) (tail : MemoryAccessList)

@@ -305,7 +305,28 @@ theorem forAll_iff_const [NeZero m] (constant : ConstantLength (prod circuit))
   (circuit init (xs[0]'(NeZero.pos m))).forAll n prop ∧
   ∀ (i : ℕ) (hi : i + 1 < m),
     let acc := (circuit default xs[i]).output (n + i*(circuit default default).localLength);
-    (circuit acc xs[i + 1]).forAll (n + (i + 1)*(circuit default default).localLength) prop := by sorry
+    (circuit acc xs[i + 1]).forAll (n + (i + 1)*(circuit default default).localLength) prop := by
+  rw [FoldlM.forAll_iff (constant := constant)]
+  constructor
+  · intro h
+    constructor
+    · simpa using h 0
+    · intro i hi
+      have hacc := FoldlM.foldlAcc_const_succ (constant := constant) (h_const_out := h_const_out) (n := n) (xs := xs) (circuit := circuit) (init := init) i hi
+      have hlen : (circuit init xs[i + 1]).localLength = (circuit default default).localLength := by
+        rw [constant.localLength_eq (init, xs[i + 1]), constant.localLength_eq (default, default)]
+      simpa [hacc, hlen]
+        using h ⟨i + 1, hi⟩
+  · intro h i
+    rcases i with ⟨i, hi'⟩
+    rcases i with _ | i
+    · simpa using h.1
+    · have hi : i + 1 < m := hi'
+      have hacc := FoldlM.foldlAcc_const_succ (constant := constant) (h_const_out := h_const_out) (n := n) (xs := xs) (circuit := circuit) (init := init) i hi
+      have hlen : (circuit init xs[i + 1]).localLength = (circuit default default).localLength := by
+        rw [constant.localLength_eq (init, xs[i + 1]), constant.localLength_eq (default, default)]
+      simpa [hacc, hlen] using h.2 i hi
+
 
 end FoldlM
 

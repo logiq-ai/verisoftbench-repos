@@ -85,9 +85,35 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
+theorem foldl_eq_toList_foldl_aux {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) : v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by
+  rw [Vector.foldl]
+  rw [← Array.foldl_toList]
+  rfl
+
+theorem tail_toList_eq_aux {α} {n : ℕ} (v : Vector α n) : v.tail.toList = v.toList.tail := by
+  rw [Vector.tail_eq_cast_extract, Vector.toList_cast, Vector.toList_extract, List.drop_one]
+  exact (List.take_eq_self_iff v.toList.tail).2 (by rw [List.length_tail, Vector.length_toList])
+
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  rw [foldl_eq_toList_foldl_aux, foldl_eq_toList_foldl_aux, tail_toList_eq_aux]
+  have hpos : 0 < v.toList.length := by
+    simpa [Vector.length_toList] using Nat.pos_of_neZero n
+  have hdecomp0 : v.toList = v.toList[0] :: v.toList.drop 1 := by
+    simpa using (List.drop_eq_getElem_cons (i := 0) (l := v.toList) hpos)
+  have hhead : v.toList[0] = v.head := by
+    simpa [Vector.head] using (Vector.getElem_toList (xs := v) (i := 0) hpos)
+  have hdecomp : v.toList = v.head :: v.toList.tail := by
+    calc
+      v.toList = v.toList[0] :: v.toList.drop 1 := hdecomp0
+      _ = v.head :: v.toList.drop 1 := by rw [hhead]
+      _ = v.head :: v.toList.tail := by rw [List.drop_one]
+  calc
+    List.foldl f init v.toList = List.foldl f init (v.head :: v.toList.tail) := by
+      nth_rewrite 1 [hdecomp]
+      rfl
+    _ = List.foldl f (f init v.head) v.toList.tail := by rw [List.foldl_cons]
+
 
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by

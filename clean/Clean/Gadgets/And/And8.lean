@@ -82,7 +82,54 @@ instance elaborated : ElaboratedCircuit (F p) Inputs field where
 
 theorem soundness : Soundness (F p) elaborated Assumptions Spec := by sorry
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem and_nat_cast_val (x y : F p) : x.val < 256 → y.val < 256 → (((x.val &&& y.val : ℕ) : F p).val = x.val &&& y.val) := by
+  intro hx hy
+  have h_and_byte : x.val &&& y.val < 256 := Nat.and_lt_two_pow (n := 8) x.val hy
+  apply val_lt_p
+  linarith [h_and_byte, p_large_enough.elim]
+
+theorem xor_lookup_val (x y : F p) : x.val < 256 → y.val < 256 → (x + y - 2 * ((x.val &&& y.val : ℕ) : F p)).val = x.val ^^^ y.val := by
+  intro hx hy
+  have hp : p > 512 := p_large_enough.out
+  have hxy : (x + y).val = x.val + y.val := by
+    apply ZMod.val_add_of_lt
+    omega
+  have hand : (((x.val &&& y.val : ℕ) : F p)).val = x.val &&& y.val := by
+    exact and_nat_cast_val x y hx hy
+  have hlt_and : x.val &&& y.val < 256 := by
+    have hy8 : y.val < 2 ^ 8 := by
+      simpa using hy
+    have h : x.val &&& y.val < 2 ^ 8 :=
+      Nat.and_lt_two_pow x.val (y := y.val) (n := 8) hy8
+    simpa using h
+  have h2and' :
+      (2 * ((x.val &&& y.val : ℕ) : F p)).val
+        = (2 : F p).val * (((x.val &&& y.val : ℕ) : F p)).val := by
+    apply ZMod.val_mul_of_lt
+    rw [val_two, hand]
+    omega
+  have h2and : (2 * ((x.val &&& y.val : ℕ) : F p)).val = 2 * (x.val &&& y.val) := by
+    rw [h2and', val_two, hand]
+  have hsub :
+      (x + y - 2 * ((x.val &&& y.val : ℕ) : F p)).val
+        = (x + y).val - (2 * ((x.val &&& y.val : ℕ) : F p)).val := by
+    apply ZMod.val_sub
+    rw [hxy, h2and]
+    exact two_and_le_add hx hy
+  rw [hsub, hxy, h2and]
+  rw [← and_times_two_add_xor hx hy]
+  omega
+
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro i env input_var h_env input h_input h_assumptions
+  rcases input_var with ⟨x_var, y_var⟩
+  rcases input with ⟨x, y⟩
+  simp only [circuit_norm, explicit_provable_type, Inputs.mk.injEq] at h_input
+  rcases h_input with ⟨hx, hy⟩
+  simp only [circuit_norm, explicit_provable_type, main, Assumptions, ByteXorTable, hx, hy] at h_env ⊢
+  exact ⟨h_assumptions.1, h_assumptions.2, by
+    simpa [sub_eq_add_neg, h_env] using xor_lookup_val x y h_assumptions.1 h_assumptions.2⟩
+
 
 def circuit : FormalCircuit (F p) Inputs field :=
   { Assumptions, Spec, soundness, completeness }

@@ -360,7 +360,53 @@ def ExtractNonDet.prop {α : Type u} (s : NonDetT m α) :  ExtractNonDet WeakFin
 namespace DemonicChoice
 
 lemma ExtractNonDet.extract_refines_wp (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
-  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by sorry
+  wp s post ⊓ s.prop ⊤ <= wp s.extract post := by
+  induction inst with
+  | pure x =>
+      simp [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, wp_pure]
+  | vis x f ex ih =>
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_vis, wp_bind, monadLift_self]
+      rw [inf_comm, wlp_join_wp]
+      apply wp_cons
+      intro a
+      simpa [inf_comm] using ih a
+  | pickSuchThat τ p f ex ih =>
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_pickCont]
+      split
+      · rename_i hfind
+        have hp : ∀ t, ¬ p t := Findable.find_none (p := p) (by simpa [hfind])
+        simp [hp, hfind]
+      · rename_i x hfind
+        have hx : p x := Findable.find_some_p (p := p) hfind
+        have hwp :
+            (⨅ t, ⌜p t⌝ ⇨ wp (f t) post) ⊓ ((⨅ t, ⌜p t⌝ ⇨ (f t).prop ⊤) ⊓ ⨆ t, ⌜p t⌝) <=
+              wp (f x) post := by
+          apply le_trans inf_le_left
+          simpa [hx] using (iInf_le (fun t => ⌜p t⌝ ⇨ wp (f t) post) x)
+        have hprop :
+            (⨅ t, ⌜p t⌝ ⇨ wp (f t) post) ⊓ ((⨅ t, ⌜p t⌝ ⇨ (f t).prop ⊤) ⊓ ⨆ t, ⌜p t⌝) <=
+              (f x).prop ⊤ := by
+          apply le_trans inf_le_right
+          apply le_trans inf_le_left
+          simpa [hx] using (iInf_le (fun t => ⌜p t⌝ ⇨ (f t).prop ⊤) x)
+        exact le_trans (le_inf hwp hprop) (ih x)
+  | assume p f ex ih =>
+      simp only [NonDetT.extract, NonDetT.extractGen, NonDetT.prop, NonDetT.wp_pickCont]
+      by_cases hp : p .unit
+      · simp [hp, iSup_const]
+        have hwp : (⨅ a, wp (f a) post) ⊓ ⨅ t, (f t).prop ⊤ <= wp (f .unit) post := by
+          apply le_trans inf_le_left
+          simpa using (iInf_le (fun a => wp (f a) post) PUnit.unit)
+        have hprop : (⨅ a, wp (f a) post) ⊓ ⨅ t, (f t).prop ⊤ <= (f .unit).prop ⊤ := by
+          apply le_trans inf_le_right
+          simpa using (iInf_le (fun t => (f t).prop ⊤) PUnit.unit)
+        exact le_trans (le_inf hwp hprop) (ih .unit)
+      · have hnone : ∀ a : PUnit, ¬ p a := by
+          intro a
+          cases a
+          simpa using hp
+        simp [hp, hnone, iSup_const]
+
 
 lemma ExtractNonDet.extract_refines (pre : l) (s : NonDetT m α) (inst : ExtractNonDet Findable s) :
   triple pre s post ->

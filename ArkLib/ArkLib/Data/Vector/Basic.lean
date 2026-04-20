@@ -85,9 +85,25 @@ theorem cons_toList_eq_List_cons {α} {n : ℕ} (hd : α) (tl : Vector α n) :
   simp only [List.insertIdx_zero]
 
 -- TODO: this theorem should not be so hard...
-theorem foldl_succ
- {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
-  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by sorry
+theorem foldl_succ {α β} {n : ℕ} [NeZero n] (f : β → α → β) (init : β) (v : Vector α n) :
+  v.foldl (f:=f) (b:=init) = v.tail.foldl (f:=f) (b:=f init v.head) := by
+  cases n with
+  | zero =>
+      cases ‹NeZero 0›.out rfl
+  | succ n =>
+      cases v with
+      | mk xs h =>
+          cases xs with
+          | mk l =>
+              cases l with
+              | nil =>
+                  have h0 : 0 = n + 1 := by simpa using h
+                  exact False.elim ((Nat.succ_ne_zero n) h0.symm)
+              | cons a t =>
+                  simp [Vector.foldl, Vector.head, Vector.tail]
+                  have htlen : t.length = n := by simpa using h
+                  rw [List.take_of_length_le (Nat.le_of_eq htlen)]
+
 
 theorem foldl_eq_toList_foldl {α β} {n : ℕ} (f : β → α → β) (init : β) (v : Vector α n) :
   v.foldl (f:=f) (b:=init) = v.toList.foldl (f:=f) (init:=init) := by

@@ -401,10 +401,75 @@ theorem compile_aexp_correct (C : List instr) (s : store) (a : aexp) (pc : Int) 
   - leave the stack unchanged
   - leave the store unchanged.
 -/
-theorem compile_bexp_correct (C : List instr) (s : store) (b : bexp) (d1 d0 : Int) (pc : Int) (stk : stack) (h : code_at C pc (compile_bexp b d1 d0))  :
-   transitions C
-       (pc, stk, s)
-       (pc + codelen (compile_bexp b d1 d0) + (if beval s b then d1 else d0), stk, s) := by sorry
+theorem compile_bexp_correct (C : List instr) (s : store) (b : bexp) (d1 d0 : Int) (pc : Int) (stk : stack) (h : code_at C pc (compile_bexp b d1 d0)) : transitions C (pc, stk, s) (pc + codelen (compile_bexp b d1 d0) + (if beval s b then d1 else d0), stk, s) := by
+  -- Primary strategy: prove the theorem by structural induction on `b`, generalizing `C`, `pc`, and `stk`, exactly in the style of `compile_aexp_correct`.
+  -- 
+  -- Main lemmas/results to use:
+  -- - `compile_aexp_correct`
+  -- - `star_one`
+  -- - `star_trans`
+  -- - `code_at_app_left`, `code_at_app_right`, `code_at_app_right2`
+  -- - `code_at_to_instr_at`
+  -- - `codelen_app`, `codelen_singleton`
+  -- - constructors `transition.trans_branch`, `transition.trans_beq`, `transition.trans_ble`
+  -- 
+  -- Suggested proof skeleton:
+  -- 1. `induction b generalizing C pc stk`.
+  -- 2. For each case, `simp [compile_bexp, beval]` (and `codelen_app` / `Int.add_assoc` when needed), then introduce the `code_at` hypothesis.
+  -- 
+  -- Case details:
+  -- - `TRUE`:
+  --   Do `by_cases hd1 : d1 = 0`.
+  --   * If `hd1`, then `compile_bexp .TRUE d1 d0 = []`, so the goal is reflexive: `unfold transitions`; `grind`.
+  --   * Otherwise the code is `[instr.Ibranch d1]`; use `star_one`, then `transition.trans_branch`. `grind` should recover `instr_at C pc = .some (.Ibranch d1)` from the `code_at` hypothesis (or use `code_at_head`/`cases h` if needed). The target pc is `pc + 1 + d1`.
+  -- 
+  -- - `FALSE`:
+  --   Same argument, but split on `d0 = 0` and use `.Ibranch d0`.
+  -- 
+  -- - `EQUAL a1 a2`:
+  --   The compiled code is `compile_aexp a1 ++ compile_aexp a2 ++ [instr.Ibeq d1 d0]`.
+  --   Use `star_trans` three times:
+  --   * first `compile_aexp_correct` for `a1` at `(pc, stk, s)`;
+  --   * then `compile_aexp_correct` for `a2` at `(pc + codelen (compile_aexp a1), aeval s a1 :: stk, s)`;
+  --   * finally one step with `transition.trans_beq`.
+  --   For the last step, obtain the branch instruction with
+  --   `have := @code_at_to_instr_at C pc (compile_aexp a1 ++ compile_aexp a2) (instr.Ibeq d1 d0) []`.
+  --   Then `grind` / `simp [codelen_app, Int.add_assoc]` should close the arithmetic and boolean rewriting.
+  -- 
+  -- - `LESSEQUAL a1 a2`:
+  --   Exactly the same pattern as `EQUAL`, ending with `transition.trans_ble`.
+  -- 
+  -- - `NOT b1`:
+  --   `compile_bexp (.NOT b1) d1 d0 = compile_bexp b1 d0 d1`. Apply the IH with swapped jump distances and finish with
+  --   `simpa [compile_bexp, beval]`.
+  --   If the boolean simplification does not fire immediately, rewrite `if beval s b1 then d0 else d1` vs `if !(beval s b1) then d1 else d0` by cases on `beval s b1`.
+  -- 
+  -- - `AND b1 b2`:
+  --   Let
+  --   `code2 := compile_bexp b2 d1 d0`
+  --   and
+  --   `code1 := compile_bexp b1 0 (codelen code2 + d0)`.
+  --   The whole code is `code1 ++ code2`.
+  -- 
+  --   First apply the IH for `b1` to `code1`, obtaining
+  --   `transitions C (pc, stk, s)
+  --       (pc + codelen code1 + (if beval s b1 then 0 else codelen code2 + d0), stk, s)`.
+  -- 
+  --   Now split on `hb1 : beval s b1 = true`.
+  --   * If `hb1`, rewrite the first result to land at `(pc + codelen code1, stk, s)`. From the original `code_at` hypothesis for `code1 ++ code2`, get `code_at C (pc + codelen code1) code2` using `code_at_app_right`. Then apply the IH for `b2` starting from this new pc. Finish with
+  --     `simpa [code1, code2, hb1, codelen_app, Int.add_assoc]`.
+  --   * If `hb1 = false`, the first IH already jumps over `code2` by exactly `codelen code2 + d0`; finish with
+  --     `simpa [code1, code2, hb1, codelen_app, Int.add_assoc]`.
+  -- 
+  -- Sanity check / disproof check:
+  -- - The statement is consistent with the operational behavior of every constructor.
+  -- - The only subtle point is `AND`: when `b1 = false`, the compiled code for `b1` must skip over all of `code2` and then apply the false offset `d0`; this is exactly why the false branch of `code1` is `codelen code2 + d0`. So no obvious counterexample.
+  -- 
+  -- Alternative tactics:
+  -- - In `TRUE`/`FALSE`, instead of relying on `grind` to recover `instr_at`, you can `cases h` and use `instr_a` directly.
+  -- - In `AND`, `cases hb1 : beval s b1` is equivalent to `by_cases hb1 : beval s b1 = true` if the boolean normalization behaves better that way.
+  sorry
+
 /-
   4.2 Correctness of generated code for commands, terminating case.
 -/

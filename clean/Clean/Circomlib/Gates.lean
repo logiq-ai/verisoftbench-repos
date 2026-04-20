@@ -654,7 +654,15 @@ lemma main_output_binary_from_completeness (n : ℕ) (offset : ℕ) (env : Envir
     (h_local_witnesses : env.UsesLocalWitnessesCompleteness offset ((main input_var).operations offset))
     (h_completeness : Circuit.ConstraintsHold.Completeness env ((main input_var).operations offset)) :
     let output := env ((main input_var).output offset)
-    IsBool output := by sorry
+    IsBool output := by
+  have h_uses : env.UsesLocalWitnesses offset ((main input_var).operations offset) := by
+    exact (main_usesLocalWitnesses_iff_completeness n input_var offset offset env rfl).mpr h_local_witnesses
+  have h_constraints : Circuit.ConstraintsHold env ((main input_var).operations offset) := by
+    exact Circuit.can_replace_completeness (env := env)
+      (ops := ((main input_var).operations offset)) (n := offset)
+      (subcircuitsConsistent n input_var offset) h_uses h_completeness
+  exact main_output_binary n offset env input_var input h_eval h_assumptions h_constraints
+
 
 theorem completeness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields n) (F p))

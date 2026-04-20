@@ -500,7 +500,67 @@ example : atrans_sound fold_constants_aexp := by
 Here's the proof for boolean expressions:
 -/
 
-theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by sorry
+theorem fold_constants_bexp_and_step_sound (b1 b2 : BExp) : bequiv b1 (fold_constants_bexp b1) → bequiv b2 (fold_constants_bexp b2) → bequiv (b_and b1 b2) (fold_constants_bexp (b_and b1 b2)) := by
+  intro ih1 ih2 st
+  cases h1 : fold_constants_bexp b1 <;> cases h2 : fold_constants_bexp b2 <;>
+    simp [fold_constants_bexp, beval, h1, h2, ih1 st, ih2 st, *]
+
+theorem fold_constants_bexp_eq_case_sound (a1 a2 : AExp) : bequiv (b_eq a1 a2) (fold_constants_bexp (b_eq a1 a2)) := by
+  intro st
+  simp [beval, fold_constants_bexp]
+  rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+  split <;> (
+    rename_i heq
+    simp [aeval] at heq
+    obtain ⟨⟩ := heq
+  ) <;> (try split) <;> simp [beval, aeval, *]
+
+theorem fold_constants_bexp_le_case_sound (a1 a2 : AExp) : bequiv (b_le a1 a2) (fold_constants_bexp (b_le a1 a2)) := by
+  intro st
+  simp [beval, fold_constants_bexp]
+  rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+  split <;> (
+    rename_i heq
+    simp at heq
+    obtain ⟨⟩ := heq
+  ) <;> (try split) <;> simp [beval, aeval, *]
+
+theorem fold_constants_bexp_neq_case_sound (a1 a2 : AExp) : bequiv (b_neq a1 a2) (fold_constants_bexp (b_neq a1 a2)) := by
+  intro st
+  simp [beval, fold_constants_bexp]
+  rw [fold_constants_aexp_sound a1 st, fold_constants_aexp_sound a2 st]
+  split <;> (
+    rename_i heq
+    simp at heq
+    obtain ⟨⟩ := heq
+  ) <;> (try split) <;> simp [aeval, beval, *]
+
+theorem fold_constants_bexp_not_step_sound (b1 : BExp) : bequiv b1 (fold_constants_bexp b1) → bequiv (b_not b1) (fold_constants_bexp (b_not b1)) := by
+  intro ih st
+  cases h : fold_constants_bexp b1 <;> simp [fold_constants_bexp, beval, h, ih st]
+
+theorem fold_constants_bexp_or_step_sound (b1 b2 : BExp) : bequiv b1 (fold_constants_bexp b1) → bequiv b2 (fold_constants_bexp b2) → bequiv (b_or b1 b2) (fold_constants_bexp (b_or b1 b2)) := by
+  intro ih1 ih2 st
+  simp [beval]
+  rw [ih1 st, ih2 st]
+  cases h1 : fold_constants_bexp b1 <;> cases h2 : fold_constants_bexp b2 <;> simp [fold_constants_bexp, beval, h1, h2]
+
+theorem fold_constants_bexp_sound : btrans_sound fold_constants_bexp := by
+  intro b
+  induction b with
+  | b_true =>
+      intro st
+      rfl
+  | b_false =>
+      intro st
+      rfl
+  | b_eq a1 a2 => exact fold_constants_bexp_eq_case_sound a1 a2
+  | b_neq a1 a2 => exact fold_constants_bexp_neq_case_sound a1 a2
+  | b_le a1 a2 => exact fold_constants_bexp_le_case_sound a1 a2
+  | b_not b1 ih => exact fold_constants_bexp_not_step_sound b1 ih
+  | b_and b1 b2 ih1 ih2 => exact fold_constants_bexp_and_step_sound b1 b2 ih1 ih2
+  | b_or b1 b2 ih1 ih2 => exact fold_constants_bexp_or_step_sound b1 b2 ih1 ih2
+
 
 /-
 We see that after doing each split, we need to focus on the last hypothesis and simplify it for further use.

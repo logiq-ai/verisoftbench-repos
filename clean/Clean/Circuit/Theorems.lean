@@ -491,15 +491,34 @@ lemma Environment.agreesBelow_of_le {F} {n m : ℕ} {env env' : Environment F} :
   fun h_same hi i hi' => h_same i (Nat.lt_of_lt_of_le hi' hi)
 
 namespace FlatOperation
-/--
-If all witness generators only access the environment below the current offset, then
-the entire circuit only accesses the environment below `n + localLength`.
-
-This is not currently used, but seemed like a nice result to have.
--/
 theorem onlyAccessedBelow_all {ops : List (FlatOperation F)} (n : ℕ) :
   forAll n { witness n _ := Environment.OnlyAccessedBelow n } ops →
-    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by sorry
+    Environment.OnlyAccessedBelow (n + localLength ops) (localWitnesses · ops) := by
+  intro h
+  induction ops generalizing n with
+  | nil =>
+      intro env env' _
+      rfl
+  | cons op ops ih =>
+      cases op with
+      | witness m c =>
+          simp only [forAll, localLength, localWitnesses, Environment.OnlyAccessedBelow] at h ⊢
+          intro env env' hsame
+          have hsame_n : env.AgreesBelow n env' :=
+            Environment.agreesBelow_of_le hsame (by omega)
+          have hc_eq : c env = c env' := h.1 env env' hsame_n
+          have hsame_tail : env.AgreesBelow ((m + n) + localLength ops) env' :=
+            Environment.agreesBelow_of_le hsame (by omega)
+          have htail_eq : localWitnesses env ops = localWitnesses env' ops :=
+            ih (n := m + n) h.2 env env' hsame_tail
+          simp only [hc_eq, htail_eq]
+      | assert e =>
+          simp only [forAll, localLength, localWitnesses, Environment.OnlyAccessedBelow] at h ⊢
+          simpa using ih (n := n) h.2
+      | lookup l =>
+          simp only [forAll, localLength, localWitnesses, Environment.OnlyAccessedBelow] at h ⊢
+          simpa using ih (n := n) h.2
+
 end FlatOperation
 
 -- theorem about relationship between FormalCircuit and GeneralFormalCircuit

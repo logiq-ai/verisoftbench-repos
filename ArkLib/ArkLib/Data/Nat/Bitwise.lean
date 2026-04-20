@@ -950,8 +950,73 @@ lemma getBit_eq_pred_getBit_of_div_two {n k : ℕ} (h_k: k > 0) :
   exact Eq.symm (getBit_of_shiftRight (k - 1))
 
 -- TODO: uniqueness of this representation?
+theorem getBit_succ_eq_div_two (k n : ℕ) : getBit (k + 1) n = getBit k (n / 2) := by
+  rw [getBit_eq_testBit, getBit_eq_testBit, Nat.testBit_div_two]
+
+theorem getBit_repr_tail (ℓ j : ℕ) : ∑ k ∈ Finset.Icc 1 (ℓ + 1), (getBit k j) * 2^k = 2 * ∑ t ∈ Finset.Icc 0 ℓ, (getBit t (j / 2)) * 2^t := by
+  calc
+    ∑ k ∈ Finset.Icc 1 (ℓ + 1), (getBit k j) * 2^k
+        = ∑ t ∈ Finset.Icc 0 ℓ, (getBit (t + 1) j) * 2^(t + 1) := by
+            symm
+            refine Finset.sum_bij' (i := fun t ht => t + 1) (j := fun k hk => k - 1) ?_ ?_ ?_ ?_ ?_
+            · intro t ht
+              simp only [Finset.mem_Icc] at ht ⊢
+              omega
+            · intro k hk
+              simp only [Finset.mem_Icc] at hk ⊢
+              omega
+            · intro t ht
+              simp
+            · intro k hk
+              have hk1 : 1 ≤ k := by
+                simp only [Finset.mem_Icc] at hk
+                omega
+              exact Nat.sub_add_cancel hk1
+            · intro t ht
+              rfl
+    _ = ∑ t ∈ Finset.Icc 0 ℓ, 2 * ((getBit t (j / 2)) * 2^t) := by
+          refine Finset.sum_congr rfl ?_
+          intro t ht
+          rw [getBit_eq_pred_getBit_of_div_two (n := j) (k := t + 1) (by omega), Nat.pow_succ]
+          ac_rfl
+    _ = 2 * ∑ t ∈ Finset.Icc 0 ℓ, (getBit t (j / 2)) * 2^t := by
+          rw [← Finset.mul_sum]
+
+theorem getBit_repr_succ (ℓ j : ℕ) : j < 2^(ℓ + 1) → j = ∑ k ∈ Finset.Icc 0 ℓ, (getBit k j) * 2^k := by
+  intro h_j
+  induction ℓ generalizing j with
+  | zero =>
+      have h_j_lt_two : j < 2 := by
+        simpa only [pow_one] using h_j
+      rw [Finset.Icc_self, Finset.sum_singleton]
+      rw [getBit_zero_eq_self h_j_lt_two]
+      simp only [pow_zero, mul_one]
+  | succ ℓ ih =>
+      rw [sum_Icc_split (f := fun k => (getBit k j) * 2 ^ k) (a := 0) (b := 0) (c := ℓ.succ)
+        (by omega) (by omega)]
+      rw [Finset.Icc_self, Finset.sum_singleton]
+      have hbit0 : getBit 0 j = j % 2 := by
+        unfold getBit
+        rw [Nat.shiftRight_zero, Nat.and_one_is_mod]
+      rw [hbit0, pow_zero, mul_one, getBit_repr_tail]
+      have h_j' : j < 2 ^ (ℓ + 1) * 2 := by
+        simpa only [Nat.succ_eq_add_one, add_assoc, Nat.pow_succ] using h_j
+      have h_div : j / 2 < 2 ^ (ℓ + 1) := by
+        omega
+      rw [← ih (j / 2) h_div]
+      exact (Nat.mod_add_div j 2).symm
+
 theorem getBit_repr {ℓ : Nat} : ∀ j, j < 2^ℓ →
-  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by sorry
+  j = ∑ k ∈ Finset.Icc 0 (ℓ-1), (getBit k j) * 2^k := by
+  intro j hj
+  cases ℓ with
+  | zero =>
+      have hj0 : j = 0 := by omega
+      subst hj0
+      simp only [Finset.Icc_self, Finset.sum_singleton, getBit_zero_eq_zero, pow_zero, zero_mul]
+  | succ n =>
+      simpa only [Nat.succ_eq_add_one, Nat.add_sub_cancel] using getBit_repr_succ n j hj
+
 
 theorem getBit_repr_univ {ℓ : Nat} : ∀ j, j < 2^ℓ →
   j = ∑ k ∈ Finset.univ (α:=Fin ℓ), (getBit k j) * 2^k.val := by

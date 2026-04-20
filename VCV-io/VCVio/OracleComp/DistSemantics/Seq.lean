@@ -197,13 +197,33 @@ lemma probOutput_seq_map_eq_mul_of_injective2 [spec.FiniteRange]
 
 end injective2
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and there exists unique `x` and `y` such that `f x y = z` (given as explicit arguments),
-then the probability of getting `z` as an output of `f <$> oa <*> ob`
-is the product of probabilities of getting `x` and `y` from `oa` and `ob` respectively. -/
 lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
-    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
+    [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by
+  rw [probOutput_seq_map_eq_tsum]
+  rw [← ENNReal.tsum_prod]
+  refine (tsum_eq_single (x, y) ?_).trans ?_
+  · rintro ⟨x', y'⟩ hxy
+    by_cases hx' : x' ∈ oa.support
+    · by_cases hy' : y' ∈ ob.support
+      · have hzne : z ≠ f x' y' := by
+          intro hz'
+          rcases (h x' hx' y' hy').1 hz' with ⟨rfl, rfl⟩
+          exact hxy rfl
+        simp [probOutput_pure_eq_zero hzne]
+      · rw [probOutput_eq_zero (oa := ob) (x := y') hy']
+        simp
+    · rw [probOutput_eq_zero (oa := oa) (x := x') hx']
+      simp
+  · by_cases hx : x ∈ oa.support
+    · by_cases hy : y ∈ ob.support
+      · have hz : z = f x y := (h x hx y hy).2 ⟨rfl, rfl⟩
+        rw [hz, probOutput_pure_self, mul_one]
+      · rw [probOutput_eq_zero (oa := ob) (x := y) hy]
+        simp
+    · rw [probOutput_eq_zero (oa := oa) (x := x) hx]
+      simp
+
 
 /-- If the results of the computations `oa` and `ob` are combined with some function `f`,
 and `p` is an event such that outputs of `f` are in `p` iff the individual components

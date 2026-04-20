@@ -385,7 +385,10 @@ theorem exists_over_PUnit (p : PUnit → Prop) : (∃ (u : PUnit), p u) = p () :
   simp ; constructor ; intro ⟨⟨⟩, h⟩ ; assumption ; intro h ; exists PUnit.unit
 
 theorem TwoState_sound'_ret_unit [LawfulAction act] (req : SProp σ) (ens : RProp σ PUnit) :
-  act.triple req ens → act.toTwoState.triple req (ens () ·) := by sorry
+  act.triple req ens → act.toTwoState.triple req (ens () ·) := by
+  intro h
+  simpa [TwoState.triple, exists_over_PUnit] using (TwoState_sound' (act := act) req ens h)
+
 
 /-- This is used by `#recover_invariants_in_tr` in `Rabia.lean`. -/
 theorem TwoState_sound'_ret_unit' [LawfulAction act] {st : σ} (ens : RProp σ PUnit) :

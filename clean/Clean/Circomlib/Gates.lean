@@ -629,13 +629,253 @@ lemma completeness_two {p : ℕ} [Fact p.Prime]
       rw [h_eval1]
       exact h_binary1
 
+theorem multiand_foldl_and_split_aux (n1 n2 n3 : ℕ) (v : Vector ℕ n3) (v1 : Vector ℕ n1) (v2 : Vector ℕ n2)
+    (h_sum : n1 + n2 = n3) (h_split : v = h_sum ▸ (v1 ++ v2)) :
+    Vector.foldl (· &&& ·) 1 v =
+      Vector.foldl (· &&& ·) 1 v1 &&& Vector.foldl (· &&& ·) 1 v2 := by
+  rw [h_split]
+  subst h_sum
+  rw [Vector.foldl_append]
+  symm
+  generalize h1 : Vector.foldl (· &&& ·) 1 v1 = a
+  generalize h2 : Vector.foldl (· &&& ·) 1 v2 = b
+  rw [← h2]
+
+  have h_a_bool : IsBool a := by
+    rw [← h1]
+    rw [Vector.foldl_mk, ← Array.foldl_toList]
+    exact List.foldl_and_IsBool v1.toList
+
+  have : ∀ (init : ℕ) (vec : Vector ℕ n2),
+         Vector.foldl (· &&& ·) init vec = List.foldl (· &&& ·) init vec.toList := by
+    intros init vec
+    rw [Vector.foldl_mk, ← Array.foldl_toList]
+    rfl
+  rw [this, this]
+
+  rw [List.and_foldl_eq_foldl]
+  rw [land_one_of_IsBool a h_a_bool]
+
+theorem multiand_input_split_aux {p : ℕ} [Fact p.Prime] (n1 n2 n3 : ℕ)
+    (input : fields n3 (F p)) (h_sum : n1 + n2 = n3) :
+    input =
+      h_sum ▸
+        ((input.take n1 |>.cast (by
+            have hle : n1 ≤ n3 := by omega
+            exact Nat.min_eq_left hle)) ++
+         (input.drop n1 |>.cast (by omega))) := by
+  cases h_sum
+  simpa using (Vector.append_take_drop (v := input)).symm
+
+theorem multiand_map_val_split_aux {p : ℕ} [Fact p.Prime] (n1 n2 n3 : ℕ)
+    (input : fields n3 (F p)) (input1 : fields n1 (F p)) (input2 : fields n2 (F p))
+    (h_sum : n1 + n2 = n3) (h_split_input : input = h_sum ▸ (input1 ++ input2)) :
+    input.map (·.val) = h_sum ▸ (input1.map (·.val) ++ input2.map (·.val)) := by
+  rw [h_split_input]
+  subst h_sum
+  rw [Vector.map_append]
+
+theorem multiand_soundness_one_aux {p : ℕ} [Fact p.Prime] (offset : ℕ) (env : Environment (F p))
+    (input_var : Var (fields 1) (F p)) (input : fields 1 (F p)) :
+    input = eval env input_var →
+    Assumptions 1 input →
+    Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset) →
+    Spec 1 input (env ((main input_var).output offset)) := by
+  intro h_env h_assumptions h_hold
+  simp only [main, Circuit.output, Circuit.pure_def] at h_hold ⊢
+  simp only [Spec]
+  have h_input0 := h_assumptions 0 (by norm_num : 0 < 1)
+  have h_eval_eq : env input_var[0] = input[0] := by
+    simp [h_env, circuit_norm]
+  constructor
+  · simp only [h_eval_eq]
+    have h_fold_one : ∀ (v : Vector (F p) 1),
+      Vector.foldl (fun x1 x2 => x1 &&& x2) 1 (v.map (·.val)) = 1 &&& v[0].val := by
+      intro v
+      rw [Vector.foldl_mk, ← Array.foldl_toList]
+      have h_toList : (v.map (·.val)).toList = [v[0].val] := by
+        rw [Vector.toList_length_one]
+        simp only [Vector.getElem_map]
+      rw [Vector.toList_toArray, h_toList]
+      simp only [List.foldl_cons, List.foldl_nil]
+    rw [h_fold_one]
+    exact (one_land_of_IsBool input[0].val (val_of_IsBool h_input0)).symm
+  · simp only [h_eval_eq]
+    exact h_input0
+
+theorem multiand_soundness_step_aux {p : ℕ} [Fact p.Prime] (m : ℕ)
+    (IH :
+      ∀ (k : ℕ), k < m + 3 →
+        ∀ (offset : ℕ) (env : Environment (F p))
+          (input_var : Var (fields k) (F p)) (input : fields k (F p)),
+          input = eval env input_var →
+          Assumptions k input →
+          Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset) →
+          Spec k input (env ((main input_var).output offset)))
+    (offset : ℕ) (env : Environment (F p))
+    (input_var : Var (fields (m + 3)) (F p)) (input : fields (m + 3) (F p)) :
+    input = eval env input_var →
+    Assumptions (m + 3) input →
+    Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset) →
+    Spec (m + 3) input (env ((main input_var).output offset)) := by
+  intro h_env h_assumptions h_hold
+  let n1 := (m + 3) / 2
+  let n2 := (m + 3) - n1
+  let input_var1 : Var (fields n1) (F p) :=
+    input_var.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega)
+  let input_var2 : Var (fields n2) (F p) :=
+    input_var.drop n1 |>.cast (by omega)
+  let input1 : fields n1 (F p) :=
+    input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega)
+  let input2 : fields n2 (F p) :=
+    input.drop n1 |>.cast (by omega)
+  have h_eval1 : input1 = eval env input_var1 := by
+    simp only [input_var1, input1]
+    apply Vector.ext
+    intro i hi
+    simp only [h_env, ProvableType.eval_fields, Vector.getElem_map, Vector.getElem_cast,
+      Vector.getElem_take]
+  have h_eval2 : input2 = eval env input_var2 := by
+    simp only [input_var2, input2]
+    apply Vector.ext
+    intro i hi
+    simp only [h_env, ProvableType.eval_fields, Vector.getElem_map, Vector.getElem_cast,
+      Vector.getElem_drop]
+  have h_assumptions1 : Assumptions n1 input1 := by
+    intro i hi
+    simp only [input1]
+    have :
+        (input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega))[i]'hi =
+          input[i]'(by omega) := by
+      rw [Vector.getElem_cast, Vector.getElem_take]
+    rw [this]
+    exact h_assumptions i (by omega)
+  have h_assumptions2 : Assumptions n2 input2 := by
+    intro i hi
+    simp only [input2]
+    have :
+        (input.drop n1 |>.cast (by omega))[i]'hi = input[n1 + i]'(by omega) := by
+      rw [Vector.getElem_cast, Vector.getElem_drop]
+    rw [this]
+    exact h_assumptions (n1 + i) (by omega)
+  have h_extract_eq_var1 :
+      Vector.cast (by simp only [Nat.min_def, n1]; split <;> omega)
+        (Vector.extract input_var 0 ((m + 3) / 2)) = input_var1 := by
+    simp only [input_var1, Vector.take_eq_extract, n1]
+  have h_extract_eq_var2 :
+      Vector.cast (by simp only [n1, n2]; omega)
+        (Vector.extract input_var ((m + 3) / 2)) = input_var2 := by
+    simp only [input_var2, Vector.drop_eq_cast_extract, n1]
+    rfl
+  simp only [main, circuit_norm] at h_hold
+  rcases h_hold with ⟨h_hold1, h_hold_rest⟩
+  rcases h_hold_rest with ⟨h_hold2, h_hold3⟩
+  have h_sound1 :=
+    IH n1 (by
+      unfold n1
+      omega) offset env input_var1 input1 h_eval1 h_assumptions1 h_hold1
+  have h_sound2 :=
+    IH n2 (by
+      unfold n2
+      omega) (offset + (main input_var1).localLength offset) env input_var2 input2
+      h_eval2 h_assumptions2 h_hold2
+  have h_sound1' :
+      (env ((main input_var1).output offset)).val = (input1.map (·.val)).foldl (· &&& ·) 1 ∧
+        IsBool (env ((main input_var1).output offset)) := by
+    simpa [Spec] using h_sound1
+  have h_sound2' :
+      (env ((main input_var2).output (offset + (main input_var1).localLength offset))).val =
+          (input2.map (·.val)).foldl (· &&& ·) 1 ∧
+        IsBool (env ((main input_var2).output (offset + (main input_var1).localLength offset))) := by
+    simpa [Spec] using h_sound2
+  let out1 := (main input_var1).output offset
+  let out2 := (main input_var2).output (offset + (main input_var1).localLength offset)
+  have h_out1_bool : IsBool (env out1) := by
+    simpa [out1] using h_sound1'.2
+  have h_out2_bool : IsBool (env out2) := by
+    simpa [out2] using h_sound2'.2
+  let andOffset :=
+    offset + (main input_var1).localLength offset +
+      (main input_var2).localLength (offset + (main input_var1).localLength offset)
+  have h_and :
+      (env ((main input_var).output offset)).val = (env out1).val &&& (env out2).val ∧
+        IsBool (env ((main input_var).output offset)) := by
+    have h_and' :=
+      AND.circuit.soundness andOffset env (out1, out2) (env out1, env out2)
+        (by rfl)
+        (by exact ⟨h_out1_bool, h_out2_bool⟩) h_hold3
+    simpa [andOffset, out1, out2, input_var1, input_var2, h_extract_eq_var1, h_extract_eq_var2,
+      AND.circuit, AND.main, main, circuit_norm, Vector.take_eq_extract, Vector.drop_eq_cast_extract] using h_and'
+  have h_sum : n1 + n2 = m + 3 := by
+    unfold n2
+    omega
+  have h_split_input_raw := multiand_input_split_aux n1 n2 (m + 3) input h_sum
+  have h_split_input : input = h_sum ▸ (input1 ++ input2) := by
+    simpa [input1, input2] using h_split_input_raw
+  have h_split : input.map (·.val) = h_sum ▸ (input1.map (·.val) ++ input2.map (·.val)) :=
+    multiand_map_val_split_aux n1 n2 (m + 3) input input1 input2 h_sum h_split_input
+  unfold Spec
+  constructor
+  · rw [h_and.1, h_sound1'.1, h_sound2'.1]
+    rw [multiand_foldl_and_split_aux _ _ _ _ _ _ h_sum h_split]
+  · exact h_and.2
+
+theorem multiand_soundness_two_aux {p : ℕ} [Fact p.Prime] (offset : ℕ) (env : Environment (F p))
+    (input_var : Var (fields 2) (F p)) (input : fields 2 (F p)) :
+    input = eval env input_var →
+    Assumptions 2 input →
+    Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset) →
+    Spec 2 input (env ((main input_var).output offset)) := by
+  intro h_env h_assumptions h_hold
+  have h0 : IsBool input[0] := h_assumptions 0 (by omega)
+  have h1 : IsBool input[1] := h_assumptions 1 (by omega)
+  have h_eval0 : Expression.eval env input_var[0] = input[0] := by
+    have h := congrArg (fun v => v[0]) h_env.symm
+    simpa [ProvableType.eval_fields, Vector.getElem_map] using h
+  have h_eval1 : Expression.eval env input_var[1] = input[1] := by
+    have h := congrArg (fun v => v[1]) h_env.symm
+    simpa [ProvableType.eval_fields, Vector.getElem_map] using h
+  have h_and := AND.circuit.soundness offset env (input_var[0], input_var[1]) (input[0], input[1]) ?_ ⟨h0, h1⟩ (by
+    simpa [main, circuit_norm] using h_hold)
+  · simp only [AND.circuit, AND.main, main, Spec, circuit_norm] at h_and ⊢
+    rcases h_and with ⟨h_val, h_bool⟩
+    have h_fold_two :
+        Vector.foldl (fun x1 x2 => x1 &&& x2) 1 (input.map (fun x => x.val)) =
+          input[0].val &&& input[1].val := by
+      rw [Vector.foldl_mk, ← Array.foldl_toList, Vector.toList_toArray, Vector.toList_length_two]
+      simp only [List.foldl_cons, List.foldl_nil, Vector.getElem_map]
+      rw [one_land_of_IsBool _ (val_of_IsBool h0)]
+    constructor
+    · rw [h_fold_two]
+      exact h_val
+    · exact h_bool
+  · change (Expression.eval env input_var[0], Expression.eval env input_var[1]) = (input[0], input[1])
+    exact Prod.ext h_eval0 h_eval1
+
+theorem multiand_soundness_zero_aux {p : ℕ} [Fact p.Prime] (offset : ℕ) (env : Environment (F p))
+    (input_var : Var (fields 0) (F p)) (input : fields 0 (F p)) :
+    input = eval env input_var →
+    Assumptions 0 input →
+    Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset) →
+    Spec 0 input (env ((main input_var).output offset)) := by
+  simpa using soundness_zero offset env input_var input
+
 theorem soundness {p : ℕ} [Fact p.Prime] (n : ℕ) :
     ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields n) (F p))
       (input : fields n (F p)),
     input = eval env input_var →
     Assumptions n input →
     Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset) →
-    Spec n input (env ((main input_var).output offset)) := by sorry
+    Spec n input (env ((main input_var).output offset)) := by
+  induction n using Nat.strong_induction_on with
+  | h n IH =>
+      intro offset env input_var input h_env h_assumptions h_hold
+      rcases n with _ | _ | _ | m
+      · exact multiand_soundness_zero_aux offset env input_var input h_env h_assumptions h_hold
+      · exact multiand_soundness_one_aux offset env input_var input h_env h_assumptions h_hold
+      · exact multiand_soundness_two_aux offset env input_var input h_env h_assumptions h_hold
+      · exact multiand_soundness_step_aux m IH offset env input_var input h_env h_assumptions h_hold
+
 
 lemma main_output_binary (n : ℕ) (offset : ℕ) (env : Environment (F p))
     (input_var : Var (fields n) (F p)) (input : fields n (F p))

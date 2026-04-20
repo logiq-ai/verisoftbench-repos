@@ -183,9 +183,53 @@ lemma fromByte_normalized {x : Fin 256} : (fromByte x).Normalized (p:=p) := by
   repeat linarith [x.is_lt, p_large_enough.elim]
 
 omit p_large_enough in
+theorem value_div256_mod_eq_x1_of_normalized {x : U32 (F p)} (hx : x.Normalized) : (x.value / 256) % 256 = x.x1.val := by
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  simp only [U32.value] at *
+  omega
+
+omit p_large_enough in
+theorem value_div256cube_mod_eq_x3_of_normalized {x : U32 (F p)} (hx : x.Normalized) : (x.value / 256^3) % 256 = x.x3.val := by
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  unfold U32.value
+  omega
+
+omit p_large_enough in
+theorem value_div256sq_mod_eq_x2_of_normalized {x : U32 (F p)} (hx : x.Normalized) : (x.value / 256^2) % 256 = x.x2.val := by
+  rcases x with ⟨x0, x1, x2, x3⟩
+  simp only [U32.Normalized, U32.value] at hx ⊢
+  omega
+
+omit p_large_enough in
+theorem value_mod_eq_x0_of_normalized {x : U32 (F p)} (hx : x.Normalized) : x.value % 256 = x.x0.val := by
+  rcases hx with ⟨hx0, hx1, hx2, hx3⟩
+  unfold U32.value
+  norm_num
+  omega
+
+omit p_large_enough in
 lemma value_injective_on_normalized (x y : U32 (F p))
     (hx : x.Normalized) (hy : y.Normalized) :
-    x.value = y.value → x = y := by sorry
+    x.value = y.value → x = y := by
+  intro h
+  have hx0 := congrArg (fun n : ℕ => n % 256) h
+  change x.value % 256 = y.value % 256 at hx0
+  rw [value_mod_eq_x0_of_normalized hx, value_mod_eq_x0_of_normalized hy] at hx0
+  have hx1 := congrArg (fun n : ℕ => (n / 256) % 256) h
+  change (x.value / 256) % 256 = (y.value / 256) % 256 at hx1
+  rw [value_div256_mod_eq_x1_of_normalized hx, value_div256_mod_eq_x1_of_normalized hy] at hx1
+  have hx2 := congrArg (fun n : ℕ => (n / 256 ^ 2) % 256) h
+  change (x.value / 256 ^ 2) % 256 = (y.value / 256 ^ 2) % 256 at hx2
+  rw [value_div256sq_mod_eq_x2_of_normalized hx, value_div256sq_mod_eq_x2_of_normalized hy] at hx2
+  have hx3 := congrArg (fun n : ℕ => (n / 256 ^ 3) % 256) h
+  change (x.value / 256 ^ 3) % 256 = (y.value / 256 ^ 3) % 256 at hx3
+  rw [value_div256cube_mod_eq_x3_of_normalized hx, value_div256cube_mod_eq_x3_of_normalized hy] at hx3
+  apply U32.ext
+  · exact ZMod.val_injective p hx0
+  · exact ZMod.val_injective p hx1
+  · exact ZMod.val_injective p hx2
+  · exact ZMod.val_injective p hx3
+
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 @[circuit_norm]

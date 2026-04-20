@@ -209,8 +209,37 @@ lemma Value.Approx.invert {v v'} :
   intro h
   invert (h 0) <;> constructor <;> aesop
 
-@[trans]
-lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by sorry
+lemma Value.Approx.Indexed.trans {n v₁ v₂ v₃} : v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃ := by
+  refine Nat.strong_induction_on n (p := fun n => ∀ {v₁ v₂ v₃}, v₁ ≲ᵥ(n) v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ(n) v₃) ?_
+  intro n ih v₁ v₂ v₃ h12 h23
+  invert h12
+  case unit =>
+    invert h23
+    exact Value.Approx.Indexed.unit
+  case const =>
+    invert h23
+    exact Value.Approx.Indexed.const
+  case constr_app hargs =>
+    invert h23
+    case constr_app hargs' =>
+      apply Value.Approx.Indexed.constr_app
+      intro k hk
+      exact Juvix.Utils.forall₂_trans'
+        (fun x y z hxy hyz => ih k hk (v₁ := x) (v₂ := y) (v₃ := z) hxy hyz)
+        (hargs k hk)
+        hargs'
+  case closure hbody12 =>
+    invert h23
+    case closure hbody23 =>
+      apply Value.Approx.Indexed.closure
+      intro n₁ n₂ hlt a₁ a₃ r₁ ha13 heval1
+      obtain ⟨r₂, heval2, hr12⟩ := hbody12 n₁ n₂ hlt a₁ a₃ r₁ ha13 heval1
+      have ha33 : a₃ ≲ᵥ a₃ := Value.Approx.refl a₃
+      have hparam23 := hbody23 a₃ a₃ ha33
+      obtain ⟨r₃, heval3, hr23⟩ := hparam23 r₂ heval2
+      refine ⟨r₃, heval3, ?_⟩
+      exact ih n₂ (Nat.lt_of_add_left_lt hlt) (v₁ := r₁) (v₂ := r₂) (v₃ := r₃) hr12 hr23
+
 
 @[trans]
 lemma Value.Approx.trans {v₁ v₂ v₃} : v₁ ≲ᵥ v₂ → v₂ ≲ᵥ v₃ → v₁ ≲ᵥ v₃ := by

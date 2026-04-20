@@ -90,11 +90,17 @@ theorem ext_iff {f g : Circuit F α} :
   · exact (h n).left
   · exact (h n).right
 
-@[ext]
-theorem ext {f g : Circuit F α}
+@[ext] theorem ext {f g : Circuit F α}
   (h_output : ∀ n, f.output n = g.output n)
   (h_operations : ∀ n, f.operations n = g.operations n) :
-    f = g := by sorry
+    f = g := by
+  funext n
+  have h1 := h_output n
+  have h2 := h_operations n
+  change (f n).1 = (g n).1 at h1
+  change (f n).2 = (g n).2 at h2
+  exact Prod.ext h1 h2
+
 
 -- lawful monad
 

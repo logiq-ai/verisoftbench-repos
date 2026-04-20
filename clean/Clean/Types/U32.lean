@@ -337,16 +337,129 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
-omit [Fact (Nat.Prime p)] p_large_enough in
+theorem testBit_packed_u32_bytes (a b c d i : ℕ) (ha : a < 256) (hb : b < 256) (hc : c < 256) (hd : d < 256) :
+  Nat.testBit (a + 256 * (b + 256 * (c + 256 * d))) i =
+    if i < 8 then Nat.testBit a i
+    else if i < 16 then Nat.testBit b (i - 8)
+    else if i < 24 then Nat.testBit c (i - 16)
+    else if i < 32 then Nat.testBit d (i - 24)
+    else false := by
+  have ha' : a < 2 ^ 8 := by
+    norm_num
+    exact ha
+  have hb' : b < 2 ^ 8 := by
+    norm_num
+    exact hb
+  have hc' : c < 2 ^ 8 := by
+    norm_num
+    exact hc
+  have hd' : d < 2 ^ 8 := by
+    norm_num
+    exact hd
+  rw [reorganize_value]
+  rw [Nat.testBit_two_pow_mul_add (2 ^ 8 * (2 ^ 8 * d + c) + b) ha' i]
+  by_cases hi8 : i < 8
+  · simp [hi8]
+  · have hi8' : 8 ≤ i := by omega
+    rw [Nat.testBit_two_pow_mul_add (2 ^ 8 * d + c) hb' (i - 8)]
+    by_cases hi16 : i < 16
+    · have hsub8 : i - 8 < 8 := by omega
+      simp [hi8, hi16, hsub8]
+    · have hi16' : 16 ≤ i := by omega
+      have hsub8 : ¬ (i - 8 < 8) := by omega
+      have hsub88 : (i - 8) - 8 = i - 16 := by omega
+      rw [hsub88]
+      rw [Nat.testBit_two_pow_mul_add d hc' (i - 16)]
+      by_cases hi24 : i < 24
+      · have hsub16 : i - 16 < 8 := by omega
+        simp [hi8, hi16, hi24, hsub8, hsub16, hsub88]
+      · have hi24' : 24 ≤ i := by omega
+        have hsub16 : ¬ (i - 16 < 8) := by omega
+        have hsub168 : (i - 16) - 8 = i - 24 := by omega
+        rw [hsub168]
+        by_cases hi32 : i < 32
+        · simp [hi8, hi16, hi24, hi32, hsub8, hsub16, hsub88, hsub168]
+        · have hi32' : 32 ≤ i := by omega
+          have h824 : 8 ≤ i - 24 := by omega
+          have hpow : 2 ^ 8 ≤ 2 ^ (i - 24) := by
+            exact Nat.pow_le_pow_of_le (by norm_num) h824
+          have hd'' : d < 2 ^ (i - 24) := lt_of_lt_of_le hd' hpow
+          rw [Nat.testBit_eq_false_of_lt hd'']
+          simp [hi8, hi16, hi24, hi32, hsub8, hsub16, hsub88, hsub168]
+
 lemma bitwise_componentwise (f : Bool → Bool → Bool)
     {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     f false false = false →
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  rcases x_norm with ⟨hx0, hx1, hx2, hx3⟩
+  rcases y_norm with ⟨hy0, hy1, hy2, hy3⟩
+  have hxy0 : Nat.bitwise f x.x0.val y.x0.val < 256 := by
+    simpa using (Nat.bitwise_lt_two_pow (f := f) (n := 8) hx0 hy0)
+  have hxy1 : Nat.bitwise f x.x1.val y.x1.val < 256 := by
+    simpa using (Nat.bitwise_lt_two_pow (f := f) (n := 8) hx1 hy1)
+  have hxy2 : Nat.bitwise f x.x2.val y.x2.val < 256 := by
+    simpa using (Nat.bitwise_lt_two_pow (f := f) (n := 8) hx2 hy2)
+  have hxy3 : Nat.bitwise f x.x3.val y.x3.val < 256 := by
+    simpa using (Nat.bitwise_lt_two_pow (f := f) (n := 8) hx3 hy3)
+  apply Nat.eq_of_testBit_eq
+  intro i
+  rw [Nat.testBit_bitwise hff]
+  have hx_bits :
+      Nat.testBit x.value i =
+        if i < 8 then Nat.testBit x.x0.val i
+        else if i < 16 then Nat.testBit x.x1.val (i - 8)
+        else if i < 24 then Nat.testBit x.x2.val (i - 16)
+        else if i < 32 then Nat.testBit x.x3.val (i - 24)
+        else false := by
+    simpa [value_horner] using
+      (testBit_packed_u32_bytes x.x0.val x.x1.val x.x2.val x.x3.val i hx0 hx1 hx2 hx3)
+  have hy_bits :
+      Nat.testBit y.value i =
+        if i < 8 then Nat.testBit y.x0.val i
+        else if i < 16 then Nat.testBit y.x1.val (i - 8)
+        else if i < 24 then Nat.testBit y.x2.val (i - 16)
+        else if i < 32 then Nat.testBit y.x3.val (i - 24)
+        else false := by
+    simpa [value_horner] using
+      (testBit_packed_u32_bytes y.x0.val y.x1.val y.x2.val y.x3.val i hy0 hy1 hy2 hy3)
+  have hxy_bits :
+      Nat.testBit
+          (Nat.bitwise f x.x0.val y.x0.val +
+            256 *
+              (Nat.bitwise f x.x1.val y.x1.val +
+                256 *
+                  (Nat.bitwise f x.x2.val y.x2.val +
+                    256 * Nat.bitwise f x.x3.val y.x3.val)))
+          i =
+        if i < 8 then Nat.testBit (Nat.bitwise f x.x0.val y.x0.val) i
+        else if i < 16 then Nat.testBit (Nat.bitwise f x.x1.val y.x1.val) (i - 8)
+        else if i < 24 then Nat.testBit (Nat.bitwise f x.x2.val y.x2.val) (i - 16)
+        else if i < 32 then Nat.testBit (Nat.bitwise f x.x3.val y.x3.val) (i - 24)
+        else false := by
+    simpa using
+      (testBit_packed_u32_bytes
+        (Nat.bitwise f x.x0.val y.x0.val)
+        (Nat.bitwise f x.x1.val y.x1.val)
+        (Nat.bitwise f x.x2.val y.x2.val)
+        (Nat.bitwise f x.x3.val y.x3.val)
+        i hxy0 hxy1 hxy2 hxy3)
+  rw [hx_bits, hy_bits, hxy_bits]
+  simp only [Nat.testBit_bitwise hff]
+  by_cases h8 : i < 8
+  · simp [h8]
+  · by_cases h16 : i < 16
+    · simp [h8, h16]
+    · by_cases h24 : i < 24
+      · simp [h8, h16, h24]
+      · by_cases h32 : i < 32
+        · simp [h8, h16, h24, h32]
+        · simp [h8, h16, h24, h32, hff]
 
-omit [Fact (Nat.Prime p)] p_large_enough in
+
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     x.value ||| y.value =
     (x.x0.val ||| y.x0.val) + 256 *

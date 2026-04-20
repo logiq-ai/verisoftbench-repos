@@ -205,17 +205,53 @@ lemma probOutput_seq_map_eq_mul [spec.FiniteRange] (x : α) (y : β) (z : γ)
     (h : ∀ x' ∈ oa.support, ∀ y' ∈ ob.support, z = f x' y' ↔ x' = x ∧ y' = y) :
     [= z | f <$> oa <*> ob] = [= x | oa] * [= y | ob] := by sorry
 
-/-- If the results of the computations `oa` and `ob` are combined with some function `f`,
-and `p` is an event such that outputs of `f` are in `p` iff the individual components
-lie in some other events `q1` and `q2`, then the probability of the event `p` is the
-product of the probabilites holding individually.
-NOTE: universe levels of `α`, `β`, `γ` -/
 lemma probEvent_seq_map_eq_mul {ι : Type u} {spec : OracleSpec ι}
     {α β γ : Type v} (f : α → β → γ) [spec.FiniteRange]
     (oa : OracleComp spec α) (ob : OracleComp spec β)
     (p : γ → Prop) (q1 : α → Prop) (q2 : β → Prop)
     (h : ∀ x ∈ oa.support, ∀ y ∈ ob.support, p (f x y) ↔ q1 x ∧ q2 y) :
-    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by sorry
+    [p | f <$> oa <*> ob] = [q1 | oa] * [q2 | ob] := by
+  classical
+  have hpair : Function.uncurry f <$> (Prod.mk <$> oa <*> ob) = f <$> oa <*> ob := by
+    rw [map_seq, Functor.map_map]
+    change ((fun x => Function.uncurry f ∘ Prod.mk x) <$> oa <*> ob) = f <$> oa <*> ob
+    congr
+  calc
+    [p | f <$> oa <*> ob] = [fun z : α × β => p (f z.1 z.2) | Prod.mk <$> oa <*> ob] := by
+      rw [← hpair, probEvent_map]
+      rfl
+    _ = [fun z : α × β => q1 z.1 ∧ q2 z.2 | Prod.mk <$> oa <*> ob] := by
+      apply probEvent_ext
+      rintro ⟨x, y⟩ hz
+      have hxy :=
+        (mem_support_seq_map_iff_of_injective2 (oa := oa) (ob := ob) (f := Prod.mk)
+          Prod.mk.injective2 x y).1 hz
+      simpa using h x hxy.1 y hxy.2
+    _ = [q1 | oa] * [q2 | ob] := by
+      rw [probEvent_eq_tsum_ite (oa := Prod.mk <$> oa <*> ob)
+            (p := fun z : α × β => q1 z.1 ∧ q2 z.2)]
+      rw [probEvent_eq_tsum_ite (oa := oa) (p := q1)]
+      rw [probEvent_eq_tsum_ite (oa := ob) (p := q2)]
+      rw [ENNReal.tsum_prod']
+      simp_rw [probOutput_seq_map_eq_mul_of_injective2 (oa := oa) (ob := ob) (f := Prod.mk)
+        Prod.mk.injective2]
+      change (∑' (x : α), ∑' (y : β), if q1 x ∧ q2 y then [= x | oa] * [= y | ob] else 0) =
+        (∑' (x : α), if q1 x then [= x | oa] else 0) * (∑' (y : β), if q2 y then [= y | ob] else 0)
+      calc
+        (∑' (x : α), ∑' (y : β), if q1 x ∧ q2 y then [= x | oa] * [= y | ob] else 0)
+            = ∑' (x : α), ∑' (y : β),
+                (if q1 x then [= x | oa] else 0) * (if q2 y then [= y | ob] else 0) := by
+                  refine tsum_congr (fun x => ?_)
+                  refine tsum_congr (fun y => ?_)
+                  by_cases hx : q1 x <;> by_cases hy : q2 y <;> simp [hx, hy]
+        _ = ∑' (x : α), (if q1 x then [= x | oa] else 0) * ∑' (y : β),
+                (if q2 y then [= y | ob] else 0) := by
+                  refine tsum_congr (fun x => ?_)
+                  rw [ENNReal.tsum_mul_left]
+        _ = (∑' (x : α), if q1 x then [= x | oa] else 0) *
+              ∑' (y : β), (if q2 y then [= y | ob] else 0) := by
+                  rw [ENNReal.tsum_mul_right]
+
 
 end seq_map
 

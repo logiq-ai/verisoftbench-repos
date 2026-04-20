@@ -320,8 +320,48 @@ def main : {n : ℕ} → Vector (Expression (F p)) n → Circuit (F p) (Expressi
     AND.circuit.main (out1, out2)
 
 -- Helper lemma for localLength
-theorem localLength_eq (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) :
-    (main input).localLength offset = n - 1 := by sorry
+theorem main_localLength_recursive (m : ℕ) (input : Var (fields (m + 3)) (F p)) (offset : ℕ) : let n1 := (m + 3) / 2; let n2 := (m + 3) - n1; let input1 : Vector (Expression (F p)) n1 := input.take n1 |>.cast (by simp only [Nat.min_def, n1]; split <;> omega); let input2 : Vector (Expression (F p)) n2 := input.drop n1 |>.cast (by omega); (main input).localLength offset = (main input1).localLength offset + ((main input2).localLength (offset + (main input1).localLength offset) + 1) := by
+  simp only [main, bind_localLength_eq]
+  rfl
+
+theorem split_sizes_props (m : ℕ) : let n1 := (m + 3) / 2; let n2 := (m + 3) - n1; n1 < m + 3 ∧ n2 < m + 3 ∧ n1 + n2 = m + 3 ∧ (n1 - 1) + ((n2 - 1) + 1) = (m + 3) - 1 := by
+  dsimp
+  omega
+
+theorem localLength_eq (n : ℕ) (input : Var (fields n) (F p)) (offset : ℕ) : (main input).localLength offset = n - 1 := by
+  induction n using Nat.strong_induction_on generalizing offset with
+  | _ n IH =>
+    match n with
+    | 0 =>
+      simp only [main, circuit_norm]
+    | 1 =>
+      simp only [main, circuit_norm]
+    | 2 =>
+      simpa [main] using (AND.circuit.localLength_eq (input := (input[0], input[1])) (offset := offset))
+    | m + 3 =>
+      let n1 := (m + 3) / 2
+      let n2 := (m + 3) - n1
+      let input1 : Vector (Expression (F p)) n1 := input.take n1 |>.cast (by
+        simp only [Nat.min_def, n1]
+        split <;> omega)
+      let input2 : Vector (Expression (F p)) n2 := input.drop n1 |>.cast (by omega)
+      have hrec :
+          (main input).localLength offset =
+            (main input1).localLength offset +
+              ((main input2).localLength (offset + (main input1).localLength offset) + 1) := by
+        simpa [n1, n2, input1, input2] using main_localLength_recursive m input offset
+      have hsizes :
+          n1 < m + 3 ∧ n2 < m + 3 ∧ n1 + n2 = m + 3 ∧
+            (n1 - 1) + ((n2 - 1) + 1) = (m + 3) - 1 := by
+        simpa [n1, n2] using split_sizes_props m
+      rcases hsizes with ⟨h_n1_lt, h_n2_lt, h_sum, h_arith⟩
+      have h1 : (main input1).localLength offset = n1 - 1 := by
+        exact IH n1 h_n1_lt input1 offset
+      have h2 : (main input2).localLength (offset + (n1 - 1)) = n2 - 1 := by
+        exact IH n2 h_n2_lt input2 (offset + (n1 - 1))
+      rw [hrec, h1, h2]
+      exact h_arith
+
 
 -- Helper lemma: SubcircuitsConsistent preserved by bind
 theorem Circuit.subcircuitsConsistent_bind {α β : Type} (f : Circuit (F p) α) (g : α → Circuit (F p) β) (offset : ℕ)

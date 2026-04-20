@@ -246,7 +246,60 @@ exercise (3-star)
 Complete the formal proof of the `progress` property.
 -/
 theorem progress t T
-    : HasType t T → value t ∨ ∃ t', Step t t' := by sorry
+    : HasType t T → value t ∨ ∃ t', Step t t' := by
+  intro hT
+  induction hT with
+  | t_true =>
+      exact Or.inl (Or.inl bv_true)
+  | t_false =>
+      exact Or.inl (Or.inl bv_false)
+  | t_0 =>
+      exact Or.inl (Or.inr nv_0)
+  | t_if t₁ t₂ t₃ T hcond hthen helse ihCond ihThen ihElse =>
+      cases ihCond with
+      | inl hv =>
+          have hb : BValue t₁ := bool_canonical t₁ hcond hv
+          cases hb with
+          | bv_true =>
+              exact Or.inr ⟨t₂, st_ifTrue t₂ t₃⟩
+          | bv_false =>
+              exact Or.inr ⟨t₃, st_ifFalse t₂ t₃⟩
+      | inr hs =>
+          rcases hs with ⟨t₁', hs⟩
+          exact Or.inr ⟨ite t₁' t₂ t₃, st_if t₁ t₁' t₂ t₃ hs⟩
+  | t_succ t₁ hnat ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ hnat hv
+          exact Or.inl (Or.inr (nv_succ t₁ hn))
+      | inr hs =>
+          rcases hs with ⟨t₁', hs⟩
+          exact Or.inr ⟨scc t₁', st_succ t₁ t₁' hs⟩
+  | t_pred t₁ hnat ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ hnat hv
+          cases hn with
+          | nv_0 =>
+              exact Or.inr ⟨zro, st_pred0⟩
+          | nv_succ v hv' =>
+              exact Or.inr ⟨v, st_predSucc v hv'⟩
+      | inr hs =>
+          rcases hs with ⟨t₁', hs⟩
+          exact Or.inr ⟨prd t₁', st_pred t₁ t₁' hs⟩
+  | t_iszero t₁ hnat ih =>
+      cases ih with
+      | inl hv =>
+          have hn : NValue t₁ := nat_canonical t₁ hnat hv
+          cases hn with
+          | nv_0 =>
+              exact Or.inr ⟨tru, st_iszero0⟩
+          | nv_succ v hv' =>
+              exact Or.inr ⟨fls, st_iszeroSucc v hv'⟩
+      | inr hs =>
+          rcases hs with ⟨t₁', hs⟩
+          exact Or.inr ⟨iszero t₁', st_iszero t₁ t₁' hs⟩
+
 
 /-
 exercise (2-star)

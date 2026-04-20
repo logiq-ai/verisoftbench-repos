@@ -1129,9 +1129,55 @@ def binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary : ∀ j: Fin n, m 
       _      < 2^n                         := by exact h_lt
   exact ⟨i_of_m, h_i_lt⟩
 
+theorem binaryFinMapToNat_succ_val {n : ℕ} (m : Fin (n + 1) → ℕ) (h_binary : ∀ j : Fin (n + 1), m j ≤ 1) :
+    (binaryFinMapToNat m h_binary).val =
+      m 0 + 2 *
+        (binaryFinMapToNat (fun i : Fin n => m i.succ)
+          (fun i : Fin n => h_binary i.succ)).val := by
+  simp [binaryFinMapToNat, Fin.sum_univ_succ, Finset.mul_sum, Nat.pow_succ, Nat.mul_assoc, Nat.mul_left_comm, Nat.mul_comm, add_comm, add_left_comm, add_assoc]
+
+theorem binaryFinMapToNat_succ_bit {n : ℕ} (m : Fin (n + 1) → ℕ) (h_binary : ∀ j : Fin (n + 1), m j ≤ 1) :
+    (binaryFinMapToNat m h_binary).val =
+      Nat.bit (decide (m 0 = 1))
+        (binaryFinMapToNat (fun i : Fin n => m i.succ)
+          (fun i : Fin n => h_binary i.succ)).val := by
+  rw [binaryFinMapToNat_succ_val, Nat.bit_val]
+  have hm0le : m 0 ≤ 1 := h_binary 0
+  have hm0 : m 0 = 0 ∨ m 0 = 1 := by
+    omega
+  rcases hm0 with hm0 | hm0
+  · simp [hm0]
+  · simp [hm0]
+    omega
+
 lemma getBit_of_binaryFinMapToNat {n : ℕ} (m : Fin n → ℕ) (h_binary: ∀ j: Fin n, m j ≤ 1) :
     ∀ k: ℕ, Nat.getBit k (binaryFinMapToNat m h_binary).val
-      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by sorry
+      = if h_k: k < n then m ⟨k, by omega⟩ else 0 := by
+  revert m
+  induction n with
+  | zero =>
+      intro m h_binary k
+      have hk : ¬ k < 0 := by omega
+      simp [binaryFinMapToNat, hk, Nat.getBit_zero_eq_zero]
+  | succ n ih =>
+      intro m h_binary k
+      let tail : Fin n → ℕ := fun i => m i.succ
+      have h_tail : ∀ i : Fin n, tail i ≤ 1 := fun i => h_binary i.succ
+      cases k with
+      | zero =>
+          rw [binaryFinMapToNat_succ_bit]
+          rw [Nat.getBit_eq_testBit, Nat.testBit_bit_zero]
+          have hm01 : m 0 = 0 ∨ m 0 = 1 := Nat.le_one_iff_eq_zero_or_eq_one.mp (h_binary 0)
+          have hlt : 0 < n + 1 := by omega
+          rcases hm01 with hm0 | hm0 <;> simp [hm0, hlt]
+      | succ k' =>
+          rw [binaryFinMapToNat_succ_bit]
+          rw [Nat.getBit_eq_testBit, Nat.testBit_bit_succ, ← Nat.getBit_eq_testBit]
+          by_cases hk : k' < n
+          · simpa [tail, hk, Nat.succ_lt_succ_iff] using ih tail h_tail k'
+          · have hnk : ¬ k' + 1 < n + 1 := by omega
+            simpa [tail, hk, hnk, Nat.succ_lt_succ_iff] using ih tail h_tail k'
+
 
 /-- Middle bits: take `len` bits starting at `offset` from `n`. -/
 def getMiddleBits (offset len n : ℕ) : ℕ :=

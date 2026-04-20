@@ -337,23 +337,67 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
-omit [Fact (Nat.Prime p)] p_large_enough in
+theorem bitwise_horner_step (f : Bool → Bool → Bool) {a b c d i : ℕ} : f false false = false → b < 2^i → d < 2^i → Nat.bitwise f (b + 2^i * a) (d + 2^i * c) = Nat.bitwise f b d + 2^i * Nat.bitwise f a c := by
+  intro hff hb hd
+  apply eq_of_mod_eq_and_div_eq (2 ^ i)
+  · rw [Nat.bitwise_mod_two_pow hff]
+    have hbit : Nat.bitwise f b d < 2 ^ i := Nat.bitwise_lt_two_pow hb hd
+    rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hb]
+    rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hd]
+    rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hbit]
+  · have hpow : 0 < 2 ^ i := Nat.two_pow_pos i
+    rw [Nat.bitwise_div_two_pow hff]
+    have hbit : Nat.bitwise f b d < 2 ^ i := Nat.bitwise_lt_two_pow hb hd
+    rw [Nat.add_mul_div_left b a hpow]
+    rw [Nat.add_mul_div_left d c hpow]
+    rw [Nat.div_eq_of_lt hb, Nat.div_eq_of_lt hd]
+    rw [Nat.zero_add, Nat.zero_add]
+    rw [Nat.add_mul_div_left (Nat.bitwise f b d) (Nat.bitwise f a c) hpow]
+    rw [Nat.div_eq_of_lt hbit]
+    rw [Nat.zero_add]
+
 lemma bitwise_componentwise (f : Bool → Bool → Bool)
     {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     f false false = false →
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  rcases x_norm with ⟨hx0, hx1, hx2, hx3⟩
+  rcases y_norm with ⟨hy0, hy1, hy2, hy3⟩
+  rw [value_horner x, value_horner y]
+  have h0 := bitwise_horner_step (f := f)
+    (a := x.x1.val + 2^8 * (x.x2.val + 2^8 * x.x3.val))
+    (b := x.x0.val)
+    (c := y.x1.val + 2^8 * (y.x2.val + 2^8 * y.x3.val))
+    (d := y.x0.val)
+    (i := 8) hff hx0 hy0
+  rw [h0]
+  have h1 := bitwise_horner_step (f := f)
+    (a := x.x2.val + 2^8 * x.x3.val)
+    (b := x.x1.val)
+    (c := y.x2.val + 2^8 * y.x3.val)
+    (d := y.x1.val)
+    (i := 8) hff hx1 hy1
+  rw [h1]
+  have h2 := bitwise_horner_step (f := f)
+    (a := x.x3.val)
+    (b := x.x2.val)
+    (c := y.x3.val)
+    (d := y.x2.val)
+    (i := 8) hff hx2 hy2
+  rw [h2]
+  norm_num
 
-omit [Fact (Nat.Prime p)] p_large_enough in
+
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
     x.value ||| y.value =
     (x.x0.val ||| y.x0.val) + 256 *
       ((x.x1.val ||| y.x1.val) + 256 *
         ((x.x2.val ||| y.x2.val) + 256 * (x.x3.val ||| y.x3.val))) := by
   show Nat.bitwise _ _ _ = _
-  rw [bitwise_componentwise or x_norm y_norm] <;> rfl
+  simpa using (bitwise_componentwise (f := or) x_norm y_norm rfl)
 
 end Bitwise
 

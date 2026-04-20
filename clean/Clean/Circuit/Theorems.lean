@@ -465,13 +465,66 @@ lemma getElem?_dynamicWitnesses_cons_right {op : FlatOperation F} {ops : List (F
     List.getElem_append_right (by linarith)]
   simp only [add_tsub_cancel_left]
 
-/--
-Flat version of the final theorem in this section, `Circuit.proverEnvironment_usesLocalWitnesses`.
--/
+theorem fromList_agreesBelow_proverEnvironment {ops : List (FlatOperation F)} (init : List F) : Environment.AgreesBelow init.length (Environment.fromList init) (proverEnvironment ops init) := by
+  intro i hi
+  simp [Environment.AgreesBelow, Environment.fromList, proverEnvironment, getElem?_dynamicWitnesses_of_lt, hi]
+
+theorem proverEnvironment_extends_headWitness {ops : List (FlatOperation F)} {init : List F} {m : ℕ} {c : Environment F → Vector F m} : Environment.ExtendsVector (proverEnvironment (.witness m c :: ops) init) (c (Environment.fromList init)) init.length := by
+  unfold Environment.ExtendsVector proverEnvironment
+  intro i
+  simpa using (getElem?_dynamicWitnesses_cons_right (op := (FlatOperation.witness m c)) (ops := ops) (init := init) (i := i) i.isLt)
+
 theorem proverEnvironment_usesLocalWitnesses {ops : List (FlatOperation F)} (init : List F) :
   (∀ (env env' : Environment F),
     forAll init.length { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops) →
-    (proverEnvironment ops init).UsesLocalWitnessesFlat init.length ops := by sorry
+    (proverEnvironment ops init).UsesLocalWitnessesFlat init.length ops := by
+  induction ops generalizing init with
+  | nil =>
+      intro h
+      simp [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll]
+  | cons op ops ih =>
+      cases op with
+      | assert e =>
+          intro h
+          have htail : ∀ env env', forAll init.length
+              { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops :=
+            fun env env' => (h env env').2
+          simpa [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll, FlatOperation.proverEnvironment,
+            FlatOperation.dynamicWitness, FlatOperation.dynamicWitnesses_cons] using ih (init := init) htail
+      | lookup l =>
+          intro h
+          have htail : ∀ env env', forAll init.length
+              { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops :=
+            fun env env' => (h env env').2
+          simpa [Environment.UsesLocalWitnessesFlat, FlatOperation.forAll, FlatOperation.proverEnvironment,
+            FlatOperation.dynamicWitness, FlatOperation.dynamicWitnesses_cons] using ih (init := init) htail
+      | witness m c =>
+          intro h
+          let penv : Environment F := proverEnvironment (.witness m c :: ops) init
+          let init' : List F := init ++ (c (Environment.fromList init)).toList
+          have h_eq : c (Environment.fromList init) = c penv := by
+            exact (h _ _).1 (by
+              simpa [penv] using
+                (fromList_agreesBelow_proverEnvironment (ops := (.witness m c :: ops)) init))
+          have h_head_raw := proverEnvironment_extends_headWitness
+            (ops := ops) (init := init) (m := m) (c := c)
+          have h_head : penv.ExtendsVector (c penv) init.length := by
+            intro i
+            simpa [penv, h_eq] using h_head_raw i
+          have htail : ∀ env env', forAll init'.length
+              { witness n _ c := env.AgreesBelow n env' → c env = c env' } ops := by
+            intro env env'
+            simpa [init', FlatOperation.dynamicWitness, dynamicWitness_length,
+              Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using (h env env').2
+          have h_tail := ih (init := init') htail
+          have h_tail' : penv.UsesLocalWitnessesFlat (m + init.length) ops := by
+            simpa [penv, init', FlatOperation.proverEnvironment,
+              FlatOperation.dynamicWitnesses_cons, FlatOperation.dynamicWitness,
+              dynamicWitness_length, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h_tail
+          simpa [penv, Environment.UsesLocalWitnessesFlat, FlatOperation.forAll]
+            using And.intro h_head h_tail'
+
+
 end FlatOperation
 
 /--

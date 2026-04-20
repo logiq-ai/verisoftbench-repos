@@ -99,7 +99,29 @@ lemma xor_val {x y : F p} (hx : x.val < 256) (hy : y.val < 256) :
   have h_byte : x.val ^^^ y.val < 256 := Nat.xor_lt_two_pow (n:=8) hx hy
   linarith [p_large_enough.elim]
 
-theorem completeness : Completeness (F p) elaborated Assumptions := by sorry
+theorem completeness : Completeness (F p) elaborated Assumptions := by
+  intro offset env input_var h_env input h_input h_as
+  cases input with
+  | mk x y =>
+    cases x with
+    | mk x0 x1 x2 x3 =>
+      cases y with
+      | mk y0 y1 y2 y3 =>
+        simp only [circuit_norm, explicit_provable_type, Inputs.mk.injEq, U32.mk.injEq, Assumptions, U32.Normalized] at h_as h_input
+        simp only [h_input, circuit_norm, explicit_provable_type, main, ByteXorTable, varFromOffset, Vector.mapRange] at h_env ⊢
+        rcases h_as with ⟨⟨hx0, hx1, hx2, hx3⟩, hy0, hy1, hy2, hy3⟩
+        have h0 := congrArg ZMod.val (h_env ⟨0, by decide⟩)
+        have h1 := congrArg ZMod.val (h_env ⟨1, by decide⟩)
+        have h2 := congrArg ZMod.val (h_env ⟨2, by decide⟩)
+        have h3 := congrArg ZMod.val (h_env ⟨3, by decide⟩)
+        constructor
+        · exact ⟨hx0, hy0, by simpa [xor_val hx0 hy0] using h0⟩
+        constructor
+        · exact ⟨hx1, hy1, by simpa [xor_val hx1 hy1] using h1⟩
+        constructor
+        · exact ⟨hx2, hy2, by simpa [xor_val hx2 hy2] using h2⟩
+        · exact ⟨hx3, hy3, by simpa [xor_val hx3 hy3] using h3⟩
+
 
 def circuit : FormalCircuit (F p) Inputs U32 where
   Assumptions

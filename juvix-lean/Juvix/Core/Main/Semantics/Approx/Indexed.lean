@@ -283,8 +283,174 @@ lemma Value.Approx.Indexed.Preservation.anti_monotone {k k'} (h : Value.Approx.I
   refine h m n env env' e v ?_ h₁ h₂
   linarith
 
-lemma Value.Approx.Indexed.preserved_step {k} :
-  (∀ k' < k, Preservation k') → Preservation k := by sorry
+theorem Value.Approx.Indexed.closure_same_body_of_env_approx: {k m : Nat} → {env env' : Env} → {body : Expr} → (∀ k' < k, Value.Approx.Indexed.Preservation k') → m < k → Env.Approx.Indexed' m env env' → Value.Approx.Indexed m (Value.closure env body) (Value.closure env' body) := by
+  intro k m env env' body hpres hmk henv
+  apply Value.Approx.Indexed.closure
+  intro n₁ n₂ hn a₁ a₂ v₁ ha heval
+  have henv' : env ≲ₑ'(n₁ + n₂) env' :=
+    Env.Approx.Indexed'.anti_monotone henv (Nat.le_of_lt hn)
+  have hcons : a₁ ∷ env ≲ₑ'(n₁ + n₂) a₂ ∷ env' := by
+    apply Env.Approx.Indexed'.cons
+    · exact Object.Approx.Indexed'.value ha
+    · exact henv'
+  have hk' : n₁ + n₂ + 1 < k := by
+    linarith
+  have hmn : n₂ + n₁ < n₁ + n₂ + 1 := by
+    simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using Nat.lt_succ_self (n₁ + n₂)
+  obtain ⟨v₂, heval₂, happ⟩ := hpres (n₁ + n₂ + 1) hk' n₂ n₁ (a₁ ∷ env) (a₂ ∷ env') body v₁ hmn (by
+    simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hcons) heval
+  exact ⟨v₂, heval₂, happ⟩
+
+theorem Value.Approx.Indexed.preserved_step: {k : Nat} → (∀ k' < k, Value.Approx.Indexed.Preservation k') → Value.Approx.Indexed.Preservation k := by
+  intro k h m n env env' e v hmn henv heval
+  induction heval generalizing m env' with
+  | var h_lookup =>
+      rename_i n_case env_src name idx val
+      obtain ⟨v', h_lookup', happrox⟩ := Env.Approx.Indexed'.value henv h_lookup
+      refine ⟨v', ?_, ?_⟩
+      · exact Eval.var h_lookup'
+      · exact Value.Approx.Indexed.anti_monotone happrox (by linarith)
+  | var_rec h_lookup heval ih =>
+      rename_i n_case env_src name idx env_del expr val
+      rcases Env.Approx.Indexed'.delayed henv h_lookup with hdel | hdel
+      · rcases hdel with ⟨env_del', expr', happrox_expr, h_lookup'⟩
+        obtain ⟨v', h_eval', happrox⟩ :=
+          happrox_expr n_case m val
+            (by simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
+              (show m + n_case ≤ m + n_case from le_rfl))
+            heval
+        exact ⟨v', Eval.var_rec h_lookup' h_eval', happrox⟩
+      · rcases hdel with ⟨env_del', henv_del, h_lookup'⟩
+        obtain ⟨v', h_eval', happrox⟩ := ih m env_del' hmn henv_del
+        exact ⟨v', Eval.var_rec h_lookup' h_eval', happrox⟩
+  | unit =>
+      rename_i n_case env_src
+      exact ⟨Value.unit, Eval.unit, Value.Approx.Indexed.unit⟩
+  | const =>
+      rename_i n_case env_src c
+      exact ⟨Value.const c, Eval.const, Value.Approx.Indexed.const⟩
+  | constr =>
+      rename_i n_case env_src name
+      refine ⟨Value.constr_app name [], Eval.constr, ?_⟩
+      apply Value.Approx.Indexed.constr_app
+      intro k hk
+      exact List.Forall₂.nil
+  | app hle h_f h_arg h_body ih_f ih_arg ih_body =>
+      rename_i n_case n₁ n₂ env_src env_clos f body arg val res
+      have henv_f : env_src ≲ₑ'((n₂ + m + 1) + n₁) env' := by
+        apply Env.Approx.Indexed'.anti_monotone henv
+        linarith
+      obtain ⟨vf', h_f', happrox_f'⟩ := ih_f (n₂ + m + 1) env' (by linarith) henv_f
+      invert happrox_f'
+      case closure env_clos' body' hclos =>
+        have henv_arg : env_src ≲ₑ'((n₂ + m) + (n₁ + 1)) env' := by
+          apply Env.Approx.Indexed'.anti_monotone henv
+          linarith
+        obtain ⟨val', h_arg', happrox_arg'⟩ := ih_arg (n₂ + m) env' (by linarith) henv_arg
+        obtain ⟨res', h_body', happrox_res'⟩ := hclos n₂ m (by linarith) val val' res happrox_arg' h_body
+        refine ⟨res', ?_, happrox_res'⟩
+        exact Eval.app h_f' h_arg' h_body'
+  | constr_app hn h_ctr h_arg ih_ctr ih_arg =>
+      rename_i n_case n' env_src ctr ctr_name ctr_args_rev arg val
+      obtain ⟨ctr', h_ctr', happrox_ctr'⟩ := ih_ctr m env' hmn henv
+      invert happrox_ctr'
+      case constr_app ctr_args_rev' hargs =>
+        have henv_arg : env_src ≲ₑ'(m + n') env' := by
+          apply Env.Approx.Indexed'.anti_monotone henv
+          linarith
+        obtain ⟨val', h_arg', happrox_arg'⟩ := ih_arg m env' (by linarith) henv_arg
+        refine ⟨Value.constr_app ctr_name (val' :: ctr_args_rev'), ?_, ?_⟩
+        · exact Eval.constr_app h_ctr' h_arg'
+        · apply Value.Approx.Indexed.constr_app
+          intro k hk
+          simp [List.forall₂_cons]
+          constructor
+          · exact Value.Approx.Indexed.anti_monotone happrox_arg' (by linarith)
+          · exact hargs k hk
+  | binop h_left h_right ih_left ih_right =>
+      rename_i n_case env_src op arg₁ arg₂ val₁ val₂
+      obtain ⟨v₁', h_left', happrox_left'⟩ := ih_left m env' hmn henv
+      invert happrox_left'
+      case const =>
+        obtain ⟨v₂', h_right', happrox_right'⟩ := ih_right m env' hmn henv
+        invert happrox_right'
+        case const =>
+          refine ⟨Value.const (Constant.int (eval_binop_int op val₁ val₂)), ?_, ?_⟩
+          · exact Eval.binop h_left' h_right'
+          · exact Value.Approx.Indexed.const
+  | lambda =>
+      rename_i n_case env_src name body
+      have henv_m : env_src ≲ₑ'(m) env' := by
+        apply Env.Approx.Indexed'.anti_monotone henv
+        linarith
+      refine ⟨Value.closure env' body, ?_, ?_⟩
+      · exact Eval.lambda
+      · exact Value.Approx.Indexed.closure_same_body_of_env_approx h (by linarith) henv_m
+  | save hle h_val h_body ih_val ih_body =>
+      rename_i n_case n₁ n₂ env_src name value body val res
+      have henv_val : env_src ≲ₑ'((n₂ + m) + n₁) env' := by
+        apply Env.Approx.Indexed'.anti_monotone henv
+        linarith
+      obtain ⟨val', h_val', happrox_val'⟩ := ih_val (n₂ + m) env' (by linarith) henv_val
+      have henv_body : val ∷ env_src ≲ₑ'(m + n₂) Object.value val' :: env' := by
+        apply Env.Approx.Indexed'.cons
+        · constructor
+          simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using happrox_val'
+        · apply Env.Approx.Indexed'.anti_monotone henv
+          linarith
+      obtain ⟨res', h_body', happrox_res'⟩ := ih_body m (Object.value val' :: env') (by linarith) henv_body
+      refine ⟨res', ?_, happrox_res'⟩
+      exact Eval.save h_val' h_body'
+  | branch_matches hn h_body ih_body =>
+      rename_i binders next n_case n' env_src name args_rev body val
+      cases henv with
+      | cons h_head h_tail =>
+          rename_i env_tgt
+          cases h_head with
+          | value happrox_head =>
+              invert happrox_head
+              case constr_app args_rev' hargs =>
+                have henv_body : args_rev.map Object.value ++ env_src ≲ₑ'(m + n') args_rev'.map Object.value ++ env_tgt := by
+                  apply Env.Approx.Indexed'.concat
+                  · apply Env.Approx.Indexed'.from_value
+                    exact hargs (m + n') (by linarith)
+                  · apply Env.Approx.Indexed'.anti_monotone h_tail
+                    linarith
+                obtain ⟨val', h_body', happrox_val'⟩ := ih_body m (args_rev'.map Object.value ++ env_tgt) (by linarith) henv_body
+                refine ⟨val', ?_, happrox_val'⟩
+                exact Eval.branch_matches h_body'
+  | branch_fails hneq h_next ih_next =>
+      rename_i binders body n_case env_src name name' args_rev next val
+      cases henv with
+      | cons h_head h_tail =>
+          rename_i env_tgt
+          cases h_head with
+          | value happrox_head =>
+              invert happrox_head
+              case constr_app args_rev' hargs =>
+                have henv_next : Value.constr_app name args_rev ∷ env_src ≲ₑ'(m + n_case) Object.value (Value.constr_app name args_rev') :: env_tgt := by
+                  apply Env.Approx.Indexed'.cons
+                  · constructor
+                    exact Value.Approx.Indexed.constr_app hargs
+                  · exact h_tail
+                obtain ⟨val', h_next', happrox_val'⟩ := ih_next m (Object.value (Value.constr_app name args_rev') :: env_tgt) hmn henv_next
+                refine ⟨val', ?_, happrox_val'⟩
+                exact Eval.branch_fails hneq h_next'
+  | recur hn h_body ih_body =>
+      rename_i n_case n' env_src name body val
+      have henv' : env_src ≲ₑ'(m + n') env' := by
+        apply Env.Approx.Indexed'.anti_monotone henv
+        linarith
+      have hobj : Object.delayed env_src (Expr.recur name body) ≲ₒ'(m + n') Object.delayed env' (Expr.recur name body) := by
+        exact Object.Approx.Indexed'.delayed_eq henv'
+      have henv_body : Object.delayed env_src (Expr.recur name body) :: env_src ≲ₑ'(m + n') Object.delayed env' (Expr.recur name body) :: env' := by
+        apply Env.Approx.Indexed'.cons
+        · exact hobj
+        · exact henv'
+      obtain ⟨val', h_body', happrox_val'⟩ := ih_body m (Object.delayed env' (Expr.recur name body) :: env') (by linarith) henv_body
+      refine ⟨val', ?_, happrox_val'⟩
+      exact Eval.recur h_body'
+
 
 lemma Value.Approx.Indexed.preserved' {k} : Preservation k := by
   suffices ∀ k' ≤ k, Preservation k' by

@@ -383,12 +383,53 @@ lemma wp_bot [∀ α, CCPO (m α)] [MAlgPartial m]:
   refine le_iInf₂ ?_
   intro; erw [Set.mem_empty_iff_false]; simp
 
-omit [MAlgDet m l] in
+theorem extract_refines_wp_weak_pickCont_le_branch {τ : Type u} (p : τ -> Prop) (f : τ -> NonDetT m α) (post : α -> l) (x : τ) : p x -> wp (NonDetT.pickCont τ p f) post <= wp (f x) post := by
+  intro hpx
+  rw [NonDetT.wp_pickCont]
+  exact iInf_le_of_le x (by simpa [hpx])
+
+theorem extract_refines_wp_weak_wp_bot_local [∀ α, CCPO (m α)] [MAlgPartial m] (post : α -> l) : wp (bot : m α) post = (⊤ : l) := by
+  refine eq_top_iff.mpr ?_
+  apply le_trans'
+  · exact MAlgPartial.csup_lift (xc := (∅ : Set (m α))) post (by
+      intro x y hx hy
+      cases hx)
+  · refine le_iInf₂ ?_
+    intro c
+    erw [Set.mem_empty_iff_false]
+    simp
+
 lemma ExtractNonDet.extract_refines_wp_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
-  wp s post <= wp s.extractWeak post := by sorry
+  wp s post <= wp s.extractWeak post := by
+  unhygienic induction inst
+  · simp [wp_pure, NonDetT.extractWeak]
+  · simp only [NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind, NonDetT.wp_vis]
+    apply wp_cons
+    intro y
+    simpa [NonDetT.extractWeak] using a_ih y
+  · simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+    cases hfind : WeakFindable.find p () with
+    | none =>
+        simp [hfind, CCPOBotLawful.prop, extract_refines_wp_weak_wp_bot_local]
+    | some y =>
+        have hp : p y := WeakFindable.find_some_p (p := p) (x := y) hfind
+        have hbranch : (⨅ a, ⌜p a⌝ ⇨ wp (f a) post) ≤ wp (f y) post := by
+          simpa [hp] using (iInf_le (fun a => ⌜p a⌝ ⇨ wp (f a) post) y)
+        exact le_trans hbranch (by simpa [NonDetT.extractWeak] using a_ih y)
+  · simp only [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont]
+    have hpeq : ∀ a, p a ↔ p PUnit.unit := by
+      intro a
+      cases a
+      simp
+    by_cases h : p PUnit.unit
+    · simp [h, hpeq]
+      have hbranch : (⨅ a, wp (f a) post) ≤ wp (f PUnit.unit) post := by
+        simpa using (iInf_le (fun a => wp (f a) post) PUnit.unit)
+      exact le_trans hbranch (by simpa [NonDetT.extractWeak] using a_ih PUnit.unit)
+    · simp [h, hpeq, CCPOBotLawful.prop, extract_refines_wp_weak_wp_bot_local]
 
 
-omit [MAlgDet m l] in
+
 lemma ExtractNonDet.extract_refines_triple_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (pre : l) (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
   triple pre s post ->
   triple pre s.extractWeak post := by

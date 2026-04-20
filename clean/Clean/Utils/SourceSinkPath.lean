@@ -319,12 +319,38 @@ lemma containsPath_drop_take (R : Run S) (path : List S) (n m : ℕ)
     containsPath_drop R path n h_contains
   exact containsPath_take R (path.drop n) m h_after_drop
 
-omit [Fintype S] in
-/-- If a run is acyclic and contains a path, the path has no duplicate vertices. -/
+theorem containsPath_head_mem_tail_hasCycle (R : Run S) (a : S) (tl : List S) (h_contains : R.containsPath (a :: tl)) (h_mem : a ∈ tl) : R.hasCycle := by
+  obtain ⟨j, hget⟩ := List.get_of_mem h_mem
+  let n : Fin (a :: tl).length := ⟨0, by simp⟩
+  let m : Fin (a :: tl).length := j.succ
+  have h_n_lt_m : n < m := by
+    simp [n, m]
+  have hn : (a :: tl).get n = a := by
+    simp [n]
+  have hm : (a :: tl).get m = a := by
+    simpa [m] using congrArg some hget
+  let cycle := (((a :: tl).drop n.val).take (m.val - n.val + 1))
+  refine ⟨cycle, ?_, ?_, ?_⟩
+  · simpa [cycle] using drop_take_length_ge_two (a :: tl) n m h_n_lt_m
+  · simpa [cycle] using drop_take_cycle_same_endpoints (a :: tl) a n m h_n_lt_m hn hm
+  · simpa [cycle] using containsPath_drop_take R (a :: tl) n.val (m.val - n.val + 1) h_contains
+
 lemma acyclic_containsPath_nodup (R : Run S) (path : List S)
     (h_acyclic : R.isAcyclic)
     (h_contains : R.containsPath path) :
-    path.Nodup := by sorry
+    path.Nodup := by
+  induction path with
+  | nil =>
+      simp
+  | cons a tl ih =>
+      by_cases h_mem : a ∈ tl
+      · exfalso
+        exact h_acyclic (containsPath_head_mem_tail_hasCycle R a tl h_contains h_mem)
+      · have h_contains_tl : R.containsPath tl := by
+          simpa using containsPath_drop R (a :: tl) 1 h_contains
+        have h_tl_nodup : tl.Nodup := ih h_contains_tl
+        exact List.nodup_cons.2 ⟨h_mem, h_tl_nodup⟩
+
 
 omit [Fintype S] in
 /-- Appending an element to a non-empty path adds exactly one transition from the last element. -/

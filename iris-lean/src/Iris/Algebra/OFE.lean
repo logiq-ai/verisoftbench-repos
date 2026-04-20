@@ -706,11 +706,55 @@ instance OFE.ContractiveHom.fixpoint_ne [COFE α] [Inhabited α] :
     | zero => exact H _
     | succ _ IH => exact (H _).trans <| Contractive.succ _ <| IH <| Dist.lt H (Nat.lt_add_one _)
 
-@[elab_as_elim]
+def Fixpoint.chainFrom [OFE α] (f : α -c> α) (x : α) : Chain α where
+  chain n := Nat.repeat f.f (n + 1) x
+  cauchy {n} := by
+    induction n with
+    | zero =>
+        intro i hi
+        cases i with
+        | zero =>
+            exact Dist.rfl
+        | succ i =>
+            simpa [Nat.repeat, Nat.add_assoc] using
+              (Contractive.zero f.f (x := Nat.repeat f.f (i + 1) x) (y := x))
+    | succ n IH =>
+        intro i hi
+        cases i with
+        | zero =>
+            cases hi
+        | succ i =>
+            have hi' : n ≤ i := Nat.le_of_succ_le_succ hi
+            simpa [Nat.repeat, Nat.add_assoc] using (Contractive.succ f.f (IH hi'))
+
+theorem Fixpoint.chainFrom_compl_eq_fixpoint [COFE α] [Inhabited α] (f : α -c> α) (x : α) : COFE.compl (Fixpoint.chainFrom f x) ≡ f.fixpoint := by
+  let c := Fixpoint.chainFrom f x
+  have hfix : COFE.compl c ≡ f (COFE.compl c) := by
+    refine equiv_dist.mpr (fun n => ?_)
+    apply COFE.conv_compl.trans
+    refine .trans ?_ (NonExpansive.ne COFE.conv_compl.symm)
+    induction n with
+    | zero =>
+        simpa [c, Fixpoint.chainFrom, Nat.repeat, Nat.add_assoc] using (Contractive.zero f.f (x := x) (y := Nat.repeat f.f 1 x))
+    | succ n IH =>
+        simpa [c, Fixpoint.chainFrom, Nat.repeat, Nat.add_assoc] using (Contractive.succ f.f IH.symm).symm
+  simpa [c] using (fixpoint_unique (f := f) (x := COFE.compl c) hfix)
+
 theorem OFE.ContractiveHom.fixpoint_ind [COFE α] [Inhabited α] (f : α -c> α)
     (P : α → Prop) (HProper : ∀ A B : α, A ≡ B → P A → P B) (x : α) (Hbase : P x)
     (Hind : ∀ x, P x → P (f x)) (Hlim : LimitPreserving P) :
-    P f.fixpoint := by sorry
+    P f.fixpoint := by
+  let c := Fixpoint.chainFrom f x
+  have hiter : ∀ n, P (c n) := by
+    intro n
+    induction n with
+    | zero =>
+        simpa [c, Fixpoint.chainFrom, Nat.repeat, Nat.add_assoc] using Hind x Hbase
+    | succ n IH =>
+        simpa [c, Fixpoint.chainFrom, Nat.repeat, Nat.add_assoc] using Hind (c n) IH
+  have hcompl : P (COFE.compl c) := Hlim c hiter
+  exact HProper _ _ (Fixpoint.chainFrom_compl_eq_fixpoint (f := f) (x := x)) hcompl
+
 
 end Fixpoint
 

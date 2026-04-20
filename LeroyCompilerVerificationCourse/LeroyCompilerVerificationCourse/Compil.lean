@@ -594,15 +594,273 @@ theorem match_config_skip (C : List instr) (k : cont) (s : store) (pc : Int) (H 
 /-
   At last, we can state and prove the simulation diagram.
 -/
-theorem simulation_step :
-  ∀ C impconf1 impconf2 machconf1,
-  step impconf1 impconf2 ->
-  match_config C impconf1 machconf1 ->
-  ∃ machconf2,
-      (plus (transition C) machconf1 machconf2
-       \/ (star (transition C) machconf1 machconf2
-           /\ (measure' impconf2 < measure' impconf1)))
-   /\ match_config C impconf2 machconf2 := by sorry
+theorem simulation_step_assign_case (C x a k s machconf1) : match_config C (.ASSIGN x a, k, s) machconf1 -> ∃ machconf2, plus (transition C) machconf1 machconf2 ∧ match_config C (.SKIP, k, update x (aeval s a) s) machconf2 := by
+  intro hmatch
+  cases hmatch
+  rename_i pc hcode hcont
+  have hcode_a : code_at C pc (compile_aexp a) := by
+    apply code_at_app_left (C2 := [instr.Isetvar x])
+    simpa [compile_com] using hcode
+  have hexpr : star (transition C) (pc, [], s) (pc + codelen (compile_aexp a), [aeval s a], s) := by
+    simpa [transitions] using (compile_aexp_correct C s a pc [] hcode_a)
+  have hset : instr_at C (pc + codelen (compile_aexp a)) = .some (.Isetvar x) := by
+    apply code_at_to_instr_at (c2 := ([] : List instr))
+    simpa [compile_com] using hcode
+  have hstep :
+      transition C
+        (pc + codelen (compile_aexp a), [aeval s a], s)
+        (pc + codelen (compile_aexp a) + 1, [], update x (aeval s a) s) := by
+    apply transition.trans_setvar
+    exact hset
+  refine ⟨(pc + codelen (compile_aexp a) + 1, [], update x (aeval s a) s), ?_, ?_⟩
+  · exact plus_right hexpr hstep
+  · have hcont' : compile_cont C k (pc + codelen (compile_aexp a) + 1) := by
+      simpa [compile_com, codelen_app, codelen_singleton, Int.add_assoc] using hcont
+    exact match_config_skip C k (update x (aeval s a) s) (pc + codelen (compile_aexp a) + 1) hcont'
+
+theorem simulation_step_ifthenelse_case (C b c1 c2 k s machconf1) : match_config C (.IFTHENELSE b c1 c2, k, s) machconf1 -> ∃ machconf2, (star (transition C) machconf1 machconf2 ∧ measure' ((if beval s b then c1 else c2), k, s) < measure' (.IFTHENELSE b c1 c2, k, s)) ∧ match_config C ((if beval s b then c1 else c2), k, s) machconf2 := by
+  intro hmatch
+  cases hmatch
+  case match_config_intro pc hcode hcont =>
+    let test := compile_bexp b 0 (codelen (compile_com c1) + 1)
+    have hcode_if :
+        code_at C pc (test ++ (compile_com c1 ++ ([instr.Ibranch (codelen (compile_com c2))] ++ compile_com c2))) := by
+      simpa [test, compile_com, List.append_assoc] using hcode
+    have htest : code_at C pc test := by
+      apply code_at_app_left
+      exact hcode_if
+    have htrans :
+        star (transition C) (pc, [], s)
+          (pc + codelen test + (if beval s b then 0 else codelen (compile_com c1) + 1), [], s) := by
+      simpa [transitions, test] using
+        (compile_bexp_correct C s b 0 (codelen (compile_com c1) + 1) pc [] htest)
+    have hafter_test :
+        code_at C (pc + codelen test)
+          (compile_com c1 ++ ([instr.Ibranch (codelen (compile_com c2))] ++ compile_com c2)) := by
+      apply code_at_app_right
+      exact hcode_if
+    have hbranch_code :
+        code_at C (pc + codelen test + codelen (compile_com c1))
+          ([instr.Ibranch (codelen (compile_com c2))] ++ compile_com c2) := by
+      simpa [Int.add_assoc] using
+        (code_at_app_right (C := C) (pc := pc + codelen test)
+          (C1 := compile_com c1)
+          (C2 := [instr.Ibranch (codelen (compile_com c2))] ++ compile_com c2)
+          hafter_test)
+    have hpc_after :
+        pc + codelen (compile_com (.IFTHENELSE b c1 c2)) =
+          (pc + codelen test + codelen (compile_com c1)) + 1 + codelen (compile_com c2) := by
+      simp [test, compile_com, codelen_app, codelen_singleton, codelen_cons, List.append_assoc]
+      omega
+    cases hbool : beval s b
+    case false =>
+      have hcont_false :
+          compile_cont C k ((pc + codelen test + codelen (compile_com c1)) + 1 + codelen (compile_com c2)) := by
+        rw [← hpc_after]
+        exact hcont
+      have hex :
+          ∃ machconf2,
+            (star (transition C) (pc, [], s) machconf2 ∧
+              measure' (c2, k, s) < measure' (.IFTHENELSE b c1 c2, k, s)) ∧
+            match_config C (c2, k, s) machconf2 := by
+        refine ⟨(pc + codelen test + codelen (compile_com c1) + 1, [], s), ?_⟩
+        constructor
+        · constructor
+          · simpa [hbool, Int.add_assoc] using htrans
+          · simp [measure', cont_size, com_size]
+            omega
+        · have hcode_c2 :
+              code_at C (pc + codelen test + codelen (compile_com c1) + 1) (compile_com c2) := by
+            simpa [Int.add_assoc] using
+              (code_at_tail (C := C)
+                (pc := pc + codelen test + codelen (compile_com c1))
+                (i := instr.Ibranch (codelen (compile_com c2)))
+                (C' := compile_com c2)
+                (by simpa using hbranch_code))
+          refine match_config.match_config_intro (c := c2) (k := k) (st := s)
+            (pc := pc + codelen test + codelen (compile_com c1) + 1) hcode_c2 ?_
+          simpa [Int.add_assoc] using hcont_false
+      simpa [hbool] using hex
+    case true =>
+      have hcode_c1 : code_at C (pc + codelen test) (compile_com c1) := by
+        apply code_at_app_left
+        exact hafter_test
+      have hbranch_instr :
+          instr_at C (pc + codelen test + codelen (compile_com c1)) =
+            .some (.Ibranch (codelen (compile_com c2))) := by
+        exact code_at_head C (pc + codelen test + codelen (compile_com c1))
+          (instr.Ibranch (codelen (compile_com c2))) (compile_com c2)
+          (by simpa using hbranch_code)
+      have hcont_true :
+          compile_cont C k ((pc + codelen test + codelen (compile_com c1)) + 1 + codelen (compile_com c2)) := by
+        rw [← hpc_after]
+        exact hcont
+      have hcont_c1 : compile_cont C k (pc + codelen test + codelen (compile_com c1)) := by
+        exact compile_cont.ccont_branch
+          (d := codelen (compile_com c2)) (k := k)
+          (pc := pc + codelen test + codelen (compile_com c1))
+          (pc' := (pc + codelen test + codelen (compile_com c1)) + 1 + codelen (compile_com c2))
+          hbranch_instr rfl hcont_true
+      have hex :
+          ∃ machconf2,
+            (star (transition C) (pc, [], s) machconf2 ∧
+              measure' (c1, k, s) < measure' (.IFTHENELSE b c1 c2, k, s)) ∧
+            match_config C (c1, k, s) machconf2 := by
+        refine ⟨(pc + codelen test, [], s), ?_⟩
+        constructor
+        · constructor
+          · simpa [hbool, Int.add_assoc] using htrans
+          · simp [measure', cont_size, com_size]
+            omega
+        · refine match_config.match_config_intro (c := c1) (k := k) (st := s)
+            (pc := pc + codelen test) hcode_c1 ?_
+          simpa [Int.add_assoc] using hcont_c1
+      simpa [hbool] using hex
+
+theorem simulation_step_seq_case (C c1 c2 k s machconf1) : match_config C (.SEQ c1 c2, k, s) machconf1 -> ∃ machconf2, (star (transition C) machconf1 machconf2 ∧ measure' (c1, .Kseq c2 k, s) < measure' (.SEQ c1 c2, k, s)) ∧ match_config C (c1, .Kseq c2 k, s) machconf2 := by
+  intro hmatch
+  cases hmatch with
+  | match_config_intro _ _ _ pc hcode hcont =>
+      refine ⟨(pc, [], s), ?_⟩
+      constructor
+      · constructor
+        · exact star.star_refl _
+        · simp only [measure', cont_size, com_size]
+          omega
+      · constructor
+        · have hcode' : code_at C pc (compile_com c1 ++ compile_com c2) := by
+            simpa [compile_com] using hcode
+          exact code_at_app_left C pc (compile_com c1) (compile_com c2) hcode'
+        · have hcode' : code_at C pc (compile_com c1 ++ compile_com c2) := by
+            simpa [compile_com] using hcode
+          have hcode2 : code_at C (pc + codelen (compile_com c1)) (compile_com c2) := by
+            exact code_at_app_right C pc (compile_com c1) (compile_com c2) hcode'
+          refine compile_cont.ccont_seq (c := c2) (k := k) (pc := pc + codelen (compile_com c1)) (pc' := (pc + codelen (compile_com c1)) + codelen (compile_com c2)) ?_ rfl ?_
+          · exact hcode2
+          · simpa [compile_com, codelen_app, Int.add_assoc] using hcont
+
+theorem simulation_step_skip_seq_case (C c k s machconf1) : match_config C (.SKIP, .Kseq c k, s) machconf1 -> ∃ machconf2, (star (transition C) machconf1 machconf2 ∧ measure' (c, k, s) < measure' (.SKIP, .Kseq c k, s)) ∧ match_config C (c, k, s) machconf2 := by
+  intro h
+  cases h
+  case match_config_intro pc hcode hcont =>
+    have hcont' : compile_cont C (.Kseq c k) pc := by
+      simpa [compile_com, codelen] using hcont
+    rcases compile_cont_Kseq_inv C c k pc s hcont' with ⟨pc', hstar, hcode', hcont''⟩
+    refine ⟨(pc', [], s), ?_⟩
+    constructor
+    · constructor
+      · exact hstar
+      · simp [measure', cont_size, com_size, com_size_nonzero]
+    · constructor
+      · exact hcode'
+      · exact hcont''
+
+theorem simulation_step_skip_while_case (C b c k s machconf1) : match_config C (.SKIP, .Kwhile b c k, s) machconf1 -> ∃ machconf2, plus (transition C) machconf1 machconf2 ∧ match_config C (.WHILE b c, k, s) machconf2 := by
+  intro hmatch
+  cases hmatch
+  rename_i pc hcode hcont
+  have hcont' : compile_cont C (.Kwhile b c k) pc := by
+    simpa [compile_com, codelen] using hcont
+  rcases compile_cont_Kwhile_inv C b c k pc s hcont' with ⟨pc', hplus, hcodewhile, hcontk⟩
+  refine ⟨(pc', [], s), hplus, ?_⟩
+  exact match_config.match_config_intro (.WHILE b c) k s pc' hcodewhile hcontk
+
+theorem simulation_step_while_done_case (C b c k s machconf1) : beval s b = false -> match_config C (.WHILE b c, k, s) machconf1 -> ∃ machconf2, (star (transition C) machconf1 machconf2 ∧ measure' (.SKIP, k, s) < measure' (.WHILE b c, k, s)) ∧ match_config C (.SKIP, k, s) machconf2 := by
+  intro hb hm
+  cases hm with
+  | match_config_intro _ _ _ pc hcode hcont =>
+      let body := compile_com c
+      let test := compile_bexp b 0 (codelen body + 1)
+      have hcode' : code_at C pc (test ++ (body ++ [instr.Ibranch (-(codelen test + codelen body + 1))])) := by
+        simpa [body, test, compile_com, List.append_assoc] using hcode
+      have htest : code_at C pc test := by
+        exact code_at_app_left (C := C) (pc := pc) (C1 := test)
+          (C2 := body ++ [instr.Ibranch (-(codelen test + codelen body + 1))]) hcode'
+      have hsteps : star (transition C)
+          (pc, [], s)
+          (pc + codelen test + (codelen body + 1), [], s) := by
+        simpa [transitions, body, test, hb] using
+          (compile_bexp_correct C s b 0 (codelen body + 1) pc [] htest)
+      have hcont' : compile_cont C k (pc + codelen test + (codelen body + 1)) := by
+        simpa [body, test, compile_com, codelen_app, codelen_singleton, List.append_assoc, Int.add_assoc, Int.add_left_comm, Int.add_comm] using hcont
+      refine ⟨(pc + codelen test + (codelen body + 1), [], s), ?_, ?_⟩
+      · constructor
+        · exact hsteps
+        · simp only [measure', cont_size, com_size]
+          have hc : 0 < com_size c := com_size_nonzero c
+          omega
+      · exact match_config_skip C k s _ hcont'
+
+theorem simulation_step_while_true_case (C b c k s machconf1) : beval s b = true -> match_config C (.WHILE b c, k, s) machconf1 -> ∃ machconf2, (star (transition C) machconf1 machconf2 ∧ measure' (c, .Kwhile b c k, s) < measure' (.WHILE b c, k, s)) ∧ match_config C (c, .Kwhile b c k, s) machconf2 := by
+  intro hb hmatch
+  cases hmatch with
+  | match_config_intro c' k' st' pc hcode hcont =>
+      let body := compile_com c
+      let test := compile_bexp b 0 (codelen body + 1)
+      let br := instr.Ibranch (-(codelen test + codelen body + 1))
+      have hcode' : code_at C pc (test ++ body ++ [br]) := by
+        simpa [body, test, br, compile_com] using hcode
+      have hcode'' : code_at C pc (test ++ (body ++ [br])) := by
+        simpa [List.append_assoc] using hcode'
+      have htest : code_at C pc test := by
+        exact code_at_app_left C pc test (body ++ [br]) hcode''
+      have hsteps : star (transition C) (pc, [], s) (pc + codelen test, [], s) := by
+        simpa [transitions, test, hb] using (compile_bexp_correct C s b 0 (codelen body + 1) pc [] htest)
+      have hbody : code_at C (pc + codelen test) body := by
+        exact code_at_app_right2 C pc test body [br] hcode'
+      have hbranch : instr_at C (pc + codelen test + codelen body) = .some br := by
+        simpa [br, codelen_app, Int.add_assoc] using
+          (code_at_to_instr_at (C := C) (pc := pc) (c1 := test ++ body)
+            (i := br) (c2 := []) hcode')
+      have hcontwhile : compile_cont C (.Kwhile b c k) (pc + codelen test + codelen body) := by
+        exact compile_cont.ccont_while (b := b) (c := c) (k := k)
+          (pc := pc + codelen test + codelen body)
+          (d := -(codelen test + codelen body + 1))
+          (pc' := pc)
+          (pc'' := pc + codelen (compile_com (.WHILE b c)))
+          hbranch
+          (by omega)
+          hcode
+          rfl
+          hcont
+      have hmatch2 : match_config C (c, .Kwhile b c k, s) (pc + codelen test, [], s) := by
+        apply match_config.match_config_intro (pc := pc + codelen test)
+        · simpa [body] using hbody
+        · simpa [body, Int.add_assoc] using hcontwhile
+      have hmeasure : measure' (c, .Kwhile b c k, s) < measure' (.WHILE b c, k, s) := by
+        simp [measure', cont_size, com_size]
+      refine ⟨(pc + codelen test, [], s), ?_⟩
+      constructor
+      · constructor
+        · exact hsteps
+        · exact hmeasure
+      · exact hmatch2
+
+theorem simulation_step (C impconf1 impconf2 machconf1) : step impconf1 impconf2 -> match_config C impconf1 machconf1 -> ∃ machconf2, (plus (transition C) machconf1 machconf2 ∨ (star (transition C) machconf1 machconf2 ∧ measure' impconf2 < measure' impconf1)) ∧ match_config C impconf2 machconf2 := by
+  intro hstep hmatch
+  cases hstep with
+  | step_assign x a k s =>
+      rcases simulation_step_assign_case C x a k s machconf1 hmatch with ⟨machconf2, hplus, hmatch2⟩
+      exact ⟨machconf2, Or.inl hplus, hmatch2⟩
+  | step_seq c1 c2 s k =>
+      rcases simulation_step_seq_case C c1 c2 k s machconf1 hmatch with ⟨machconf2, hstar_measure, hmatch2⟩
+      exact ⟨machconf2, Or.inr hstar_measure, hmatch2⟩
+  | step_ifthenelse b c1 c2 k s =>
+      rcases simulation_step_ifthenelse_case C b c1 c2 k s machconf1 hmatch with ⟨machconf2, hstar_measure, hmatch2⟩
+      exact ⟨machconf2, Or.inr hstar_measure, hmatch2⟩
+  | step_while_done b c k s hbeval =>
+      rcases simulation_step_while_done_case C b c k s machconf1 hbeval hmatch with ⟨machconf2, hstar_measure, hmatch2⟩
+      exact ⟨machconf2, Or.inr hstar_measure, hmatch2⟩
+  | step_while_true b c k s hbeval =>
+      rcases simulation_step_while_true_case C b c k s machconf1 hbeval hmatch with ⟨machconf2, hstar_measure, hmatch2⟩
+      exact ⟨machconf2, Or.inr hstar_measure, hmatch2⟩
+  | step_skip_seq c k s =>
+      rcases simulation_step_skip_seq_case C c k s machconf1 hmatch with ⟨machconf2, hstar_measure, hmatch2⟩
+      exact ⟨machconf2, Or.inr hstar_measure, hmatch2⟩
+  | step_skip_while b c k s =>
+      rcases simulation_step_skip_while_case C b c k s machconf1 hmatch with ⟨machconf2, hplus, hmatch2⟩
+      exact ⟨machconf2, Or.inl hplus, hmatch2⟩
+
 
 /-
   The hard work is done!  Nice consequences will follow.

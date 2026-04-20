@@ -136,6 +136,66 @@ lemma Eval.Indexed.toEval {n env e v} (h : env ⊢ e ↦(n) v) : env ⊢ e ↦ v
   case recur =>
     apply Eval.recur; assumption
 
-lemma Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by sorry
+lemma Eval.toIndexed {env e v} (h : env ⊢ e ↦ v) : ∃ n, env ⊢ e ↦(n) v := by
+  induction h with
+  | var hlookup =>
+      exact ⟨0, Eval.Indexed.var hlookup⟩
+  | var_rec hlookup hbody ih =>
+      rcases ih with ⟨n, hidx⟩
+      exact ⟨n, Eval.Indexed.var_rec hlookup hidx⟩
+  | unit =>
+      exact ⟨0, Eval.Indexed.unit⟩
+  | const =>
+      exact ⟨0, Eval.Indexed.const⟩
+  | constr =>
+      exact ⟨0, Eval.Indexed.constr⟩
+  | app hf ha hb ihf iha ihb =>
+      rcases ihf with ⟨nf, hf'⟩
+      rcases iha with ⟨na, ha'⟩
+      rcases ihb with ⟨nb, hb'⟩
+      let k := max nf na
+      refine ⟨k + nb + 1, ?_⟩
+      apply Eval.Indexed.app (n₁ := k) (n₂ := nb)
+      · exact le_rfl
+      · exact Eval.Indexed.monotone hf' (Nat.le_max_left _ _)
+      · exact Eval.Indexed.monotone ha' (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_succ _))
+      · exact hb'
+  | constr_app hctr harg ihctr iharg =>
+      rcases ihctr with ⟨nctr, hctr'⟩
+      rcases iharg with ⟨narg, harg'⟩
+      let n := max nctr (narg + 1)
+      refine ⟨n, ?_⟩
+      apply Eval.Indexed.constr_app (n' := narg)
+      · exact Nat.lt_of_lt_of_le (Nat.lt_succ_self narg) (Nat.le_max_right _ _)
+      · exact Eval.Indexed.monotone hctr' (Nat.le_max_left _ _)
+      · exact harg'
+  | binop h₁ h₂ ih₁ ih₂ =>
+      rcases ih₁ with ⟨n₁, h₁'⟩
+      rcases ih₂ with ⟨n₂, h₂'⟩
+      let n := max n₁ n₂
+      refine ⟨n, ?_⟩
+      apply Eval.Indexed.binop
+      · exact Eval.Indexed.monotone h₁' (Nat.le_max_left _ _)
+      · exact Eval.Indexed.monotone h₂' (Nat.le_max_right _ _)
+  | lambda =>
+      exact ⟨0, Eval.Indexed.lambda⟩
+  | save hval hbody ihval ihbody =>
+      rcases ihval with ⟨n₁, h₁⟩
+      rcases ihbody with ⟨n₂, h₂⟩
+      refine ⟨n₁ + n₂, ?_⟩
+      apply Eval.Indexed.save (n₁ := n₁) (n₂ := n₂)
+      · exact le_rfl
+      · exact h₁
+      · exact h₂
+  | branch_matches hbody ih =>
+      rcases ih with ⟨n, hidx⟩
+      exact ⟨n + 1, Eval.Indexed.branch_matches (n' := n) (Nat.lt_succ_self n) hidx⟩
+  | branch_fails hne hnext ih =>
+      rcases ih with ⟨n, hidx⟩
+      exact ⟨n, Eval.Indexed.branch_fails hne hidx⟩
+  | recur hbody ih =>
+      rcases ih with ⟨n, hidx⟩
+      exact ⟨n + 1, Eval.Indexed.recur (n' := n) (Nat.lt_succ_self n) hidx⟩
+
 
 end Juvix.Core.Main

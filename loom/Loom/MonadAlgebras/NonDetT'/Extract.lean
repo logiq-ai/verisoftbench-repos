@@ -383,12 +383,49 @@ lemma wp_bot [∀ α, CCPO (m α)] [MAlgPartial m]:
   refine le_iInf₂ ?_
   intro; erw [Set.mem_empty_iff_false]; simp
 
-omit [MAlgDet m l] in
+theorem wp_bot_top_blueprint {α : Type u} [∀ β, CCPO (m β)] [MAlgPartial m] (post : α -> l) : wp (bot : m α) post = (⊤ : l) := by
+  have h := congrFun (wp_bot (m := m) (l := l) (α := α)) post
+  simpa using h
+
 lemma ExtractNonDet.extract_refines_wp_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
-  wp s post <= wp s.extractWeak post := by sorry
+  wp s post <= wp s.extractWeak post := by
+  induction inst with
+  | pure x =>
+      simp [wp_pure, NonDetT.extractWeak]
+  | vis x f ex ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen, monadLift_self, wp_bind, NonDetT.wp_vis]
+      apply wp_cons
+      intro a
+      exact ih a
+  | pickSuchThat τ p f ex ih =>
+      simp only [NonDetT.extractWeak, NonDetT.extractGen]
+      cases hfind : WeakFindable.find p () with
+      | none =>
+          simp only [NonDetT.wp_pickCont]
+          rw [CCPOBotLawful.prop, wp_bot_top_blueprint]
+          exact le_top
+      | some t =>
+          simp only [NonDetT.wp_pickCont]
+          refine le_trans ?_ (ih t)
+          refine iInf_le_of_le t ?_
+          have hp : p t := WeakFindable.find_some_p (p := p) (x := t) hfind
+          simp [top_himp, hp]
+  | assume p f ex ih =>
+      have hp : ∀ a, p a = p .unit := by
+        intro a
+        cases a
+        rfl
+      have hf : ∀ a, f a = f .unit := by
+        intro a
+        cases a
+        rfl
+      simp [NonDetT.extractWeak, NonDetT.extractGen, NonDetT.wp_pickCont, hp, hf]
+      by_cases h : p .unit
+      · simpa [h, top_himp, iInf_const] using ih .unit
+      · rw [if_neg h, CCPOBotLawful.prop, wp_bot_top_blueprint]
+        simp [h, iInf_const]
 
 
-omit [MAlgDet m l] in
 lemma ExtractNonDet.extract_refines_triple_weak [∀ α, CCPO (m α)] [MAlgPartial m] [CCPOBotLawful m] (pre : l) (s : NonDetT m α) (inst : ExtractNonDet WeakFindable s) :
   triple pre s post ->
   triple pre s.extractWeak post := by

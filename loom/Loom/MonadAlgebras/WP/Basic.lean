@@ -222,11 +222,35 @@ namespace TotalCorrectness
 
 variable [∀ α, CCPO (m α)] [MonoBind m]
 
-lemma repeat_inv (f : Unit -> β -> m (ForInStep β))
+theorem repeat_inv (f : Unit -> β -> m (ForInStep β))
   (inv : ForInStep β -> l) (measure : β -> Nat)
   init :
    (∀ b, triple (inv (.yield b)) (f () b) (fun | .yield b' => inv (.yield b') ⊓ ⌜ measure b' < measure b ⌝ | .done b' => inv (.done b'))) ->
-   triple (inv (.yield init)) (Loop.forIn.loop f init) (fun b => inv (.done b)) := by sorry
+   triple (inv (.yield init)) (Loop.forIn.loop f init) (fun b => inv (.done b)) := by
+  intro hstep
+  have hmain : ∀ n b, measure b < n -> triple (inv (.yield b)) (Loop.forIn.loop f b) (fun b => inv (.done b)) := by
+    intro n
+    induction n with
+    | zero =>
+        intro b hb
+        exact False.elim (Nat.not_lt_zero _ hb)
+    | succ n ih =>
+        intro b hb
+        have hb' : measure b ≤ n := Nat.le_of_lt_succ hb
+        rw [triple, Loop.forIn.loop.eq_def, wp_bind]
+        apply le_trans
+        · exact hstep b
+        · apply wp_cons
+          intro y
+          cases y with
+          | done b' =>
+              simp [wp_pure]
+          | yield b' =>
+              simp [wp_pure]
+              intro hlt
+              exact ih b' (Nat.lt_of_lt_of_le hlt hb')
+  exact hmain (measure init + 1) init (Nat.lt_succ_self _)
+
 
 
 lemma repeat_inv_split (f : Unit -> β -> m (ForInStep β))

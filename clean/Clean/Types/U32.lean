@@ -344,7 +344,60 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  rcases x_norm with ⟨hx0, hx1, hx2, hx3⟩
+  rcases y_norm with ⟨hy0, hy1, hy2, hy3⟩
+  rw [U32.value_horner, U32.value_horner]
+  let xr : ℕ := x.x1.val + 2 ^ 8 * (x.x2.val + 2 ^ 8 * x.x3.val)
+  let yr : ℕ := y.x1.val + 2 ^ 8 * (y.x2.val + 2 ^ 8 * y.x3.val)
+  have hxmod : (x.x0.val + 2 ^ 8 * xr) % 2 ^ 8 = x.x0.val := by
+    rw [Nat.add_mul_mod_self_left]
+    exact Nat.mod_eq_of_lt hx0
+  have hymod : (y.x0.val + 2 ^ 8 * yr) % 2 ^ 8 = y.x0.val := by
+    rw [Nat.add_mul_mod_self_left]
+    exact Nat.mod_eq_of_lt hy0
+  have hxdiv : (x.x0.val + 2 ^ 8 * xr) / 2 ^ 8 = xr := by
+    omega
+  have hydiv : (y.x0.val + 2 ^ 8 * yr) / 2 ^ 8 = yr := by
+    omega
+  rw [← Nat.mod_add_div (Nat.bitwise f (x.x0.val + 2 ^ 8 * xr) (y.x0.val + 2 ^ 8 * yr)) (2 ^ 8)]
+  rw [Nat.bitwise_mod_two_pow hff, Nat.bitwise_div_two_pow hff]
+  rw [hxmod, hymod, hxdiv, hydiv]
+  let xr' : ℕ := x.x2.val + 2 ^ 8 * x.x3.val
+  let yr' : ℕ := y.x2.val + 2 ^ 8 * y.x3.val
+  have hxr : xr = x.x1.val + 2 ^ 8 * xr' := by
+    simp only [xr, xr']
+  have hyr : yr = y.x1.val + 2 ^ 8 * yr' := by
+    simp only [yr, yr']
+  rw [hxr, hyr]
+  have hxmod' : (x.x1.val + 2 ^ 8 * xr') % 2 ^ 8 = x.x1.val := by
+    rw [Nat.add_mul_mod_self_left]
+    exact Nat.mod_eq_of_lt hx1
+  have hymod' : (y.x1.val + 2 ^ 8 * yr') % 2 ^ 8 = y.x1.val := by
+    rw [Nat.add_mul_mod_self_left]
+    exact Nat.mod_eq_of_lt hy1
+  have hxdiv' : (x.x1.val + 2 ^ 8 * xr') / 2 ^ 8 = xr' := by
+    omega
+  have hydiv' : (y.x1.val + 2 ^ 8 * yr') / 2 ^ 8 = yr' := by
+    omega
+  rw [← Nat.mod_add_div (Nat.bitwise f (x.x1.val + 2 ^ 8 * xr') (y.x1.val + 2 ^ 8 * yr')) (2 ^ 8)]
+  rw [Nat.bitwise_mod_two_pow hff, Nat.bitwise_div_two_pow hff]
+  rw [hxmod', hymod', hxdiv', hydiv']
+  have hxmod'' : (x.x2.val + 2 ^ 8 * x.x3.val) % 2 ^ 8 = x.x2.val := by
+    rw [Nat.add_mul_mod_self_left]
+    exact Nat.mod_eq_of_lt hx2
+  have hymod'' : (y.x2.val + 2 ^ 8 * y.x3.val) % 2 ^ 8 = y.x2.val := by
+    rw [Nat.add_mul_mod_self_left]
+    exact Nat.mod_eq_of_lt hy2
+  have hxdiv'' : (x.x2.val + 2 ^ 8 * x.x3.val) / 2 ^ 8 = x.x3.val := by
+    omega
+  have hydiv'' : (y.x2.val + 2 ^ 8 * y.x3.val) / 2 ^ 8 = y.x3.val := by
+    omega
+  rw [← Nat.mod_add_div (Nat.bitwise f (x.x2.val + 2 ^ 8 * x.x3.val) (y.x2.val + 2 ^ 8 * y.x3.val)) (2 ^ 8)]
+  rw [Nat.bitwise_mod_two_pow hff, Nat.bitwise_div_two_pow hff]
+  rw [hxmod'', hymod'', hxdiv'', hydiv'']
+  norm_num
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :

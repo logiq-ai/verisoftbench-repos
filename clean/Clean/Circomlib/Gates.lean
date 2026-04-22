@@ -577,7 +577,37 @@ lemma soundness_two {p : ℕ} [Fact p.Prime]
     (input : fields 2 (F p)) (h_env : input = eval env input_var)
     (h_assumptions : Assumptions 2 input)
     (h_hold : Circuit.ConstraintsHold.Soundness env ((main input_var).operations offset)) :
-    Spec 2 input (env ((main input_var).output offset)) := by sorry
+    Spec 2 input (env ((main input_var).output offset)) := by
+  simp only [main, circuit_norm] at h_hold ⊢
+  have h_eval0 : env input_var[0] = input[0] := by
+    simp [h_env, circuit_norm]
+  have h_eval1 : env input_var[1] = input[1] := by
+    simp [h_env, circuit_norm]
+  have h_binary0 : IsBool (env input_var[0]) := by
+    rw [h_eval0]
+    exact h_assumptions 0 (by norm_num)
+  have h_binary1 : IsBool (env input_var[1]) := by
+    rw [h_eval1]
+    exact h_assumptions 1 (by norm_num)
+  have h_and := AND.circuit.soundness offset env
+    (((input_var[0], input_var[1]) : fieldPair (Expression (F p))))
+    (((env input_var[0], env input_var[1]) : fieldPair (F p)))
+    (by simp [circuit_norm])
+    (by exact ⟨h_binary0, h_binary1⟩)
+    h_hold
+  have h_fold_two :
+      Vector.foldl (· &&& ·) 1 (input.map (·.val)) = input[0].val &&& input[1].val := by
+    rw [Vector.foldl_mk, ← Array.foldl_toList]
+    have h_toList : (input.map (·.val)).toList = [input[0].val, input[1].val] := by
+      rw [Vector.toList_length_two]
+      simp only [Vector.getElem_map]
+    rw [Vector.toList_toArray, h_toList]
+    simp only [List.foldl_cons, List.foldl_nil]
+    rw [one_land_of_IsBool input[0].val (val_of_IsBool (h_assumptions 0 (by norm_num)))]
+  constructor
+  · rw [h_fold_two]
+    simpa only [h_eval0, h_eval1] using h_and.1
+  · exact h_and.2
 
 /-- Completeness for n = 0 case -/
 lemma completeness_zero {p : ℕ} [Fact p.Prime]

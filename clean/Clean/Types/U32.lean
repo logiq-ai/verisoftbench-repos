@@ -344,7 +344,40 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  have h256 : (256 : ℕ) = 2 ^ 8 := by norm_num
+  have hconcat (a b x y : ℕ) (ha : a < 2 ^ 8) (hb : b < 2 ^ 8) :
+      Nat.bitwise f (a + 2 ^ 8 * x) (b + 2 ^ 8 * y) =
+        Nat.bitwise f a b + 2 ^ 8 * Nat.bitwise f x y := by
+    apply Nat.eq_of_testBit_eq
+    intro j
+    have hbitlt : Nat.bitwise f a b < 2 ^ 8 := Nat.bitwise_lt_two_pow ha hb
+    have hxbit : (a + 2 ^ 8 * x).testBit j = if j < 8 then a.testBit j else x.testBit (j - 8) := by
+      simpa [Nat.add_comm] using (Nat.testBit_two_pow_mul_add x ha j)
+    have hybit : (b + 2 ^ 8 * y).testBit j = if j < 8 then b.testBit j else y.testBit (j - 8) := by
+      simpa [Nat.add_comm] using (Nat.testBit_two_pow_mul_add y hb j)
+    have hxybit : (Nat.bitwise f a b + 2 ^ 8 * Nat.bitwise f x y).testBit j =
+        if j < 8 then (Nat.bitwise f a b).testBit j else (Nat.bitwise f x y).testBit (j - 8) := by
+      simpa [Nat.add_comm] using (Nat.testBit_two_pow_mul_add (Nat.bitwise f x y) hbitlt j)
+    rw [Nat.testBit_bitwise hff, hxbit, hybit, hxybit]
+    by_cases hj : j < 8
+    · simp [hj, Nat.testBit_bitwise hff]
+    · simp [hj, Nat.testBit_bitwise hff]
+  have hx0 : x.x0.val < 2 ^ 8 := by simpa using x_norm.1
+  have hy0 : y.x0.val < 2 ^ 8 := by simpa using y_norm.1
+  have hx1 : x.x1.val < 2 ^ 8 := by simpa using x_norm.2.1
+  have hy1 : y.x1.val < 2 ^ 8 := by simpa using y_norm.2.1
+  have hx2 : x.x2.val < 2 ^ 8 := by simpa using x_norm.2.2.1
+  have hy2 : y.x2.val < 2 ^ 8 := by simpa using y_norm.2.2.1
+  rw [value_horner x, value_horner y]
+  simp only [h256]
+  rw [hconcat x.x0.val y.x0.val
+    (x.x1.val + 2 ^ 8 * (x.x2.val + 2 ^ 8 * x.x3.val))
+    (y.x1.val + 2 ^ 8 * (y.x2.val + 2 ^ 8 * y.x3.val)) hx0 hy0]
+  rw [hconcat x.x1.val y.x1.val
+    (x.x2.val + 2 ^ 8 * x.x3.val) (y.x2.val + 2 ^ 8 * y.x3.val) hx1 hy1]
+  rw [hconcat x.x2.val y.x2.val x.x3.val y.x3.val hx2 hy2]
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :

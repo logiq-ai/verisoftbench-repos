@@ -337,6 +337,29 @@ private lemma reorganize_value' (a b c d : ℕ) :
   2^8 * (2^8 * (2^8 * d + c) + b) + a := by ring
 
 -- General lemma: operations defined with bitwise can be computed componentwise on U32
+theorem bitwise_split_lowbyte (f : Bool → Bool → Bool) {a b c d : ℕ}
+    (ha : a < 256) (hc : c < 256) (hff : f false false = false) :
+    Nat.bitwise f (a + 256 * b) (c + 256 * d) =
+      Nat.bitwise f a c + 256 * Nat.bitwise f b d := by
+  apply Nat.eq_of_testBit_eq
+  intro i
+  have h256 : 2 ^ 8 = 256 := by norm_num
+  have ha' : a < 2 ^ 8 := by simpa only [h256] using ha
+  have hc' : c < 2 ^ 8 := by simpa only [h256] using hc
+  have hac : Nat.bitwise f a c < 2 ^ 8 := by
+    exact Nat.bitwise_lt_two_pow ha' hc'
+  rw [show a + 256 * b = 2 ^ 8 * b + a by omega]
+  rw [show c + 256 * d = 2 ^ 8 * d + c by omega]
+  rw [Nat.testBit_bitwise hff]
+  rw [Nat.testBit_two_pow_mul_add b ha' i]
+  rw [Nat.testBit_two_pow_mul_add d hc' i]
+  rw [show Nat.bitwise f a c + 256 * Nat.bitwise f b d = 2 ^ 8 * Nat.bitwise f b d + Nat.bitwise f a c by omega]
+  rw [Nat.testBit_two_pow_mul_add (Nat.bitwise f b d) hac i]
+  by_cases hi : i < 8
+  · simp [hi, Nat.testBit_bitwise, hff]
+  · simp [hi, Nat.testBit_bitwise, hff]
+
+
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma bitwise_componentwise (f : Bool → Bool → Bool)
     {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
@@ -344,7 +367,24 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hff
+  rcases x_norm with ⟨hx0, hx1, hx2, hx3⟩
+  rcases y_norm with ⟨hy0, hy1, hy2, hy3⟩
+  rw [value_horner x, value_horner y]
+  norm_num
+  rw [bitwise_split_lowbyte (f := f)
+      (a := x.x0.val) (b := x.x1.val + 256 * (x.x2.val + 256 * x.x3.val))
+      (c := y.x0.val) (d := y.x1.val + 256 * (y.x2.val + 256 * y.x3.val))
+      hx0 hy0 hff]
+  rw [bitwise_split_lowbyte (f := f)
+      (a := x.x1.val) (b := x.x2.val + 256 * x.x3.val)
+      (c := y.x1.val) (d := y.x2.val + 256 * y.x3.val)
+      hx1 hy1 hff]
+  rw [bitwise_split_lowbyte (f := f)
+      (a := x.x2.val) (b := x.x3.val)
+      (c := y.x2.val) (d := y.x3.val)
+      hx2 hy2 hff]
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :

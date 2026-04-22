@@ -344,7 +344,48 @@ lemma bitwise_componentwise (f : Bool → Bool → Bool)
     Nat.bitwise f x.value y.value =
       Nat.bitwise f x.x0.val y.x0.val + 256 *
         (Nat.bitwise f x.x1.val y.x1.val + 256 *
-          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by sorry
+          (Nat.bitwise f x.x2.val y.x2.val + 256 * Nat.bitwise f x.x3.val y.x3.val)) := by
+  intro hf
+  have split_byte (a A b B : ℕ) (ha : a < 2 ^ 8) (hb : b < 2 ^ 8) :
+      Nat.bitwise f (a + 2 ^ 8 * A) (b + 2 ^ 8 * B) =
+        Nat.bitwise f a b + 2 ^ 8 * Nat.bitwise f A B := by
+    rw [Nat.add_comm a (2 ^ 8 * A), Nat.add_comm b (2 ^ 8 * B)]
+    rw [Nat.add_comm (Nat.bitwise f a b) (2 ^ 8 * Nat.bitwise f A B)]
+    apply Nat.eq_of_testBit_eq
+    intro j
+    rw [Nat.testBit_bitwise hf]
+    rw [Nat.testBit_two_pow_mul_add A ha j, Nat.testBit_two_pow_mul_add B hb j]
+    rw [Nat.testBit_two_pow_mul_add (Nat.bitwise f A B) (Nat.bitwise_lt_two_pow ha hb) j]
+    by_cases hj : j < 8
+    · simp [hj, Nat.testBit_bitwise hf]
+    · simp [hj, Nat.testBit_bitwise hf]
+  rcases x_norm with ⟨hx0, hx1, hx2, hx3⟩
+  rcases y_norm with ⟨hy0, hy1, hy2, hy3⟩
+  have hx0' : x.x0.val < 2 ^ 8 := by
+    norm_num
+    exact hx0
+  have hx1' : x.x1.val < 2 ^ 8 := by
+    norm_num
+    exact hx1
+  have hx2' : x.x2.val < 2 ^ 8 := by
+    norm_num
+    exact hx2
+  have hy0' : y.x0.val < 2 ^ 8 := by
+    norm_num
+    exact hy0
+  have hy1' : y.x1.val < 2 ^ 8 := by
+    norm_num
+    exact hy1
+  have hy2' : y.x2.val < 2 ^ 8 := by
+    norm_num
+    exact hy2
+  rw [value_horner x, value_horner y]
+  rw [split_byte x.x0.val (x.x1.val + 2 ^ 8 * (x.x2.val + 2 ^ 8 * x.x3.val))
+      y.x0.val (y.x1.val + 2 ^ 8 * (y.x2.val + 2 ^ 8 * y.x3.val)) hx0' hy0']
+  rw [split_byte x.x1.val (x.x2.val + 2 ^ 8 * x.x3.val)
+      y.x1.val (y.x2.val + 2 ^ 8 * y.x3.val) hx1' hy1']
+  rw [split_byte x.x2.val x.x3.val y.x2.val y.x3.val hx2' hy2']
+  norm_num
 
 omit [Fact (Nat.Prime p)] p_large_enough in
 lemma or_componentwise {x y : U32 (F p)} (x_norm : x.Normalized) (y_norm : y.Normalized) :
